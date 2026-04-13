@@ -10,7 +10,8 @@ const TABS = [
   { k: "operacao", l: "Operação" }, { k: "tipo", l: "Tipo" },
   { k: "fornecedor", l: "Fornecedor" }, { k: "cor", l: "Cor" },
   { k: "drop", l: "Drop" }, { k: "colecao", l: "Coleção" },
-  { k: "status", l: "Status" }, { k: "tecido", l: "Tecidos" },
+  { k: "status", l: "Status" }, { k: "piloto_most", l: "Piloto / mostr." },
+  { k: "tecido", l: "Tecidos" },
 ];
 
 export default function CadView() {

@@ -3,9 +3,6 @@
 import { useState, useMemo } from "react";
 import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
-import type { Produto } from "@/lib/types";
-
-// TODO: replace with Supabase fetch
 import { SAMPLE_ROWS, SAMPLE_CAD } from "@/lib/sample-data";
 
 type Props = {
@@ -25,7 +22,9 @@ export default function DevTable({ onOpenFicha }: Props) {
     if (filterStatus) r = r.filter((x: any) => x.status === filterStatus);
     if (query) {
       const q = query.toLowerCase();
-      r = r.filter((x: any) => (x.ref + x.desc + x.tecido).toLowerCase().includes(q));
+      r = r.filter((x: any) => 
+        (x.ref + x.desc + x.tecido + x.fornecedor + x.nome_cor).toLowerCase().includes(q)
+      );
     }
     return r;
   }, [rows, filterGrupo, filterStatus, query]);
@@ -35,7 +34,6 @@ export default function DevTable({ onOpenFicha }: Props) {
       prev.map((r) => {
         if (r.id !== id) return r;
         const updated = { ...r, [key]: val };
-        // Auto-fill forn_tecido when tecido changes
         if (key === "tecido") {
           const t = cad.tecido?.find((t: any) => t.nome === val);
           if (t) updated.forn_tecido = t.forn;
@@ -68,13 +66,12 @@ export default function DevTable({ onOpenFicha }: Props) {
 
   return (
     <div>
-      {/* ── Toolbar ── */}
       <div className="flex gap-2 mb-5 flex-wrap items-center">
         <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input
             type="text"
-            placeholder="Buscar referência, descrição ou tecido..."
+            placeholder="Buscar referência, descrição, tecido, cor..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white outline-none"
@@ -88,40 +85,41 @@ export default function DevTable({ onOpenFicha }: Props) {
           <option value="">Todos os status</option>
           {statuses.map((s) => <option key={s}>{s}</option>)}
         </select>
-        <button onClick={addRow} className="text-sm font-semibold px-5 py-2.5 rounded-xl bg-apple-blue text-white hover:opacity-90 transition-opacity">
+        <button onClick={addRow} className="text-sm font-semibold px-5 py-2.5 rounded-xl bg-[#007AFF] text-white hover:opacity-90 transition-opacity">
           + Novo SKU
         </button>
       </div>
 
-      {/* ── Count bar ── */}
       <div className="flex items-baseline gap-3 mb-4 pl-1">
         <span className="text-3xl font-bold tabular-nums tracking-tight">{filtered.length}</span>
         <span className="text-sm text-gray-500">SKU{filtered.length !== 1 && "s"}</span>
         <span className="text-xs text-gray-400 ml-auto italic">duplo-clique para editar</span>
       </div>
 
-      {/* ── Table ── */}
       <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
         <table className="plm-table" style={{ width: "max-content", minWidth: "100%" }}>
           <thead>
             <tr>
               {COLUMNS.map((c) => (
-                <th key={c.key} style={{ width: c.width, minWidth: c.width, textAlign: c.type === "number" ? "right" : "left" }}>
+                <th
+                  key={c.key}
+                  style={{ width: c.width, minWidth: c.width, textAlign: c.type === "number" ? "right" : "left" }}
+                >
                   {c.label}
                 </th>
               ))}
-              <th style={{ width: 32 }} />
+              <th style={{ width: 36 }} />
             </tr>
           </thead>
           <tbody>
             {filtered.map((row: any) => (
               <tr key={row.id}>
                 {COLUMNS.map((c) => (
-                  <td key={c.key} style={{ width: c.width, maxWidth: c.width }}>
+                  <td key={c.key} style={{ width: c.width, minWidth: c.width }}>
                     {c.type === "action" ? (
                       <button
                         onClick={() => onOpenFicha(row)}
-                        className="text-xs font-semibold text-apple-blue bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors"
+                        className="text-xs font-semibold text-[#007AFF] bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors"
                       >
                         Abrir
                       </button>

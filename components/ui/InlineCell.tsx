@@ -84,7 +84,7 @@ export default function InlineCell({ value, type, options, isStatus, onChange }:
       title={String(value || "")}
       className={`
         cursor-default text-sm px-2 py-1 rounded-md min-h-[24px]
-        truncate transition-colors
+        whitespace-nowrap transition-colors
         ${isNum ? "text-right tabular-nums" : ""}
         ${value ? "text-gray-900" : "text-gray-300"}
       `}
