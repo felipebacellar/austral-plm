@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --apple-blue: #007AFF;
+  --apple-green: #34C759;
+  --apple-orange: #FF9F0A;
+  --apple-red: #FF3B30;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus ring Apple-style */
+input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.18);
+  outline: none;
+}
+
+/* Status pills */
+.pill { @apply text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap; }
+.pill-green { background: rgba(52,199,89,0.12); color: #248a3d; }
+.pill-blue { background: rgba(0,122,255,0.12); color: #0055d4; }
+.pill-orange { background: rgba(255,159,10,0.12); color: #c77c00; }
+.pill-red { background: rgba(255,59,48,0.10); color: #d70015; }
+
+/* Table base */
+.plm-table {
+  @apply w-full border-collapse text-sm;
+}
+.plm-table thead th {
+  @apply px-3 py-2.5 text-left text-xxs font-bold uppercase tracking-widest
+         text-gray-400 border-b border-gray-200 sticky top-0 z-10 bg-gray-50;
+}
+.plm-table tbody td {
+  @apply px-3 py-0.5 border-b border-gray-100 align-middle;
+}
+.plm-table tbody tr:hover {
+  @apply bg-gray-50/70;
+}
+.plm-table tbody tr:last-child td {
+  @apply border-b-0;
+}
