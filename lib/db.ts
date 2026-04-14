@@ -101,7 +101,7 @@ export async function fetchFicha(ref: string) {
     sb().from("ficha_provas").select("*").eq("ficha_id", fid),
     sb().from("ficha_anotacoes").select("*").eq("ficha_id", fid),
   ]);
-  return {
+  const result: any = {
     id: fid, produto_ref: data.produto_ref,
     imagem_url: data.imagem_url || null, imagem_modelo: data.imagem_modelo || null,
     observacoes: data.observacoes || "", obsFechamento: data.obs_fechamento || "", ncm: data.ncm || "",
@@ -112,7 +112,7 @@ export async function fetchFicha(ref: string) {
     pilotagem: (pil.data || []).map((p: any) => ({ num: p.num, lacre: p.lacre || "", envio: p.data_envio || "", receb: p.data_recebimento || "", prova: p.data_prova || "", status: p.status || "" })),
     provas: Object.fromEntries((prv.data || []).map((p: any) => [p.ponto_cod, { p1: p.prova1, p2: p.prova2, p3: p.prova3 }])),
     anotacoes: Object.fromEntries((ant.data || []).map((a: any) => [`p${a.prova_num}`, { texto: a.anotacao || "", video: a.video_link || "" }])),
-    estamparia: { tecnicas: [] }, // TODO: estamparia table
+    estamparia: data.estamparia && Object.keys(data.estamparia).length > 0 ? data.estamparia : { artes: [{ posicao: "FRENTE", imagem: "", largura: "", localizacao: "" }, { posicao: "COSTAS", imagem: "", largura: "", localizacao: "" }, { posicao: "TAGLESS", imagem: "", largura: "", localizacao: "" }], tecnicas: [], simulacoes: { var01: { nome: "", imgSim: "", imgFoto: "", status: "" }, var02: { nome: "", imgSim: "", imgFoto: "", status: "" }, var03: { nome: "", imgSim: "", imgFoto: "", status: "" }, var04: { nome: "", imgSim: "", imgFoto: "", status: "" } }, observacoes: "" },
     tabelaEspecialAtiva: data.tabela_especial_ativa || false,
     pontosEspeciais: [] as any[],
     gradEspecial: [] as any[],
@@ -139,7 +139,7 @@ export async function upsertFicha(ref: string, f: any) {
     const { data, error } = await sb().from("fichas_tecnicas").insert({
       produto_ref: ref, observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
-      pantones: f.pantones || {},
+      pantones: f.pantones || {}, estamparia: f.estamparia || {},
       status_liberacao: f.statusLiberacao || "",
     }).select().single();
     if (error) { console.error("upsertFicha:", error); return null; }
@@ -148,7 +148,7 @@ export async function upsertFicha(ref: string, f: any) {
     await sb().from("fichas_tecnicas").update({
       observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
-      pantones: f.pantones || {},
+      pantones: f.pantones || {}, estamparia: f.estamparia || {},
       status_liberacao: f.statusLiberacao || "",
     }).eq("id", fid);
   }

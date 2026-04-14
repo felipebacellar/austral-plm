@@ -162,6 +162,7 @@ ON CONFLICT DO NOTHING;
 -- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var02 TEXT DEFAULT '';
 -- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var03 TEXT DEFAULT '';
 -- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var04 TEXT DEFAULT '';
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS estamparia JSONB DEFAULT '{}';
 
 -- =============================================
 -- TABELA ESPECIAL por produto (medidas + graduação)

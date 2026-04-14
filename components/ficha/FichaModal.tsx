@@ -17,6 +17,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [showPrint, setShowPrint] = useState(false);
   const fr = useRef<HTMLInputElement>(null);
   const mrr = useRef<HTMLInputElement>(null);
+  const estImgRef = useRef<HTMLInputElement>(null);
+  const [estImgTarget, setEstImgTarget] = useState<{ type: string; key: string } | null>(null);
 
   const [tec, setTec] = useState<any[]>([]);
   const [avi, setAvi] = useState<any[]>([]);
@@ -27,7 +29,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [corOpts, setCorOpts] = useState<string[]>([]);
   const [avCad, setAvCad] = useState<any[]>([]);
   const [tecCad, setTecCad] = useState<any[]>([]);
-  const [estamparia, setEstamparia] = useState<any>({ tecnicas: [] });
+  const [estamparia, setEstamparia] = useState<any>({ artes: [{ posicao: "FRENTE", imagem: "", largura: "", localizacao: "" }, { posicao: "COSTAS", imagem: "", largura: "", localizacao: "" }, { posicao: "TAGLESS", imagem: "", largura: "", localizacao: "" }], tecnicas: [], simulacoes: { var01: { nome: "", imgSim: "", imgFoto: "", status: "" }, var02: { nome: "", imgSim: "", imgFoto: "", status: "" }, var03: { nome: "", imgSim: "", imgFoto: "", status: "" }, var04: { nome: "", imgSim: "", imgFoto: "", status: "" } }, observacoes: "" });
   const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string }>({ var01: "", var02: "", var03: "", var04: "" });
   const [statusLib, setStatusLib] = useState("");
 
@@ -89,7 +91,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib, ncm, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib, ncm, estamparia, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
@@ -128,7 +130,18 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
   const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return Math.abs(d) > 1 ? "text-[var(--system-red)] font-semibold" : d === 0 ? "text-[var(--system-green)]" : "text-[var(--system-orange)]"; };
   const tm = row.tab_medidas || "";
-  const hasEstamparia = (estamparia?.tecnicas || []).length > 0;
+  const hasEstamparia = (estamparia?.tecnicas || []).length > 0 || (estamparia?.artes || []).some((a: any) => a.imagem || a.largura || a.localizacao);
+
+  /* ── Estamparia helpers ── */
+  const updArte = (posicao: string, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, artes: (prev.artes || []).map((a: any) => a.posicao === posicao ? { ...a, [field]: value } : a) }));
+  const updTecnica = (i: number, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.map((t: any, j: number) => j === i ? { ...t, [field]: value } : t) }));
+  const addTecnica = () => setEstamparia((prev: any) => ({ ...prev, tecnicas: [...prev.tecnicas, { tecnica: "", var01: "", var02: "", var03: "", var04: "" }] }));
+  const removeTecnica = (i: number) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.filter((_: any, j: number) => j !== i) }));
+  const updSim = (vk: string, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, simulacoes: { ...prev.simulacoes, [vk]: { ...(prev.simulacoes?.[vk] || {}), [field]: value } } }));
+  const handleEstImg = async (e: any) => { const file = e.target.files?.[0]; if (!file || !estImgTarget) return; setUp(true); const url = await uploadImage(file, `${row.ref}/estamparia/${estImgTarget.key}`); if (url) { if (estImgTarget.type === "arte") updArte(estImgTarget.key, "imagem", url); else if (estImgTarget.type === "sim") updSim(estImgTarget.key, "imgSim", url); else if (estImgTarget.type === "foto") updSim(estImgTarget.key, "imgFoto", url); } setUp(false); setEstImgTarget(null); if (estImgRef.current) estImgRef.current.value = ""; };
+  const triggerEstImg = (type: string, key: string) => { setEstImgTarget({ type, key }); setTimeout(() => estImgRef.current?.click(), 0); };
+  const deleteEstImg = async (type: string, key: string, url: string) => { if (url) await deleteImage(url); if (type === "arte") updArte(key, "imagem", ""); else if (type === "sim") updSim(key, "imgSim", ""); else if (type === "foto") updSim(key, "imgFoto", ""); };
+  const TECNICAS_OPTS = ["SILK ZERO TOQUE", "SILK TRADICIONAL", "SILK HD", "SUBLIMAÇÃO", "TRANSFER", "DTF", "DTG", "BORDADO", "LASER", "HOT STAMPING"];
 
   /* ── Tabela Especial helpers ── */
   const fmtN = (n: number) => n % 1 === 0 ? n.toString() : n.toFixed(1).replace(/\.0$/, "");
@@ -236,8 +249,136 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
         {/* ═══ ESTAMPARIA ═══ */}
         {tab === "estamparia" && (<div className="px-6 py-6 space-y-5">
-          <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between"><span className="text-[13px] font-bold">ESTAMPARIA</span></div>
-          <div className="grid grid-cols-2 gap-5">{["Frente", "Costas"].map(s => (<div key={s} className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">{s}</p></div></div>))}</div>
+          {/* Header */}
+          <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between">
+            <span className="text-[13px] font-bold">FICHA TECNICA DE ESTAMPARIA</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{row.piloto_most || "MOSTRUÁRIO"}</span>
+            <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
+          </div>
+
+          {/* Product info */}
+          <div className="apple-card">
+            <div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade], ["Drop", row.drop], ["Tecido", row.tecido]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
+          </div>
+
+          {/* Artes: FRENTE + COSTAS */}
+          <div className="grid grid-cols-2 gap-5">
+            {(estamparia.artes || []).filter((a: any) => a.posicao !== "TAGLESS").map((arte: any) => (
+              <div key={arte.posicao} className="space-y-2.5">
+                <div className="bg-[#1c3654] text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">ARTE {arte.posicao}</span></div>
+                <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arte", arte.posicao)}>
+                  {arte.imagem ? <img src={arte.imagem} alt={`Arte ${arte.posicao}`} className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
+                  {arte.imagem && <button onClick={e => { e.stopPropagation(); deleteEstImg("arte", arte.posicao, arte.imagem); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                </div>
+                <input type="text" value={arte.largura} onChange={e => updArte(arte.posicao, "largura", e.target.value)} placeholder="Ex: 34CM LARG." className="apple-input w-full text-[12px]" />
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Localização</div>
+                <textarea value={arte.localizacao} onChange={e => updArte(arte.posicao, "localizacao", e.target.value)} placeholder="Descreva a localização da estampa..." rows={3} className="apple-input w-full resize-none text-[12px]" />
+              </div>
+            ))}
+          </div>
+
+          {/* TAGLESS */}
+          {(() => { const tg = (estamparia.artes || []).find((a: any) => a.posicao === "TAGLESS"); if (!tg) return null; return (
+            <div className="space-y-2.5">
+              <div className="bg-[#1c3654] text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">TAGLESS</span></div>
+              <div className="grid grid-cols-2 gap-5">
+                <div className="apple-card bg-[var(--bg-secondary)] aspect-[3/2] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arte", "TAGLESS")}>
+                  {tg.imagem ? <img src={tg.imagem} alt="Tagless" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
+                  {tg.imagem && <button onClick={e => { e.stopPropagation(); deleteEstImg("arte", "TAGLESS", tg.imagem); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                </div>
+                <div className="space-y-2">
+                  <input type="text" value={tg.largura} onChange={e => updArte("TAGLESS", "largura", e.target.value)} placeholder="Ex: 5,5CM" className="apple-input w-full text-[12px]" />
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Localização</div>
+                  <textarea value={tg.localizacao} onChange={e => updArte("TAGLESS", "localizacao", e.target.value)} placeholder="Ex: Tagless centralizado na parte interna das costas a 1,5cm do cobre gola" rows={3} className="apple-input w-full resize-none text-[12px]" />
+                </div>
+              </div>
+            </div>
+          ); })()}
+
+          {/* Técnicas de Estamparia */}
+          <div className="pt-5 border-t-2 border-[#1c3654]">
+            <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">TÉCNICA DE ESTAMPARIA</span></div>
+            <div className="apple-card overflow-x-auto">
+              <table className="plm-table">
+                <thead><tr>
+                  <th className="text-center w-10">#</th>
+                  <th className="min-w-[180px]">Técnica de Estamparia</th>
+                  <th className="text-center w-[140px]">Variante 01{tec[0]?.cores?.[0] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[0]}</div> : null}</th>
+                  <th className="text-center w-[140px]">Variante 02{tec[0]?.cores?.[1] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[1]}</div> : null}</th>
+                  <th className="text-center w-[140px]">Variante 03{tec[0]?.cores?.[2] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[2]}</div> : null}</th>
+                  <th className="text-center w-[140px]">Variante 04{tec[0]?.cores?.[3] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[3]}</div> : null}</th>
+                  <th className="w-8"></th>
+                </tr></thead>
+                <tbody>{(estamparia.tecnicas || []).map((t: any, i: number) => (
+                  <tr key={i}>
+                    <td className="text-center font-bold text-[var(--label-secondary)]">{i + 1}</td>
+                    <td className="px-1 py-1.5"><select value={t.tecnica} onChange={e => updTecnica(i, "tecnica", e.target.value)} className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)]"><option value="">Selecionar técnica</option>{TECNICAS_OPTS.map(o => <option key={o} value={o}>{o}</option>)}</select></td>
+                    {(["var01", "var02", "var03", "var04"] as const).map(k => (
+                      <td key={k} className="px-1 py-1.5"><input type="text" value={t[k] || ""} onChange={e => updTecnica(i, k, e.target.value)} placeholder="Cor / Pantone" className="w-full text-[12px] text-center px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)]" /></td>
+                    ))}
+                    <td className="text-center"><button onClick={() => removeTecnica(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] text-[16px]">×</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <button onClick={addTecnica} className="apple-btn-secondary mt-3">+ Adicionar técnica</button>
+          </div>
+
+          {/* Simulações e Fotos por Variante */}
+          <div className="pt-5 border-t-2 border-[#1c3654]">
+            <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">SIMULAÇÕES E FOTOS</span></div>
+            <div className="space-y-5">
+              {(["var01", "var02", "var03", "var04"] as const).map((vk, vi) => {
+                const corName = tec[0]?.cores?.[vi] || "";
+                const sim = estamparia.simulacoes?.[vk] || { nome: "", imgSim: "", imgFoto: "", status: "" };
+                return (
+                  <div key={vk} className="apple-card p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[14px] font-bold">Variante {String(vi + 1).padStart(2, "0")}</span>
+                        {corName && <span className="text-[12px] font-semibold px-3 py-0.5 rounded-full bg-[rgba(0,122,255,0.08)] text-[var(--system-blue)]">{corName}</span>}
+                      </div>
+                      <div className="flex gap-1.5">
+                        {([
+                          ["PENDENTE", "Pendente", "border-[var(--separator-opaque)] text-[var(--label-tertiary)] bg-transparent"],
+                          ["LIBERADA DIRETO MOSTRUÁRIO", "Liberada", "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
+                          ["LIBERADA COM AJUSTE", "c/ Ajuste", "bg-[rgba(255,204,0,0.18)] text-[#856500] border-[rgba(255,204,0,0.35)]"],
+                          ["REPROVADA", "Reprovada", "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
+                        ] as [string, string, string][]).map(([val, label, cls]) => (
+                          <button key={val} onClick={() => updSim(vk, "status", sim.status === val ? "" : val)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${sim.status === val ? cls : "border-[var(--separator-opaque)] text-[var(--label-quaternary)] bg-transparent hover:border-[var(--label-tertiary)]"}`}>{label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Simulação</div>
+                        <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("sim", vk)}>
+                          {sim.imgSim ? <img src={sim.imgSim} alt={`Simulação ${vk}`} className="w-full h-full object-contain p-2" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Simulação</p></div>}
+                          {sim.imgSim && <button onClick={e => { e.stopPropagation(); deleteEstImg("sim", vk, sim.imgSim); }} className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Foto</div>
+                        <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("foto", vk)}>
+                          {sim.imgFoto ? <img src={sim.imgFoto} alt={`Foto ${vk}`} className="w-full h-full object-contain p-2" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg><p className="text-[12px] text-[var(--label-tertiary)]">Foto</p></div>}
+                          {sim.imgFoto && <button onClick={e => { e.stopPropagation(); deleteEstImg("foto", vk, sim.imgFoto); }} className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Observações</div>
+            <textarea value={estamparia.observacoes || ""} onChange={e => setEstamparia((prev: any) => ({ ...prev, observacoes: e.target.value }))} placeholder="Observações de estamparia..." rows={3} className="apple-input w-full resize-none" />
+          </div>
+
+          {/* Hidden file input for estamparia uploads */}
+          <input ref={estImgRef} type="file" accept="image/*" className="hidden" onChange={handleEstImg} />
         </div>)}
 
         {/* ═══ LIBERAÇÃO ═══ */}
