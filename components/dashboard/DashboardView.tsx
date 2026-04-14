@@ -3,29 +3,31 @@ import { useState, useMemo } from "react";
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
-/* ── Paleta monocromática: marinho → azul → cinza ── */
-const NAVY    = "#1B2A4A";
-const BLUE_D  = "#2B4570";
-const BLUE_M  = "#3B6098";
-const BLUE_L  = "#5A82B4";
-const STEEL   = "#7A9ABF";
-const SLATE   = "#94A8BE";
-const SILVER  = "#B0BEC5";
-const GRAY    = "#CFD8DC";
+/* ── Paleta Apple HIG Blue — do escuro ao claro ── */
+const B900 = "#00254D";   // azul muito escuro
+const B800 = "#003A75";   // azul escuro
+const B700 = "#00509E";   // azul profundo
+const B600 = "#0066CC";   // azul médio-escuro
+const B500 = "#007AFF";   // system-blue Apple (âncora)
+const B400 = "#3395FF";   // azul médio-claro
+const B300 = "#66B0FF";   // azul claro
+const B200 = "#99CAFF";   // azul pastel
+const B100 = "#CCE5FF";   // azul muito claro
+const B50  = "#E8F2FF";   // quase branco azulado
 
-/* Gradiente de 8 tons para donuts, barras, etc. */
-const SCALE = [NAVY, BLUE_D, BLUE_M, BLUE_L, STEEL, SLATE, SILVER, GRAY];
+/* Escala de 8 tons para gráficos */
+const SCALE = [B500, B700, B400, B800, B300, B600, B200, B900];
 
-/* Status usa 4 tons da escala */
+/* Status — 4 tons distintos da escala Apple blue */
 const STATUS_CFG: Record<string, { color: string; label: string }> = {
-  "DESENVOLVIMENTO":     { color: BLUE_L, label: "Desenvolvimento" },
-  "MOSTRUÁRIO LIBERADO": { color: BLUE_D, label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":   { color: NAVY,   label: "Produção lib." },
-  "CANCELADO":           { color: SLATE,  label: "Cancelado" },
+  "DESENVOLVIMENTO":     { color: B400, label: "Desenvolvimento" },
+  "MOSTRUÁRIO LIBERADO": { color: B600, label: "Mostruário lib." },
+  "PRODUÇÃO LIBERADA":   { color: B800, label: "Produção lib." },
+  "CANCELADO":           { color: B200, label: "Cancelado" },
 };
 
-/* Stat cards — gradiente do marinho ao cinza */
-const STAT_BG = [NAVY, BLUE_D, BLUE_M, BLUE_L, STEEL, SLATE];
+/* Stat cards — gradiente do escuro ao claro */
+const STAT_BG = [B900, B700, B600, B500, B400, B300];
 
 const FILTERS = [
   { key: "colecao",    label: "Coleção" },
@@ -76,7 +78,7 @@ export default function DashboardView({ rows, variantes }: Props) {
   const statusSegments = byStatus.map(([s, n]) => ({
     label: STATUS_CFG[s]?.label || s,
     value: n,
-    color: STATUS_CFG[s]?.color || SILVER,
+    color: STATUS_CFG[s]?.color || B200,
   }));
 
   const operacaoSegments = toSegments(byOperacao);
@@ -104,7 +106,7 @@ export default function DashboardView({ rows, variantes }: Props) {
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-secondary)]">Filtros</span>
           {ac > 0 && (
-            <button onClick={() => setFl({})} className="text-[12px] font-medium flex items-center gap-1 hover:opacity-70 transition-opacity" style={{ color: BLUE_M }}>
+            <button onClick={() => setFl({})} className="text-[12px] text-[var(--system-blue)] font-medium flex items-center gap-1 hover:opacity-70 transition-opacity">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Limpar filtros
             </button>
@@ -117,8 +119,8 @@ export default function DashboardView({ rows, variantes }: Props) {
               <select
                 value={fl[f.key] || ""}
                 onChange={e => sf(f.key, e.target.value)}
-                className={`apple-select w-full text-[12px] py-1.5 ${fl[f.key] ? "font-semibold" : ""}`}
-                style={fl[f.key] ? { borderColor: BLUE_M, background: "rgba(59,96,152,0.06)", color: BLUE_D } : {}}
+                className={`apple-select w-full text-[12px] py-1.5 ${fl[f.key] ? "!border-[var(--system-blue)] font-semibold" : ""}`}
+                style={fl[f.key] ? { background: B50, color: B700 } : {}}
               >
                 <option value="">Todos</option>
                 {uv(f.key).map(v => <option key={v}>{v}</option>)}
@@ -133,9 +135,9 @@ export default function DashboardView({ rows, variantes }: Props) {
               const f = FILTERS.find(x => x.key === k);
               return (
                 <span key={k} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-medium"
-                  style={{ background: "rgba(43,69,112,0.08)", color: BLUE_D }}>
-                  <span className="text-[11px]" style={{ color: STEEL }}>{f?.label}:</span>{v}
-                  <button onClick={() => sf(k, "")} className="hover:opacity-70 leading-none" style={{ color: STEEL }}>×</button>
+                  style={{ background: B100, color: B700 }}>
+                  <span className="text-[11px]" style={{ color: B400 }}>{f?.label}:</span>{v}
+                  <button onClick={() => sf(k, "")} className="hover:opacity-70 leading-none" style={{ color: B400 }}>×</button>
                 </span>
               );
             })}
@@ -224,7 +226,7 @@ function StatCard({ label, value, bg }: { label: string; value: number; bg: stri
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="dash-card p-5">
-      <div className="text-[14px] font-semibold mb-5 tracking-[-0.01em]" style={{ color: NAVY }}>{title}</div>
+      <div className="text-[14px] font-semibold mb-5 tracking-[-0.01em]" style={{ color: B800 }}>{title}</div>
       {children}
     </div>
   );
@@ -270,7 +272,7 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: NAVY }}>{total}</span>
+          <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: B800 }}>{total}</span>
           <span className="text-[10px] text-[var(--label-tertiary)]">total</span>
         </div>
       </div>
@@ -279,7 +281,7 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
           <div key={s.label} className="flex items-center gap-2.5">
             <div className="w-3 h-3 rounded shrink-0" style={{ background: s.color }} />
             <span className="text-[13px] text-[var(--label-primary)] flex-1 truncate">{s.label}</span>
-            <span className="text-[13px] font-bold tabnum" style={{ color: NAVY }}>{s.value}</span>
+            <span className="text-[13px] font-bold tabnum" style={{ color: B800 }}>{s.value}</span>
             <span className="text-[11px] text-[var(--label-tertiary)] w-10 text-right tabnum">
               {((s.value / total) * 100).toFixed(0)}%
             </span>
@@ -303,9 +305,9 @@ function BarChart({ items }: { items: [string, number][] }) {
           <div key={label} className="group">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[12px] text-[var(--label-secondary)] font-medium truncate max-w-[200px]" title={label}>{label}</span>
-              <span className="text-[13px] tabnum font-bold" style={{ color: NAVY }}>{count}</span>
+              <span className="text-[13px] tabnum font-bold" style={{ color: B800 }}>{count}</span>
             </div>
-            <div className="w-full rounded-lg h-[20px] overflow-hidden" style={{ background: "rgba(176,190,197,0.2)" }}>
+            <div className="w-full rounded-lg h-[20px] overflow-hidden" style={{ background: B50 }}>
               <div
                 className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
                 style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }}
