@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import DevTable from "@/components/dev/DevTable";
+import VariantesTable from "@/components/dev/VariantesTable";
 import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
 
 const TABS = [
   { id: "dev", label: "Desenvolvimento" },
+  { id: "variantes", label: "Variantes" },
   { id: "cad", label: "Cadastros" },
   { id: "medidas", label: "Tab. medidas" },
 ] as const;
@@ -30,7 +32,7 @@ export default function Home() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`px-5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
+              className={`px-4 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                 tab === t.id
                   ? "font-semibold bg-white text-gray-900 shadow-sm"
                   : "font-normal text-gray-500 hover:text-gray-700"
@@ -43,6 +45,7 @@ export default function Home() {
       </div>
 
       {tab === "dev" && <DevTable onOpenFicha={setFichaRow} />}
+      {tab === "variantes" && <VariantesTable onOpenFicha={setFichaRow} />}
       {tab === "cad" && <CadView />}
       {tab === "medidas" && <MedidasView />}
       {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} />}

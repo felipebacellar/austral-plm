@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SAMPLE_CAD, SAMPLE_VARIANTES, SAMPLE_ROWS } from "@/lib/sample-data";
+import { SAMPLE_CAD } from "@/lib/sample-data";
 
 const TABS = [
   {k:"grupo",l:"Grupo"},{k:"subgrupo",l:"Subgrupo"},{k:"categoria",l:"Categoria"},
@@ -10,22 +10,19 @@ const TABS = [
   {k:"drop",l:"Drop"},{k:"colecao",l:"Coleção"},{k:"status",l:"Status"},
   {k:"piloto_most",l:"Piloto / mostr."},{k:"cor",l:"Cores"},
   {k:"aviamento",l:"Aviamentos"},{k:"tecido",l:"Tecidos"},
-  {k:"variantes",l:"Variantes de cor"},
 ];
 
 export default function CadView() {
   const [cad, setCad] = useState<any>(SAMPLE_CAD);
-  const [variantes, setVariantes] = useState<Record<string,string[]>>(SAMPLE_VARIANTES);
   const [active, setActive] = useState("grupo");
   const [val, setVal] = useState("");
   const [tn,setTn]=useState("");const [tf,setTf]=useState("");const [tc,setTc]=useState("");const [tp,setTp]=useState("");
   const [corCod,setCorCod]=useState("");const [corNome,setCorNome]=useState("");
   const [avCod,setAvCod]=useState("");const [avNome,setAvNome]=useState("");const [avPreco,setAvPreco]=useState("");
-  const [varRef,setVarRef]=useState("");const [varCor,setVarCor]=useState("");
   const [search,setSearch]=useState("");
 
   const mode = active;
-  const isSimple = !["tecido","cor","aviamento","variantes"].includes(mode);
+  const isSimple = !["tecido","cor","aviamento"].includes(mode);
   const items = isSimple ? (cad[mode]||[]) : [];
   const info = TABS.find(t=>t.k===mode);
 
@@ -37,25 +34,15 @@ export default function CadView() {
   const remCor=(cod:string)=>setCad((p:any)=>({...p,cor:p.cor.filter((c:any)=>c.cod!==cod)}));
   const addAviamento=()=>{if(!avCod.trim()||!avNome.trim())return;setCad((p:any)=>({...p,aviamento:[...p.aviamento,{cod:avCod.trim().toUpperCase(),nome:avNome.trim().toUpperCase(),preco:parseFloat(avPreco)||0}]}));setAvCod("");setAvNome("");setAvPreco("");};
   const remAviamento=(cod:string)=>setCad((p:any)=>({...p,aviamento:p.aviamento.filter((a:any)=>a.cod!==cod)}));
-  const addVariante=()=>{if(!varRef||!varCor)return;setVariantes(p=>({...p,[varRef]:[...(p[varRef]||[]),varCor]}));setVarCor("");};
-  const remVariante=(ref:string,cor:string)=>setVariantes(p=>({...p,[ref]:(p[ref]||[]).filter(c=>c!==cor)}));
 
   const getCount=(k:string)=>{
     if(k==="tecido")return cad.tecido.length;
     if(k==="cor")return cad.cor.length;
     if(k==="aviamento")return cad.aviamento.length;
-    if(k==="variantes")return Object.keys(variantes).length;
     return (cad[k]||[]).length;
   };
 
-  const refs=[...new Set(SAMPLE_ROWS.map((r:any)=>r.ref))];
-  const corOptions=cad.cor.map((c:any)=>`${c.cod} - ${c.nome}`);
-
-  // Filter aviamentos by search
-  const filteredAv = search
-    ? cad.aviamento.filter((a:any)=>(a.cod+a.nome).toLowerCase().includes(search.toLowerCase()))
-    : cad.aviamento;
-
+  const filteredAv = search ? cad.aviamento.filter((a:any)=>(a.cod+a.nome).toLowerCase().includes(search.toLowerCase())) : cad.aviamento;
   const inp = "text-sm px-3 py-2.5 rounded-xl border border-gray-200 bg-white outline-none";
   const btn = "text-sm font-semibold px-5 py-2.5 rounded-xl bg-[#007AFF] text-white hover:opacity-90 transition-opacity";
 
@@ -77,16 +64,14 @@ export default function CadView() {
       <div className="flex-1 min-w-0">
         <h3 className="text-2xl font-bold tracking-tight mb-1">{info?.l}</h3>
         <p className="text-sm text-gray-400 mb-5">
-          {mode==="aviamento"?`${cad.aviamento.length} aviamentos`:mode==="cor"?`${cad.cor.length} cores`:mode==="variantes"?`${Object.keys(variantes).length} produtos`:mode==="tecido"?`${cad.tecido.length} tecidos`:`${items.length} itens`}
+          {mode==="aviamento"?`${cad.aviamento.length} aviamentos`:mode==="cor"?`${cad.cor.length} cores`:mode==="tecido"?`${cad.tecido.length} tecidos`:`${items.length} itens`}
         </p>
 
-        {/* Simple */}
         {isSimple&&(<>
           <div className="flex gap-2 mb-6"><input type="text" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addSimple()} placeholder="Novo item..." className={`flex-1 ${inp}`}/><button onClick={addSimple} className={btn}>Adicionar</button></div>
           <div className="flex flex-wrap gap-1.5">{items.map((x:string)=>(<span key={x} className="inline-flex items-center gap-1.5 bg-gray-100 rounded-lg px-3 py-1.5 text-sm">{x}<button onClick={()=>remSimple(x)} className="text-gray-400 hover:text-red-500 rounded w-4 h-4 inline-flex items-center justify-center text-xs">×</button></span>))}</div>
         </>)}
 
-        {/* Cores */}
         {mode==="cor"&&(<>
           <div className="flex gap-2 mb-5"><input className={`w-24 ${inp}`} value={corCod} onChange={e=>setCorCod(e.target.value)} placeholder="Código"/><input className={`flex-1 ${inp}`} value={corNome} onChange={e=>setCorNome(e.target.value)} placeholder="Nome da cor" onKeyDown={e=>e.key==="Enter"&&addCor()}/><button onClick={addCor} className={btn}>Adicionar</button></div>
           <div className="border border-gray-200 rounded-xl overflow-hidden"><table className="plm-table"><thead><tr><th className="w-24">Código</th><th>Nome</th><th className="w-10"></th></tr></thead>
@@ -94,7 +79,6 @@ export default function CadView() {
           </table></div>
         </>)}
 
-        {/* Aviamentos */}
         {mode==="aviamento"&&(<>
           <div className="flex gap-2 mb-3">
             <input className={`w-28 ${inp}`} value={avCod} onChange={e=>setAvCod(e.target.value)} placeholder="Código"/>
@@ -102,26 +86,15 @@ export default function CadView() {
             <input className={`w-24 ${inp}`} value={avPreco} onChange={e=>setAvPreco(e.target.value)} placeholder="Preço"/>
             <button onClick={addAviamento} className={btn}>Adicionar</button>
           </div>
-          <div className="mb-4">
-            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar aviamento..." className={`w-full ${inp}`}/>
-          </div>
+          <div className="mb-4"><input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar aviamento..." className={`w-full ${inp}`}/></div>
           <div className="border border-gray-200 rounded-xl overflow-hidden max-h-[500px] overflow-y-auto">
-            <table className="plm-table">
-              <thead><tr><th className="w-28">Código</th><th>Nome</th><th className="text-right w-20">Preço</th><th className="w-10"></th></tr></thead>
-              <tbody>{filteredAv.map((a:any)=>(
-                <tr key={a.cod}>
-                  <td className="font-mono text-[12px] text-gray-500">{a.cod}</td>
-                  <td className="font-medium">{a.nome}</td>
-                  <td className="text-right tabular-nums">{a.preco>0?`R$ ${a.preco.toFixed(2)}`:"—"}</td>
-                  <td className="text-center"><button onClick={()=>remAviamento(a.cod)} className="text-gray-400 hover:text-red-500">×</button></td>
-                </tr>
-              ))}</tbody>
+            <table className="plm-table"><thead><tr><th className="w-28">Código</th><th>Nome</th><th className="text-right w-20">Preço</th><th className="w-10"></th></tr></thead>
+              <tbody>{filteredAv.map((a:any)=>(<tr key={a.cod}><td className="font-mono text-[12px] text-gray-500">{a.cod}</td><td className="font-medium">{a.nome}</td><td className="text-right tabular-nums">{a.preco>0?`R$ ${a.preco.toFixed(2)}`:"—"}</td><td className="text-center"><button onClick={()=>remAviamento(a.cod)} className="text-gray-400 hover:text-red-500">×</button></td></tr>))}</tbody>
             </table>
           </div>
           <p className="text-[11px] text-gray-400 mt-2">{filteredAv.length} de {cad.aviamento.length} aviamentos</p>
         </>)}
 
-        {/* Tecidos */}
         {mode==="tecido"&&(<>
           <div className="flex gap-1.5 mb-5 flex-wrap">
             <input className={`flex-[2] min-w-[150px] ${inp}`} value={tn} onChange={e=>setTn(e.target.value)} placeholder="Nome do tecido"/>
@@ -133,27 +106,6 @@ export default function CadView() {
           <div className="rounded-xl border border-gray-200 overflow-hidden"><table className="plm-table"><thead><tr><th>Nome</th><th>Fornecedor</th><th>Composição</th><th className="text-right">Preço</th><th className="w-10"></th></tr></thead>
             <tbody>{cad.tecido.map((t:any,i:number)=>(<tr key={i}><td className="font-medium">{t.nome}</td><td>{t.forn}</td><td className="text-gray-500 text-xs">{t.comp}</td><td className="text-right tabular-nums">{t.preco?`R$ ${Number(t.preco).toFixed(2)}`:"—"}</td><td className="text-center"><button onClick={()=>remTecido(t.nome)} className="text-gray-400 hover:text-red-500">×</button></td></tr>))}</tbody>
           </table></div>
-        </>)}
-
-        {/* Variantes */}
-        {mode==="variantes"&&(<>
-          <div className="flex gap-2 mb-5">
-            <select className={inp} value={varRef} onChange={e=>setVarRef(e.target.value)}><option value="">Selecione a referência</option>{refs.map(r=><option key={r} value={r}>{r} — {SAMPLE_ROWS.find((row:any)=>row.ref===r)?.desc}</option>)}</select>
-            <select className={inp} value={varCor} onChange={e=>setVarCor(e.target.value)}><option value="">Selecione a cor</option>{corOptions.map(c=><option key={c} value={c}>{c}</option>)}</select>
-            <button onClick={addVariante} className={btn}>Adicionar</button>
-          </div>
-          <div className="space-y-4">
-            {Object.entries(variantes).map(([ref,cores])=>{const prod=SAMPLE_ROWS.find((r:any)=>r.ref===ref);return(
-              <div key={ref} className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2.5 flex items-center gap-3 border-b border-gray-200">
-                  <span className="font-mono text-[12px] text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">{ref}</span>
-                  <span className="text-[13px] font-medium">{prod?.desc||ref}</span>
-                  <span className="text-[12px] text-gray-400 ml-auto">{cores.length} var.</span>
-                </div>
-                <div className="px-4 py-3 flex flex-wrap gap-2">{cores.map(c=>(<span key={c} className="inline-flex items-center gap-1.5 bg-gray-100 rounded-lg px-3 py-1.5 text-[13px]">{c}<button onClick={()=>remVariante(ref,c)} className="text-gray-400 hover:text-red-500 text-xs">×</button></span>))}</div>
-              </div>
-            );})}
-          </div>
         </>)}
       </div>
     </div>
