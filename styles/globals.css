@@ -207,6 +207,14 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
 }
 
+.apple-card-scroll {
+  background: var(--bg-primary);
+  border: 0.5px solid var(--separator-opaque);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 /* ═══ Section header ═══ */
 .section-header {
   font-size: 13px;

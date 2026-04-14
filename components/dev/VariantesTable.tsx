@@ -42,7 +42,7 @@ export default function VariantesTable({rows,onOpenFicha}:Props){
         <span className="text-[11px] text-[var(--label-quaternary)] ml-auto">Cores da ficha técnica</span>
       </div>
 
-      <div className="apple-card overflow-x-auto">
+      <div className="apple-card-scroll">
         <table className="plm-table" style={{width:"max-content",minWidth:"100%"}}>
           <thead><tr>{VC.map(c=><th key={c.key} style={{width:c.w,minWidth:c.w}}>{c.label}</th>)}</tr></thead>
           <tbody>{filtered.map((r:any)=>(<tr key={r._vid}>{VC.map(c=>(<td key={c.key} style={{width:c.w,minWidth:c.w}}>

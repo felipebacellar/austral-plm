@@ -86,7 +86,7 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
       </div>
 
       {/* Table */}
-      <div className="apple-card overflow-x-auto">
+      <div className="apple-card-scroll">
         <table className="plm-table" style={{width:"max-content",minWidth:"100%"}}>
           <thead><tr>{COLUMNS.map(c=><th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left"}}>{c.label}</th>)}<th style={{width:36}}/></tr></thead>
           <tbody>
