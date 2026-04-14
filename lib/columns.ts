@@ -27,7 +27,7 @@ const COLUMNS: ColDef[] = [
   { key: "tipo",           label: "Tipo",              width: 130, type: "select", cad: "tipo" },
   { key: "linha",          label: "Linha",             width: 100, type: "select", cad: "linha" },
   { key: "drop",           label: "Drop",              width: 65,  type: "select", cad: "drop" },
-  { key: "estilista",      label: "Estilista",         width: 110, type: "text" },
+  { key: "estilista",      label: "Estilista",         width: 110, type: "select", cad: "estilista" },
 ];
 
 export default COLUMNS;
