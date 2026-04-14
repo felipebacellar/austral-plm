@@ -102,7 +102,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       <div className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[var(--separator)]">
           <div className="seg-control">
-            {([["ficha", "Ficha técnica"], ...(hasEstamparia ? [["estamparia", "Estamparia"]] : []), ["liberacao", "Liberação"]] as [string, string][]).map(([id, l]) => (
+            {([["ficha", "Ficha técnica"], ["estamparia", "Estamparia"], ["liberacao", "Liberação"]] as [string, string][]).map(([id, l]) => (
               <button key={id} onClick={() => setTab(id as any)} className={`seg-btn ${tab === id ? "active" : ""}`}>{l}</button>
             ))}
           </div>
