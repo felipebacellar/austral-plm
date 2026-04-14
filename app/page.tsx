@@ -1,11 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DevTable from "@/components/dev/DevTable";
 import VariantesTable from "@/components/dev/VariantesTable";
 import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
-import { fetchProdutos } from "@/lib/db";
+import { fetchProdutos, fetchAllVariantes } from "@/lib/db";
 
 const TABS = [
   { id: "dev", label: "Desenvolvimento" },
@@ -18,21 +18,26 @@ type Tab = (typeof TABS)[number]["id"];
 export default function Home() {
   const [tab, setTab] = useState<Tab>("dev");
   const [rows, setRows] = useState<any[]>([]);
+  const [variantes, setVariantes] = useState<Record<string, string[]>>({});
   const [fichaRow, setFichaRow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadProdutos(); }, []);
-
-  const loadProdutos = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
-    const data = await fetchProdutos();
-    setRows(data);
+    const [prods, vars] = await Promise.all([fetchProdutos(), fetchAllVariantes()]);
+    setRows(prods);
+    setVariantes(vars);
     setLoading(false);
-  };
+  }, []);
 
-  const handleFichaSave = (updatedRow: any) => {
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const handleFichaSave = async (updatedRow: any) => {
     setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
     setFichaRow(updatedRow);
+    // Reload variantes from DB after ficha save
+    const vars = await fetchAllVariantes();
+    setVariantes(vars);
   };
 
   return (
@@ -50,7 +55,7 @@ export default function Home() {
       </div>
       {loading && <div className="text-center py-20 text-[var(--label-tertiary)]">Carregando...</div>}
       {!loading && tab === "dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} />}
-      {!loading && tab === "variantes" && <VariantesTable rows={rows} onOpenFicha={setFichaRow} />}
+      {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} />}
       {!loading && tab === "cad" && <CadView />}
       {!loading && tab === "medidas" && <MedidasView />}
       {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} onSave={handleFichaSave} />}
