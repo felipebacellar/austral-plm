@@ -3,15 +3,23 @@ import { useState, useMemo } from "react";
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
-const STATUS_CFG: Record<string, { color: string; label: string }> = {
-  "DESENVOLVIMENTO":     { color: "#B87000", label: "Desenvolvimento" },
-  "MOSTRUÁRIO LIBERADO": { color: "#248040", label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":   { color: "#1A5FB4", label: "Produção lib." },
-  "CANCELADO":           { color: "#C42828", label: "Cancelado" },
+const STATUS_CFG: Record<string, { color: string; bg: string; label: string }> = {
+  "DESENVOLVIMENTO":     { color: "#B87000", bg: "rgba(184,112,0,0.08)",  label: "Desenvolvimento" },
+  "MOSTRUÁRIO LIBERADO": { color: "#248040", bg: "rgba(36,128,64,0.08)",  label: "Mostruário lib." },
+  "PRODUÇÃO LIBERADA":   { color: "#1A5FB4", bg: "rgba(26,95,180,0.08)",  label: "Produção lib." },
+  "CANCELADO":           { color: "#C42828", bg: "rgba(196,40,40,0.08)",  label: "Cancelado" },
 };
 
-/* Paleta Apple HIG — tons dessaturados para visualização de dados */
-const PALETTE = ["#4A84C0","#7A65A8","#3D9A8C","#B87840","#4A96BC","#3D9E6A","#8B6070","#7A8E4A"];
+const PALETTE = ["#6366F1","#8B5CF6","#06B6D4","#F59E0B","#10B981","#EC4899","#F97316","#14B8A6"];
+
+const STAT_COLORS = [
+  { color: "#6366F1", bg: "rgba(99,102,241,0.06)",  border: "rgba(99,102,241,0.12)" },
+  { color: "#8B5CF6", bg: "rgba(139,92,246,0.06)",  border: "rgba(139,92,246,0.12)" },
+  { color: "#B87000", bg: "rgba(184,112,0,0.06)",   border: "rgba(184,112,0,0.12)" },
+  { color: "#248040", bg: "rgba(36,128,64,0.06)",   border: "rgba(36,128,64,0.12)" },
+  { color: "#1A5FB4", bg: "rgba(26,95,180,0.06)",   border: "rgba(26,95,180,0.12)" },
+  { color: "#C42828", bg: "rgba(196,40,40,0.06)",   border: "rgba(196,40,40,0.12)" },
+];
 
 const FILTERS = [
   { key: "colecao",    label: "Coleção" },
@@ -55,27 +63,39 @@ export default function DashboardView({ rows, variantes }: Props) {
   const byTecido     = useMemo(() => byKey("tecido", 8),       [filtered]);
   const byLinha      = useMemo(() => byKey("linha"),           [filtered]);
 
-  /* Donut: status com cores semânticas */
   const statusSegments = byStatus.map(([s, n]) => ({
     label: STATUS_CFG[s]?.label || s,
     value: n,
     color: STATUS_CFG[s]?.color || "#888",
   }));
 
-  /* Donut: linha com paleta genérica */
   const linhaSegments = byLinha.map(([l, n], i) => ({
     label: l, value: n, color: PALETTE[i % PALETTE.length],
   }));
 
+  const stats = [
+    { label: "Total SKUs",      value: total,                       ...STAT_COLORS[0] },
+    { label: "Var. de cor",     value: totalVar,                    ...STAT_COLORS[1] },
+    { label: "Desenvolvimento", value: sc("DESENVOLVIMENTO"),       ...STAT_COLORS[2] },
+    { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO"),   ...STAT_COLORS[3] },
+    { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA"),     ...STAT_COLORS[4] },
+    { label: "Cancelado",       value: sc("CANCELADO"),             ...STAT_COLORS[5] },
+  ];
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-[var(--label-primary)]">Visão Geral</h2>
+      </div>
 
       {/* ── Filtros ── */}
-      <div className="apple-card p-4">
+      <div className="dash-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-secondary)]">Filtros</span>
           {ac > 0 && (
-            <button onClick={() => setFl({})} className="text-[12px] text-[var(--system-blue)] font-medium flex items-center gap-1">
+            <button onClick={() => setFl({})} className="text-[12px] text-[var(--system-blue)] font-medium flex items-center gap-1 hover:opacity-70 transition-opacity">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Limpar filtros
             </button>
@@ -114,53 +134,42 @@ export default function DashboardView({ rows, variantes }: Props) {
 
       {/* ── Cards de resumo ── */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <StatCard label="Total SKUs"       value={total}                         color="var(--label-primary)" />
-        <StatCard label="Var. de cor"      value={totalVar}                      color="#4A84C0" />
-        <StatCard label="Desenvolvimento"  value={sc("DESENVOLVIMENTO")}         color="#B87000" />
-        <StatCard label="Mostr. liberado"  value={sc("MOSTRUÁRIO LIBERADO")}     color="#248040" />
-        <StatCard label="Produção lib."    value={sc("PRODUÇÃO LIBERADA")}       color="#1A5FB4" />
-        <StatCard label="Cancelado"        value={sc("CANCELADO")}               color="#C42828" />
+        {stats.map(s => (
+          <StatCard key={s.label} label={s.label} value={s.value} color={s.color} bg={s.bg} border={s.border} />
+        ))}
       </div>
 
       {/* ── Gráficos ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* Status — donut */}
         <ChartCard title="Por status">
           <DonutChart segments={statusSegments} total={total} />
         </ChartCard>
 
-        {/* Grupo — barras */}
         <ChartCard title="Por grupo">
-          <BarList items={byGrupo} max={byGrupo[0]?.[1] || 1} color={PALETTE[0]} />
+          <BarChart items={byGrupo} palette={PALETTE} />
         </ChartCard>
 
-        {/* Coleção — barras */}
         <ChartCard title="Por coleção">
-          <BarList items={byColecao} max={byColecao[0]?.[1] || 1} color={PALETTE[1]} />
+          <BarChart items={byColecao} palette={PALETTE} />
         </ChartCard>
 
-        {/* Estilista — barras */}
         <ChartCard title="Por estilista">
-          <BarList items={byEstilista} max={byEstilista[0]?.[1] || 1} color={PALETTE[2]} />
+          <BarChart items={byEstilista} palette={PALETTE} />
         </ChartCard>
 
-        {/* Fornecedor — barras */}
         <ChartCard title="Por fornecedor (confecção)">
-          <BarList items={byFornecedor} max={byFornecedor[0]?.[1] || 1} color={PALETTE[3]} />
+          <BarChart items={byFornecedor} palette={PALETTE} />
         </ChartCard>
 
-        {/* Tecido — barras */}
         <ChartCard title="Tecidos mais usados">
-          <BarList items={byTecido} max={byTecido[0]?.[1] || 1} color={PALETTE[4]} />
+          <BarChart items={byTecido} palette={PALETTE} />
         </ChartCard>
 
-        {/* Linha — donut */}
         <ChartCard title="Por linha">
           <DonutChart segments={linhaSegments} total={filtered.filter((r: any) => r.linha).length} />
         </ChartCard>
 
-        {/* Variantes por grupo — barras */}
         <ChartCard title="Variantes de cor por grupo">
           {(() => {
             const items = byGrupo.map(([grupo]) => {
@@ -168,7 +177,7 @@ export default function DashboardView({ rows, variantes }: Props) {
                 .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
               return [grupo, count] as [string, number];
             }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
-            return <BarList items={items} max={items[0]?.[1] || 1} color={PALETTE[5]} />;
+            return <BarChart items={items} palette={PALETTE} />;
           })()}
         </ChartCard>
 
@@ -179,19 +188,31 @@ export default function DashboardView({ rows, variantes }: Props) {
 
 /* ── Sub-components ── */
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({ label, value, color, bg, border }: { label: string; value: number; color: string; bg: string; border: string }) {
   return (
-    <div className="apple-card px-4 py-4">
-      <div className="text-[30px] font-bold tabnum tracking-[-0.04em] leading-none mb-1" style={{ color }}>{value}</div>
-      <div className="text-[11px] text-[var(--label-secondary)] leading-tight">{label}</div>
+    <div className="dash-card px-4 py-4 transition-all duration-200 hover:scale-[1.02]" style={{ background: bg, borderColor: border }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[11px] font-medium text-[var(--label-secondary)] leading-tight">{label}</div>
+        <TrendIcon color={color} />
+      </div>
+      <div className="text-[28px] font-bold tabnum tracking-[-0.04em] leading-none" style={{ color }}>{value.toLocaleString("pt-BR")}</div>
     </div>
+  );
+}
+
+function TrendIcon({ color }: { color: string }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity={0.5}>
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
+    </svg>
   );
 }
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="apple-card p-5">
-      <div className="text-[13px] font-semibold text-[var(--label-primary)] mb-4 tracking-[-0.01em]">{title}</div>
+    <div className="dash-card p-5">
+      <div className="text-[14px] font-semibold text-[var(--label-primary)] mb-5 tracking-[-0.01em]">{title}</div>
       {children}
     </div>
   );
@@ -200,34 +221,56 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 function DonutChart({ segments, total }: { segments: { label: string; value: number; color: string }[]; total: number }) {
   if (!segments.length || total === 0) return <Empty />;
 
-  let deg = 0;
-  const gradient = segments.map(s => {
-    const from = deg;
-    deg += (s.value / total) * 360;
-    return `${s.color} ${from.toFixed(2)}deg ${deg.toFixed(2)}deg`;
-  }).join(", ");
+  const size = 140;
+  const stroke = 28;
+  const radius = (size - stroke) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  let offset = 0;
 
   return (
-    <div className="flex items-center gap-6">
-      {/* Donut */}
-      <div className="relative shrink-0" style={{ width: 108, height: 108 }}>
-        <div className="w-full h-full rounded-full" style={{ background: `conic-gradient(${gradient})` }} />
-        {/* Hole */}
-        <div className="absolute rounded-full bg-[var(--bg-primary)]"
-          style={{ inset: 28 }} />
-        {/* Center label */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[16px] font-bold tabnum tracking-[-0.03em] text-[var(--label-primary)]">{total}</span>
+    <div className="flex items-center gap-8">
+      {/* SVG Donut */}
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+          {segments.map((s, i) => {
+            const pct = s.value / total;
+            const dash = pct * circumference;
+            const gap = circumference - dash;
+            const currentOffset = offset;
+            offset += dash;
+            return (
+              <circle
+                key={i}
+                cx={cx}
+                cy={cy}
+                r={radius}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={stroke}
+                strokeDasharray={`${dash} ${gap}`}
+                strokeDashoffset={-currentOffset}
+                strokeLinecap="butt"
+                className="transition-all duration-700"
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[22px] font-bold tabnum tracking-[-0.03em] text-[var(--label-primary)]">{total}</span>
+          <span className="text-[10px] text-[var(--label-tertiary)]">total</span>
         </div>
       </div>
       {/* Legend */}
-      <div className="flex-1 space-y-2.5">
+      <div className="flex-1 space-y-3">
         {segments.map(s => (
-          <div key={s.label} className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
-            <span className="text-[12px] text-[var(--label-primary)] flex-1 truncate">{s.label}</span>
-            <span className="text-[12px] font-bold tabnum">{s.value}</span>
-            <span className="text-[11px] text-[var(--label-quaternary)] w-8 text-right tabnum">
+          <div key={s.label} className="flex items-center gap-2.5">
+            <div className="w-3 h-3 rounded shrink-0" style={{ background: s.color }} />
+            <span className="text-[13px] text-[var(--label-primary)] flex-1 truncate">{s.label}</span>
+            <span className="text-[13px] font-bold tabnum text-[var(--label-primary)]">{s.value}</span>
+            <span className="text-[11px] text-[var(--label-tertiary)] w-10 text-right tabnum">
               {((s.value / total) * 100).toFixed(0)}%
             </span>
           </div>
@@ -237,24 +280,34 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
   );
 }
 
-function BarList({ items, max, color }: { items: [string, number][]; max: number; color: string }) {
+function BarChart({ items, palette }: { items: [string, number][]; palette: string[] }) {
   if (!items.length) return <Empty />;
+  const max = items[0][1] || 1;
+
   return (
-    <div className="space-y-2.5">
-      {items.map(([label, count]) => (
-        <div key={label} className="flex items-center gap-3">
-          <span className="text-[12px] text-[var(--label-primary)] font-medium w-32 shrink-0 truncate" title={label}>{label}</span>
-          <div className="flex-1 bg-[var(--bg-secondary)] rounded-full h-1.5 overflow-hidden">
-            <div className="h-1.5 rounded-full transition-all duration-700"
-              style={{ width: `${(count / max) * 100}%`, background: color }} />
+    <div className="space-y-3">
+      {items.map(([label, count], i) => {
+        const color = palette[i % palette.length];
+        const pct = (count / max) * 100;
+        return (
+          <div key={label} className="group">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[12px] text-[var(--label-secondary)] font-medium truncate max-w-[200px]" title={label}>{label}</span>
+              <span className="text-[13px] tabnum font-bold text-[var(--label-primary)]">{count}</span>
+            </div>
+            <div className="w-full bg-[var(--bg-secondary)] rounded-md h-[22px] overflow-hidden">
+              <div
+                className="h-full rounded-md transition-all duration-700 ease-out group-hover:opacity-80"
+                style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }}
+              />
+            </div>
           </div>
-          <span className="text-[13px] tabnum font-bold w-6 text-right">{count}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 function Empty() {
-  return <div className="py-6 text-center text-[13px] text-[var(--label-tertiary)]">Sem dados</div>;
+  return <div className="py-8 text-center text-[13px] text-[var(--label-tertiary)]">Sem dados</div>;
 }
