@@ -20,13 +20,13 @@ export default function FichaModal({ row, onClose }: Props) {
 
   const f = row.ficha || {tabelaMedidas:"",ncm:"",observacoes:"",obsFechamento:"",tecidos:[],aviamentos:[],pilotagem:[{num:"Piloto 1",lacre:"",envio:"",receb:"",prova:"",status:""},{num:"Piloto 2",lacre:"",envio:"",receb:"",prova:"",status:""},{num:"Piloto 3",lacre:"",envio:"",receb:"",prova:"",status:""}],qtdMostruario:{},estamparia:{tecnica:"",observacoes:"",tecnicas:[]}};
 
-  // Editable aviamentos state
+  // Editable tecidos state (with cores as dropdowns)
+  const [tecidos, setTecidos] = useState<any[]>(f.tecidos || []);
   const [aviamentos, setAviamentos] = useState<any[]>(f.aviamentos || []);
   const [showAvPicker, setShowAvPicker] = useState(false);
   const [avSearch, setAvSearch] = useState("");
   const avTotal = aviamentos.reduce((s:number,a:any)=>s+(a.valor*a.qtd),0);
 
-  // Available colors from cadastro
   const corOptions = SAMPLE_CAD.cor.map((c:any) => `${c.cod} - ${c.nome}`);
 
   const handleUpload = async (file:File,field:string,setter:(u:string)=>void)=>{
@@ -37,27 +37,36 @@ export default function FichaModal({ row, onClose }: Props) {
   };
   const handleImg=(e:any,field:string,setter:(u:string)=>void)=>{const file=e.target.files?.[0];if(file)handleUpload(file,field,setter);};
 
+  // Tecido variante management
+  const updateTecidoCor = (tecIdx: number, corIdx: number, val: string) => {
+    setTecidos(prev => prev.map((t,i) => {
+      if (i !== tecIdx) return t;
+      const newCores = [...(t.cores || ["","","",""])];
+      while (newCores.length < 4) newCores.push("");
+      newCores[corIdx] = val;
+      return { ...t, cores: newCores };
+    }));
+  };
+
+  const addTecidoCor = (tecIdx: number) => {
+    setTecidos(prev => prev.map((t,i) => {
+      if (i !== tecIdx) return t;
+      return { ...t, cores: [...(t.cores || []), ""] };
+    }));
+  };
+
+  // Aviamento management
   const addAviamento = (av: any) => {
-    setAviamentos(prev => [...prev, { item: av.nome, cod: av.cod, qtd: 1, valor: av.preco, local: "", var01: "", var02: "", var03: "", var04: "" }]);
-    setShowAvPicker(false);
-    setAvSearch("");
+    setAviamentos(prev => [...prev, {item:av.nome,cod:av.cod,qtd:1,valor:av.preco,local:"",var01:"",var02:"",var03:"",var04:""}]);
+    setShowAvPicker(false); setAvSearch("");
   };
-
-  const updateAv = (idx: number, field: string, val: any) => {
-    setAviamentos(prev => prev.map((a, i) => i === idx ? { ...a, [field]: val } : a));
-  };
-
-  const removeAv = (idx: number) => {
-    setAviamentos(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const filteredAvCad = avSearch
-    ? SAMPLE_CAD.aviamento.filter((a:any) => (a.cod + a.nome).toLowerCase().includes(avSearch.toLowerCase()))
-    : SAMPLE_CAD.aviamento;
+  const updateAv = (idx:number,field:string,val:any) => setAviamentos(prev=>prev.map((a,i)=>i===idx?{...a,[field]:val}:a));
+  const removeAv = (idx:number) => setAviamentos(prev=>prev.filter((_,i)=>i!==idx));
+  const filteredAvCad = avSearch ? SAMPLE_CAD.aviamento.filter((a:any)=>(a.cod+a.nome).toLowerCase().includes(avSearch.toLowerCase())) : SAMPLE_CAD.aviamento;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-3 sm:p-6 overflow-y-auto bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-[960px] shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-[980px] shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 pt-4 pb-3">
           <div className="flex gap-0.5 bg-gray-100 rounded-lg p-[3px]">
             {([["ficha","Ficha técnica"],["estamparia","Estamparia"]] as const).map(([id,label])=>(
@@ -73,7 +82,6 @@ export default function FichaModal({ row, onClose }: Props) {
 
         {tab==="ficha"&&(
           <div className="px-6 pb-8">
-            {/* Header */}
             <div className="bg-[#1e3a5f] text-white rounded-t-xl px-5 py-2.5 flex items-center justify-between mt-1">
               <span className="text-[13px] font-bold">FICHA TÉCNICA</span>
               <span className="text-[11px] font-bold px-3 py-0.5 rounded-full bg-white/20">{row.piloto_most||"MOSTRUÁRIO"}</span>
@@ -94,25 +102,52 @@ export default function FichaModal({ row, onClose }: Props) {
               </div>
             </div>
 
-            {/* Desenho */}
             <ImgUp image={image} inputRef={fileRef} label="Desenho técnico" sub="Clique para enviar" aspect="aspect-[16/9] max-h-[380px]" onChange={e=>handleImg(e,"imagem_url",setImage)}/>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e=>handleImg(e,"imagem_url",setImage)}/>
 
-            {/* Tecidos */}
+            {/* ═══ TECIDOS COM VARIANTES EDITÁVEIS ═══ */}
             <div className="border border-gray-200 rounded-xl overflow-hidden mb-4 overflow-x-auto">
               <table className="w-full text-[13px] border-collapse">
                 <thead><tr className="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  <th className="text-left px-3 py-2">Artigo</th><th className="text-left px-2 py-2">Fornec.</th><th className="px-2 py-2">Preço</th><th className="text-left px-2 py-2">Localiz.</th>
-                  <th className="text-center px-2 py-2">Var 01</th><th className="text-center px-2 py-2">Var 02</th><th className="text-center px-2 py-2">Var 03</th><th className="text-center px-2 py-2">Var 04</th>
+                  <th className="text-left px-3 py-2">Artigo</th>
+                  <th className="text-left px-2 py-2 w-24">Fornec.</th>
+                  <th className="text-center px-2 py-2 w-16">Preço</th>
+                  <th className="text-left px-2 py-2 w-24">Localiz.</th>
+                  <th className="text-center px-2 py-2 w-36">Var 01</th>
+                  <th className="text-center px-2 py-2 w-36">Var 02</th>
+                  <th className="text-center px-2 py-2 w-36">Var 03</th>
+                  <th className="text-center px-2 py-2 w-36">Var 04</th>
                 </tr></thead>
-                <tbody>{f.tecidos.length>0?f.tecidos.map((t:any,i:number)=>(
-                  <tr key={i} className="border-b border-gray-100">
-                    <td className="px-3 py-2"><span className="text-gray-400 text-[11px] mr-1">Tec.{String(i+1).padStart(2,"0")}</span><span className="font-medium">{t.artigo}</span></td>
-                    <td className="px-2 py-2">{t.forn}</td><td className="px-2 py-2 tabular-nums text-center">{t.preco>0?t.preco.toFixed(2):"—"}</td><td className="px-2 py-2 text-gray-500 text-xs">{t.localizacao||"—"}</td>
-                    {(t.cores||[]).slice(0,4).map((c:string,j:number)=><td key={j} className="px-2 py-2 text-center text-[12px]">{c}</td>)}
-                    {Array.from({length:Math.max(0,4-(t.cores||[]).length)}).map((_,j)=><td key={`e${j}`} className="text-center text-gray-300">—</td>)}
-                  </tr>
-                )):<tr><td colSpan={8} className="py-5 text-center text-gray-400">Nenhum tecido</td></tr>}</tbody>
+                <tbody>
+                  {tecidos.map((t:any,ti:number)=>{
+                    const cores = t.cores || [];
+                    while (cores.length < 4) cores.push("");
+                    return (
+                      <tr key={ti} className="border-b border-gray-100">
+                        <td className="px-3 py-2">
+                          <span className="text-gray-400 text-[11px] mr-1">Tec.{String(ti+1).padStart(2,"0")}</span>
+                          <span className="font-medium">{t.artigo}</span>
+                        </td>
+                        <td className="px-2 py-2">{t.forn}</td>
+                        <td className="px-2 py-2 tabular-nums text-center">{t.preco>0?t.preco.toFixed(2):"—"}</td>
+                        <td className="px-2 py-2 text-gray-500 text-xs">{t.localizacao||"—"}</td>
+                        {cores.slice(0,4).map((cor:string,ci:number)=>(
+                          <td key={ci} className="px-1 py-1.5">
+                            <select
+                              value={cor}
+                              onChange={e=>updateTecidoCor(ti,ci,e.target.value)}
+                              className={`w-full text-[12px] px-1.5 py-1 rounded-lg border outline-none cursor-pointer transition-all ${cor?"border-[#007AFF] bg-blue-50/40 text-[#007AFF] font-medium":"border-gray-200 bg-white text-gray-400"}`}
+                            >
+                              <option value="">Selecionar cor</option>
+                              {corOptions.map(c=><option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  {tecidos.length===0&&<tr><td colSpan={8} className="py-5 text-center text-gray-400">Nenhum tecido</td></tr>}
+                </tbody>
               </table>
             </div>
 
@@ -165,9 +200,7 @@ export default function FichaModal({ row, onClose }: Props) {
                             <select value={a[vk]||""} onChange={e=>updateAv(i,vk,e.target.value)} className="w-full text-[11px] border border-gray-200 rounded px-1 py-0.5 outline-none bg-white">
                               <option value="">—</option>
                               {corOptions.map(c=><option key={c} value={c}>{c}</option>)}
-                              <option value="BRANCO">BRANCO</option>
-                              <option value="CRU">CRU</option>
-                              <option value="PRETO">PRETO</option>
+                              <option value="BRANCO">BRANCO</option><option value="CRU">CRU</option><option value="PRETO">PRETO</option>
                             </select>
                           </td>
                         ))}
@@ -181,30 +214,26 @@ export default function FichaModal({ row, onClose }: Props) {
                 </table>
               </div>
 
-              {/* Add aviamento button / picker */}
-              {!showAvPicker ? (
-                <button onClick={()=>setShowAvPicker(true)} className="text-[13px] font-semibold text-[#007AFF] bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors mb-4">
-                  + Adicionar aviamento
-                </button>
-              ) : (
+              {!showAvPicker?(
+                <button onClick={()=>setShowAvPicker(true)} className="text-[13px] font-semibold text-[#007AFF] bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors mb-4">+ Adicionar aviamento</button>
+              ):(
                 <div className="border border-blue-200 rounded-xl p-3 mb-4 bg-blue-50/30">
                   <div className="flex gap-2 mb-2 items-center">
-                    <input type="text" value={avSearch} onChange={e=>setAvSearch(e.target.value)} placeholder="Buscar aviamento por código ou nome..." className="flex-1 text-[13px] px-3 py-2 rounded-lg border border-gray-200 bg-white outline-none" autoFocus/>
-                    <button onClick={()=>{setShowAvPicker(false);setAvSearch("");}} className="text-[13px] text-gray-500 hover:text-gray-700 px-2">Cancelar</button>
+                    <input type="text" value={avSearch} onChange={e=>setAvSearch(e.target.value)} placeholder="Buscar aviamento..." className="flex-1 text-[13px] px-3 py-2 rounded-lg border border-gray-200 bg-white outline-none" autoFocus/>
+                    <button onClick={()=>{setShowAvPicker(false);setAvSearch("");}} className="text-[13px] text-gray-500 px-2">Cancelar</button>
                   </div>
                   <div className="max-h-[200px] overflow-y-auto rounded-lg border border-gray-200 bg-white">
                     {filteredAvCad.map((a:any)=>(
-                      <button key={a.cod} onClick={()=>addAviamento(a)} className="w-full text-left px-3 py-2 text-[13px] hover:bg-blue-50 border-b border-gray-100 flex justify-between items-center transition-colors">
+                      <button key={a.cod} onClick={()=>addAviamento(a)} className="w-full text-left px-3 py-2 text-[13px] hover:bg-blue-50 border-b border-gray-100 flex justify-between items-center">
                         <span><span className="font-mono text-[11px] text-gray-500 mr-2">{a.cod}</span><span className="font-medium">{a.nome}</span></span>
                         <span className="tabular-nums text-gray-500">{a.preco>0?`R$ ${a.preco.toFixed(2)}`:"—"}</span>
                       </button>
                     ))}
-                    {filteredAvCad.length===0&&<div className="px-3 py-4 text-center text-gray-400 text-sm">Nenhum aviamento encontrado</div>}
+                    {filteredAvCad.length===0&&<div className="px-3 py-4 text-center text-gray-400 text-sm">Nenhum encontrado</div>}
                   </div>
                 </div>
               )}
 
-              {/* Pilotagem */}
               <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
                 <div className="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-2">Liberação de pilotagem</div>
                 <table className="w-full text-[13px] border-collapse">

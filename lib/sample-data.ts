@@ -52,12 +52,22 @@ export const SAMPLE_CAD: Record<string, any> = {
   ],
 };
 
-export const SAMPLE_VARIANTES: Record<string, string[]> = {
-  "21.01.00.43": ["C02 - PRETO","C09 - CINZA ESCURO","C07 - AZUL ESCURO"],
-  "21.02.00.06": ["C10 - VERDE","C25 - KHAKI","C06 - AZUL CLARO"],
-  "11.03.01.01": ["C06 - AZUL CLARO","C01 - BRANCO","C04 - NATURAL"],
-  "21.02.00.07": ["C25 - KHAKI","C11 - MARROM","C20 - AREIA"],
-};
+// Helper: extract variantes from all products' fichas
+export function getVariantes(rows: any[]): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  rows.forEach(row => {
+    if (row.ficha?.tecidos) {
+      const cores: string[] = [];
+      row.ficha.tecidos.forEach((t: any) => {
+        (t.cores || []).forEach((c: string) => {
+          if (c && !cores.includes(c)) cores.push(c);
+        });
+      });
+      if (cores.length > 0) result[row.ref] = cores;
+    }
+  });
+  return result;
+}
 
 export const SAMPLE_ROWS = [
   {
@@ -71,21 +81,21 @@ export const SAMPLE_ROWS = [
     estilista:"THABATA",
     ficha: {
       tabelaMedidas:"CALÇA JOGGER", ncm:"", observacoes:"", obsFechamento:"",
-      tecidos:[{artigo:"MOLETOM COPAT",forn:"COPAT",preco:0,codigo:"",localizacao:"",cores:["PRETO","CINZA CHUMBO","AZUL MARINHO"]}],
+      tecidos:[{artigo:"MOLETOM COPAT",forn:"COPAT",preco:0,codigo:"",localizacao:"",cores:["C02 - PRETO","C09 - CINZA ESCURO","C07 - AZUL ESCURO"]}],
       aviamentos:[
         {item:"ADESIVO DE CÓDIGO DE BARRAS",cod:"AD0001",qtd:1,valor:0.10,local:"COLADO NO VERSO DO TAG",var01:"BRANCO"},
         {item:"TAG CASUAL",cod:"TA0003",qtd:1,valor:0.50,local:"APLICADO COM LACRE PRETO NA ETIQUETA INTERNA",var01:"BRANCO"},
-        {item:"ETIQUETA DE MARCA MÉDIA",cod:"ET0045",qtd:1,valor:0.35,local:"COSTURADO NAS LATERAIS SOBRE PARTE INFERIOR DO COBRE GOLA",var01:"CRU"},
-        {item:"ETIQUETA TAMANHO PP",cod:"ET0052",qtd:1,valor:0.12,local:"APLICADO NA LATERAL DA ET. DE MARCA PALITO",var01:"CRU"},
-        {item:"ETIQUETA MARCA LOGO PINGUIM",cod:"ET0082",qtd:1,valor:0.70,local:"APLICADO NO BOLSO COSTAS, A 1CM DA LATERAL",var01:"CRU"},
-        {item:"ILHÓS PERSONALIZADO",cod:"IL17CA01",qtd:2,valor:0.20,local:"CENTRALIZADO NO CÓS COM 8CM DE DISTÂNCIA ENTRE SI",var01:"C09 - CINZA ESCURO"},
+        {item:"ETIQUETA DE MARCA MÉDIA",cod:"ET0045",qtd:1,valor:0.35,local:"COSTURADO NAS LATERAIS",var01:"CRU"},
+        {item:"ETIQUETA TAMANHO PP",cod:"ET0052",qtd:1,valor:0.12,local:"NA LATERAL DA ET. DE MARCA PALITO",var01:"CRU"},
+        {item:"ETIQUETA MARCA LOGO PINGUIM",cod:"ET0082",qtd:1,valor:0.70,local:"BOLSO COSTAS, A 1CM DA LATERAL",var01:"CRU"},
+        {item:"ILHÓS PERSONALIZADO",cod:"IL17CA01",qtd:2,valor:0.20,local:"CENTRALIZADO NO CÓS COM 8CM DE DISTÂNCIA",var01:"C09 - CINZA ESCURO"},
       ],
       pilotagem:[
         {num:"Piloto 1",lacre:"",envio:"",receb:"",prova:"",status:"Aguardando"},
         {num:"Piloto 2",lacre:"",envio:"",receb:"",prova:"",status:""},
         {num:"Piloto 3",lacre:"",envio:"",receb:"",prova:"",status:""},
       ],
-      qtdMostruario:{"PRETO":1,"CINZA CHUMBO":7,"AZUL MARINHO":1},
+      qtdMostruario:{"C02 - PRETO":1,"C09 - CINZA ESCURO":7,"C07 - AZUL ESCURO":1},
       estamparia:{tecnica:"SILK ZERO TOQUE",observacoes:"",tecnicas:[{num:"1",tecnica:"SILK ZERO TOQUE"}]},
     },
   },
@@ -97,7 +107,8 @@ export const SAMPLE_ROWS = [
     fornecedor:"CONVÉS", grade:"PP-GG",
     categoria:"SARJA", subcategoria:"LISO", lavagem:"ESTONADO",
     base2:"SHORTS JOGGER", tipo:"ESTONADO", linha:"CASUAL", drop:"2",
-    estilista:"LIVIA", ficha:null,
+    estilista:"LIVIA",
+    ficha:{tecidos:[{artigo:"ETBQP - QUÊNIA",forn:"HUDTELFA",preco:14.90,codigo:"",localizacao:"",cores:["C10 - VERDE","C25 - KHAKI","C06 - AZUL CLARO"]}],aviamentos:[],pilotagem:[],observacoes:"",estamparia:{tecnicas:[]}},
   },
   {
     id:3, ref:"11.03.01.01", desc:"CAMISA LINHO BELIZE MANGA LONGA",
@@ -107,7 +118,8 @@ export const SAMPLE_ROWS = [
     fornecedor:"DSK", grade:"PP-GG",
     categoria:"LINHO", subcategoria:"LISO", lavagem:"COR FIRME",
     base2:"CAMISA MANGA LONGA SLIM", tipo:"COR FIRME", linha:"CASUAL", drop:"2",
-    estilista:"LIVIA", ficha:null,
+    estilista:"LIVIA",
+    ficha:{tecidos:[{artigo:"LINHO PIENZA ECO",forn:"MN",preco:0,codigo:"",localizacao:"",cores:["C06 - AZUL CLARO","C01 - BRANCO","C04 - NATURAL"]}],aviamentos:[],pilotagem:[],observacoes:"",estamparia:{tecnicas:[]}},
   },
   {
     id:4, ref:"21.02.00.07", desc:"BERMUDA JOGGER ENSEADA",
@@ -117,6 +129,7 @@ export const SAMPLE_ROWS = [
     fornecedor:"VAPE", grade:"PP-GG",
     categoria:"SARJA", subcategoria:"LISO", lavagem:"ESTONADO",
     base2:"BERMUDA JOGGER", tipo:"ESTONADO", linha:"CASUAL", drop:"1",
-    estilista:"LIVIA", ficha:null,
+    estilista:"LIVIA",
+    ficha:{tecidos:[{artigo:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn:"CANATIBA",preco:0,codigo:"",localizacao:"",cores:["C25 - KHAKI","C11 - MARROM","C20 - AREIA"]}],aviamentos:[],pilotagem:[],observacoes:"",estamparia:{tecnicas:[]}},
   },
 ];
