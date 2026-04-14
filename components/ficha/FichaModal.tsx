@@ -185,22 +185,22 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
       <div className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[var(--separator)]">
-          <div className="seg-control">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[var(--separator)] gap-2.5">
+          <div className="seg-control overflow-x-auto">
             {([["ficha", "Ficha técnica"], ["estamparia", "Estamparia"], ["liberacao", "Liberação"]] as [string, string][]).map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id as any)} className={`seg-btn ${tab === id ? "active" : ""}`}>{l}</button>
+              <button key={id} onClick={() => setTab(id as any)} className={`seg-btn whitespace-nowrap ${tab === id ? "active" : ""}`}>{l}</button>
             ))}
           </div>
-          <div className="flex gap-2.5 items-center">
+          <div className="flex gap-2 sm:gap-2.5 items-center justify-end flex-shrink-0">
             {(up || saving) && <span className="text-[12px] text-[var(--system-blue)] animate-pulse font-medium">{saving ? "Salvando..." : "Enviando..."}</span>}
-            <button onClick={exportPDF} className="text-[13px] font-medium text-[var(--system-blue)] hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+            <button onClick={exportPDF} className="text-[12px] sm:text-[13px] font-medium text-[var(--system-blue)] hover:bg-blue-50 px-2 sm:px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
               <svg className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar PDF
+              <span className="hidden sm:inline">Exportar </span>PDF
             </button>
-            <button onClick={save} className="apple-btn-primary">Salvar</button>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)]">
+            <button onClick={save} className="apple-btn-primary text-[12px] sm:text-[13px] !px-3 sm:!px-5">Salvar</button>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
@@ -209,7 +209,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {/* ═══ EXPORT DIALOG ═══ */}
         {showExportDlg && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-[4px]" onClick={() => setShowExportDlg(false)}>
-            <div className="bg-[var(--bg-primary)] rounded-2xl w-[380px] shadow-[0_24px_80px_rgba(0,0,0,0.2)] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-[var(--bg-primary)] rounded-2xl w-[calc(100%-32px)] max-w-[380px] shadow-[0_24px_80px_rgba(0,0,0,0.2)] overflow-hidden" onClick={e => e.stopPropagation()}>
               <div className="px-6 pt-5 pb-3 border-b border-[var(--separator)]">
                 <h3 className="text-[16px] font-bold">Exportar PDF</h3>
                 <p className="text-[12px] text-[var(--label-secondary)] mt-1">Selecione as seções para exportar:</p>
@@ -234,25 +234,25 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         )}
 
         {/* ═══ FICHA TÉCNICA ═══ */}
-        {tab === "ficha" && (<div className="px-6 py-6 space-y-5">
-          <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between">
+        {tab === "ficha" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
+          <div className="bg-[#1c3654] text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TÉCNICA</span>
             <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{row.piloto_most || "MOSTRUÁRIO"}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
           <div className="apple-card">
-            <div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tecido", row.tecido], ["Forn. tecido", row.forn_tecido], ["Composição", compOf(row.tecido)], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Tab. medidas", row.tab_medidas]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
-            <div className="grid grid-cols-4">{([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tecido", row.tecido], ["Forn. tecido", row.forn_tecido], ["Composição", compOf(row.tecido)], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Tab. medidas", row.tab_medidas]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4">{([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
             <div className="border-t border-[var(--separator)]" />
-            <div className="grid grid-cols-3">{([["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria], ["Subcategoria", row.subcategoria], ["Tipo", row.tipo]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}<div /></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3">{([["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria], ["Subcategoria", row.subcategoria], ["Tipo", row.tipo]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}<div /></div>
             <div className="border-t border-[var(--separator)]" />
-            <div className="px-4 py-3 flex items-center gap-3">
+            <div className="px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <span className="text-[11px] text-[var(--label-secondary)] font-medium whitespace-nowrap">NCM:</span>
-              <input type="text" value={ncm} onChange={e => { setNcm(e.target.value); setNcmJust(""); }} placeholder="0000.00.00" className="w-[140px] text-[13px] font-mono font-semibold tabnum border border-[var(--separator-opaque)] rounded-lg px-3 py-1.5 outline-none focus:border-[var(--system-blue)]" />
+              <input type="text" value={ncm} onChange={e => { setNcm(e.target.value); setNcmJust(""); }} placeholder="0000.00.00" className="w-[120px] sm:w-[140px] text-[13px] font-mono font-semibold tabnum border border-[var(--separator-opaque)] rounded-lg px-3 py-1.5 outline-none focus:border-[var(--system-blue)]" />
               <button onClick={gerarNcm} disabled={ncmLoading} className="apple-btn-secondary text-[12px] !py-1.5 !px-3 flex items-center gap-1.5">
                 {ncmLoading ? <span className="animate-pulse">Gerando...</span> : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>Gerar NCM</>}
               </button>
-              {ncmJust && <span className="text-[11px] text-[var(--label-tertiary)] truncate flex-1" title={ncmJust}>{ncmJust}</span>}
+              {ncmJust && <span className="text-[11px] text-[var(--label-tertiary)] truncate w-full sm:w-auto sm:flex-1" title={ncmJust}>{ncmJust}</span>}
             </div>
           </div>
           <div className="apple-card bg-[var(--bg-secondary)] cursor-pointer hover:border-[var(--system-blue)] relative" onClick={() => fr.current?.click()}>
@@ -278,9 +278,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         </div>)}
 
         {/* ═══ ESTAMPARIA ═══ */}
-        {tab === "estamparia" && (<div className="px-6 py-6 space-y-5">
+        {tab === "estamparia" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
           {/* Header */}
-          <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between">
+          <div className="bg-[#1c3654] text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TECNICA DE ESTAMPARIA</span>
             <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{row.piloto_most || "MOSTRUÁRIO"}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
@@ -288,11 +288,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
           {/* Product info */}
           <div className="apple-card">
-            <div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade], ["Drop", row.drop], ["Tecido", row.tecido]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade], ["Drop", row.drop], ["Tecido", row.tecido]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
           </div>
 
           {/* Artes: FRENTE + COSTAS */}
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {(estamparia.artes || []).filter((a: any) => a.posicao !== "TAGLESS").map((arte: any) => (
               <div key={arte.posicao} className="space-y-2.5">
                 <div className="bg-[#1c3654] text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">ARTE {arte.posicao}</span></div>
@@ -311,7 +311,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           {(() => { const tg = (estamparia.artes || []).find((a: any) => a.posicao === "TAGLESS"); if (!tg) return null; return (
             <div className="space-y-2.5">
               <div className="bg-[#1c3654] text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">TAGLESS</span></div>
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="apple-card bg-[var(--bg-secondary)] aspect-[3/2] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arte", "TAGLESS")}>
                   {tg.imagem ? <img src={tg.imagem} alt="Tagless" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
                   {tg.imagem && <button onClick={e => { e.stopPropagation(); deleteEstImg("arte", "TAGLESS", tg.imagem); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
@@ -363,12 +363,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 const sim = estamparia.simulacoes?.[vk] || { nome: "", imgSim: "", imgFoto: "", status: "" };
                 return (
                   <div key={vk} className="apple-card p-5 space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
                         <span className="text-[14px] font-bold">Variante {String(vi + 1).padStart(2, "0")}</span>
                         {corName && <span className="text-[12px] font-semibold px-3 py-0.5 rounded-full bg-[rgba(0,122,255,0.08)] text-[var(--system-blue)]">{corName}</span>}
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
                         {([
                           ["PENDENTE", "Pendente", "border-[var(--separator-opaque)] text-[var(--label-tertiary)] bg-transparent"],
                           ["LIBERADA DIRETO MOSTRUÁRIO", "Liberada", "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
@@ -379,7 +379,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                         ))}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Simulação</div>
                         <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("sim", vk)}>
@@ -412,13 +412,13 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         </div>)}
 
         {/* ═══ LIBERAÇÃO ═══ */}
-        {tab === "liberacao" && (<div className="px-6 py-6 space-y-5">
-          <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
-          <div className="apple-card"><div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
+        {tab === "liberacao" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
+          <div className="bg-[#1c3654] text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
+          <div className="apple-card"><div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
 
-          <div className="apple-card px-5 py-3.5 flex items-center justify-between">
+          <div className="apple-card px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Status da liberação</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {([
                 ["REPROVADO",              "Reprovado",           "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
                 ["APROVADO COM RESTRIÇÃO", "Aprov. c/ restrição", "bg-[rgba(255,204,0,0.18)] text-[#856500]  border-[rgba(255,204,0,0.35)]"],
@@ -435,7 +435,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           {!tm ? <div className="apple-card p-16 text-center"><p className="text-[16px] font-medium text-[var(--label-secondary)]">Nenhuma tabela selecionada</p></div> : (<>
 
             {/* Toggle tabela especial */}
-            <div className="apple-card px-5 py-3 flex items-center justify-between">
+            <div className="apple-card px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Tabela de medidas</span>
                 {tEsp && <span className="text-[10px] font-bold uppercase tracking-[0.06em] px-2.5 py-0.5 rounded-full bg-[rgba(255,159,10,0.14)] text-[#c77c00]">Especial</span>}
@@ -503,7 +503,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? "PP, P, G, GG são calculados automaticamente a partir de M e das ampliações. As tabelas originais nos cadastros não são afetadas." : "Ampliação: diferença entre tamanhos (←M / M→)"}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
               <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div><div className="relative"><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden" onClick={() => mrr.current?.click()}>{imgModelo ? <img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}</div>{imgModelo && <button onClick={e => { e.stopPropagation(); deleteImgModelo(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</div><input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} /></div>
             </div>

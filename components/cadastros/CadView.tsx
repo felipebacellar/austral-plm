@@ -35,10 +35,10 @@ export default function CadView(){
   if(loading) return <div className="text-center py-20 text-[var(--label-tertiary)]">Carregando cadastros...</div>;
 
   return(
-    <div className="flex gap-8 min-h-[400px]">
-      <div className="w-[200px] flex-shrink-0">
+    <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 min-h-[400px]">
+      <div className="w-full sm:w-[200px] flex-shrink-0">
         <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] px-3 mb-2">Cadastros</div>
-        <nav className="flex flex-col gap-0.5">{TABS.map(t=>{const c=gc(t.k);const on=m===t.k;return(<button key={t.k} onClick={()=>{setM(t.k);setSr("");}} className={`flex justify-between items-center px-3 py-[7px] rounded-lg text-[13px] text-left transition-all ${on?"font-semibold bg-[rgba(0,122,255,0.08)] text-[var(--system-blue)]":"text-[var(--label-primary)] hover:bg-[var(--bg-secondary)]"}`}><span>{t.l}</span><span className={`text-[11px] tabnum ${on?"text-blue-400":"text-[var(--label-tertiary)] bg-[var(--bg-secondary)] px-1.5 rounded"}`}>{c}</span></button>);})}</nav>
+        <nav className="flex sm:flex-col gap-0.5 overflow-x-auto pb-2 sm:pb-0">{TABS.map(t=>{const c=gc(t.k);const on=m===t.k;return(<button key={t.k} onClick={()=>{setM(t.k);setSr("");}} className={`flex justify-between items-center px-3 py-[7px] rounded-lg text-[13px] text-left transition-all whitespace-nowrap ${on?"font-semibold bg-[rgba(0,122,255,0.08)] text-[var(--system-blue)]":"text-[var(--label-primary)] hover:bg-[var(--bg-secondary)]"}`}><span>{t.l}</span><span className={`text-[11px] tabnum ml-2 ${on?"text-blue-400":"text-[var(--label-tertiary)] bg-[var(--bg-secondary)] px-1.5 rounded"}`}>{c}</span></button>);})}</nav>
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-[22px] font-bold tracking-[-0.02em] mb-0.5">{info?.l}</h3>
