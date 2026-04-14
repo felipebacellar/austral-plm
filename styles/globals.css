@@ -2,44 +2,229 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══ Apple HIG Design Tokens ═══ */
 :root {
-  --apple-blue: #007AFF;
-  --apple-green: #34C759;
-  --apple-orange: #FF9F0A;
-  --apple-red: #FF3B30;
+  --system-blue: #007AFF;
+  --system-green: #34C759;
+  --system-orange: #FF9F0A;
+  --system-red: #FF3B30;
+  --system-yellow: #FFCC00;
+  --system-purple: #AF52DE;
+  --system-teal: #5AC8FA;
+
+  --label-primary: #1d1d1f;
+  --label-secondary: #86868b;
+  --label-tertiary: #aeaeb2;
+  --label-quaternary: #c7c7cc;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #e8e8ed;
+  --separator: rgba(60, 60, 67, 0.12);
+  --separator-opaque: #d2d2d7;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 }
 
+/* ═══ Base ═══ */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--label-primary);
+  background: var(--bg-primary);
+  font-size: 14px;
+  line-height: 1.47;
+  letter-spacing: -0.008em;
 }
 
+/* ═══ Focus — Apple ring ═══ */
 input:focus, select:focus, textarea:focus {
-  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.2);
   outline: none;
+  border-color: var(--system-blue) !important;
 }
 
-.pill { @apply text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap; }
-.pill-green { background: rgba(52,199,89,0.12); color: #248a3d; }
-.pill-blue { background: rgba(0,122,255,0.12); color: #0055d4; }
-.pill-orange { background: rgba(255,159,10,0.12); color: #c77c00; }
-.pill-red { background: rgba(255,59,48,0.10); color: #d70015; }
+/* ═══ Selection ═══ */
+::selection {
+  background: rgba(0, 122, 255, 0.15);
+}
 
+/* ═══ Scrollbar — subtle ═══ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--label-quaternary); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--label-tertiary); }
+
+/* ═══ Status Pills ═══ */
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 100px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.pill-green { background: rgba(52,199,89,0.14); color: #248a3d; }
+.pill-blue  { background: rgba(0,122,255,0.12); color: #0055d4; }
+.pill-orange { background: rgba(255,159,10,0.14); color: #c77c00; }
+.pill-red   { background: rgba(255,59,48,0.12); color: #d70015; }
+
+/* ═══ PLM Table — refined Apple aesthetic ═══ */
 .plm-table {
-  @apply w-full border-collapse text-sm;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
 }
+
 .plm-table thead th {
-  @apply px-3 py-2.5 text-left font-bold uppercase tracking-widest
-         text-gray-400 border-b border-gray-200 sticky top-0 z-10 bg-gray-50;
-  font-size: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--label-secondary);
+  background: var(--bg-secondary);
+  border-bottom: 0.5px solid var(--separator-opaque);
+  position: sticky;
+  top: 0;
+  z-index: 10;
   white-space: nowrap;
 }
+
 .plm-table tbody td {
-  @apply px-1 py-0.5 border-b border-gray-100 align-middle;
+  padding: 2px 4px;
+  border-bottom: 0.5px solid var(--separator);
+  vertical-align: middle;
+  color: var(--label-primary);
 }
+
+.plm-table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
 .plm-table tbody tr:hover {
-  @apply bg-gray-50/70;
+  background: rgba(0, 0, 0, 0.02);
 }
+
 .plm-table tbody tr:last-child td {
-  @apply border-b-0;
+  border-bottom: none;
+}
+
+/* ═══ Inputs — Apple style ═══ */
+.apple-input {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--separator-opaque);
+  background: var(--bg-primary);
+  color: var(--label-primary);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.apple-input::placeholder {
+  color: var(--label-tertiary);
+}
+
+.apple-select {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--separator-opaque);
+  background: var(--bg-primary);
+  color: var(--label-primary);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* ═══ Buttons ═══ */
+.apple-btn-primary {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--system-blue);
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.12s, transform 0.1s;
+  letter-spacing: -0.01em;
+}
+.apple-btn-primary:hover { opacity: 0.88; }
+.apple-btn-primary:active { transform: scale(0.98); }
+
+.apple-btn-secondary {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--system-blue);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.apple-btn-secondary:hover { background: rgba(0, 122, 255, 0.14); }
+
+/* ═══ Segmented Control ═══ */
+.seg-control {
+  display: inline-flex;
+  gap: 1px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+.seg-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  border: none;
+  cursor: pointer;
+  color: var(--label-secondary);
+  background: transparent;
+  transition: all 0.15s ease;
+}
+.seg-btn.active {
+  font-weight: 600;
+  color: var(--label-primary);
+  background: var(--bg-primary);
+  box-shadow: 0 0.5px 2px rgba(0,0,0,0.08), 0 0.5px 1px rgba(0,0,0,0.04);
+}
+
+/* ═══ Card ═══ */
+.apple-card {
+  background: var(--bg-primary);
+  border: 0.5px solid var(--separator-opaque);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ═══ Section header ═══ */
+.section-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--label-primary);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 0.5px solid var(--separator);
+  letter-spacing: -0.01em;
+}
+
+/* ═══ Tabular Numbers ═══ */
+.tabnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══ Print ═══ */
+@media print {
+  .no-print { display: none !important; }
+  .apple-card { box-shadow: none; border: 0.5px solid #ddd; }
 }
