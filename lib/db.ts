@@ -113,7 +113,19 @@ export async function fetchFicha(ref: string) {
     provas: Object.fromEntries((prv.data || []).map((p: any) => [p.ponto_cod, { p1: p.prova1, p2: p.prova2, p3: p.prova3 }])),
     anotacoes: Object.fromEntries((ant.data || []).map((a: any) => [`p${a.prova_num}`, { texto: a.anotacao || "", video: a.video_link || "" }])),
     estamparia: { tecnicas: [] }, // TODO: estamparia table
+    tabelaEspecialAtiva: data.tabela_especial_ativa || false,
+    pontosEspeciais: [] as any[],
+    gradEspecial: [] as any[],
   };
+  if (result.tabelaEspecialAtiva) {
+    const [pe, ge] = await Promise.all([
+      sb().from("ficha_pontos_especiais").select("*").eq("ficha_id", fid).order("ordem"),
+      sb().from("ficha_graduacao_especial").select("*").eq("ficha_id", fid).order("ordem"),
+    ]);
+    result.pontosEspeciais = (pe.data || []).map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia }));
+    result.gradEspecial = (ge.data || []).map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia }));
+  }
+  return result;
 }
 
 export async function saveFichaImagem(fichaId: number, field: string, url: string) {
@@ -150,6 +162,18 @@ export async function upsertFicha(ref: string, f: any) {
   if (f.provas) for (const [cod, v] of Object.entries(f.provas) as any) await sb().from("ficha_provas").upsert({ ficha_id: fid, ponto_cod: cod, prova1: v.p1 || "", prova2: v.p2 || "", prova3: v.p3 || "" }, { onConflict: "ficha_id,ponto_cod" });
   // Anotações
   if (f.anotacoes) for (const [k, v] of Object.entries(f.anotacoes) as any) { const n = parseInt(k.replace("p", "")); if (!isNaN(n)) await sb().from("ficha_anotacoes").upsert({ ficha_id: fid, prova_num: n, anotacao: v.texto || "", video_link: v.video || "" }, { onConflict: "ficha_id,prova_num" }); }
+  // Tabela especial
+  if (f.tabelaEspecialAtiva !== undefined) {
+    await sb().from("fichas_tecnicas").update({ tabela_especial_ativa: f.tabelaEspecialAtiva }).eq("id", fid);
+  }
+  if (f.tabelaEspecialAtiva && f.pontosEspeciais) {
+    await sb().from("ficha_pontos_especiais").delete().eq("ficha_id", fid);
+    if (f.pontosEspeciais.length) await sb().from("ficha_pontos_especiais").insert(f.pontosEspeciais.map((p: any, i: number) => ({ ficha_id: fid, cod: p.cod, descricao: p.desc, valor_base: p.tabela || "", tolerancia: p.tol || "1,0 + OU -", ordem: i })));
+  }
+  if (f.tabelaEspecialAtiva && f.gradEspecial) {
+    await sb().from("ficha_graduacao_especial").delete().eq("ficha_id", fid);
+    if (f.gradEspecial.length) await sb().from("ficha_graduacao_especial").insert(f.gradEspecial.map((g: any, i: number) => ({ ficha_id: fid, descricao: g.desc, pp: g.pp || "", p: g.p || "", m: g.m || "", g: g.g || "", gg: g.gg || "", ampliacao_esq: g.a1 || "", ampliacao_dir: g.a2 || "", tolerancia: g.tol || "1,0 + OU -", ordem: i })));
+  }
   return fid;
 }
 

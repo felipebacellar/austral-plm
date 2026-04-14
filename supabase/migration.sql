@@ -162,3 +162,35 @@ ON CONFLICT DO NOTHING;
 -- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var02 TEXT DEFAULT '';
 -- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var03 TEXT DEFAULT '';
 -- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var04 TEXT DEFAULT '';
+
+-- =============================================
+-- TABELA ESPECIAL por produto (medidas + graduação)
+-- =============================================
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS tabela_especial_ativa BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS ficha_pontos_especiais (
+  id BIGSERIAL PRIMARY KEY,
+  ficha_id BIGINT REFERENCES fichas_tecnicas(id) ON DELETE CASCADE,
+  cod TEXT NOT NULL,
+  descricao TEXT DEFAULT '',
+  valor_base TEXT DEFAULT '',
+  tolerancia TEXT DEFAULT '1,0 + OU -',
+  ordem INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_fpe_ficha ON ficha_pontos_especiais(ficha_id);
+
+CREATE TABLE IF NOT EXISTS ficha_graduacao_especial (
+  id BIGSERIAL PRIMARY KEY,
+  ficha_id BIGINT REFERENCES fichas_tecnicas(id) ON DELETE CASCADE,
+  descricao TEXT DEFAULT '',
+  pp TEXT DEFAULT '',
+  p TEXT DEFAULT '',
+  m TEXT DEFAULT '',
+  g TEXT DEFAULT '',
+  gg TEXT DEFAULT '',
+  ampliacao_esq TEXT DEFAULT '',
+  ampliacao_dir TEXT DEFAULT '',
+  tolerancia TEXT DEFAULT '1,0 + OU -',
+  ordem INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_fge_ficha ON ficha_graduacao_especial(ficha_id);

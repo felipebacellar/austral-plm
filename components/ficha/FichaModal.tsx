@@ -35,6 +35,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
 
+  /* Tabela especial (por produto) */
+  const [tEsp, setTEsp] = useState(false);
+  const [ptsEsp, setPtsEsp] = useState<any[]>([]);
+  const [gradEsp, setGradEsp] = useState<any[]>([]);
+
   useEffect(() => {
     (async () => {
       const [ficha, cadastros, aviCad, tecs] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(), fetchTecidos()]);
@@ -51,6 +56,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.estamparia) setEstamparia(ficha.estamparia);
         if (ficha.pantones) setVarCodigos({ var01: ficha.pantones.var01 || "", var02: ficha.pantones.var02 || "", var03: ficha.pantones.var03 || "", var04: ficha.pantones.var04 || "" });
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
+        if (ficha.tabelaEspecialAtiva) { setTEsp(true); setPtsEsp(ficha.pontosEspeciais || []); setGradEsp(ficha.gradEspecial || []); }
       }
       if (row.tab_medidas) {
         const [p, g] = await Promise.all([
@@ -70,7 +76,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
@@ -91,11 +97,40 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const tm = row.tab_medidas || "";
   const hasEstamparia = (estamparia?.tecnicas || []).length > 0;
 
+  /* ── Tabela Especial helpers ── */
+  const fmtN = (n: number) => n % 1 === 0 ? n.toString() : n.toFixed(1).replace(/\.0$/, "");
+  const autoCalc = (r: any) => {
+    const m = parseFloat(String(r.m).replace(",", ".")), a1 = parseFloat(String(r.a1).replace(",", ".")), a2 = parseFloat(String(r.a2).replace(",", "."));
+    if (isNaN(m) || isNaN(a1) || isNaN(a2)) return r;
+    return { ...r, p: fmtN(m - a1), pp: fmtN(m - 2 * a1), g: fmtN(m + a2), gg: fmtN(m + 2 * a2) };
+  };
+  const toggleEsp = () => {
+    if (!tEsp) {
+      if (!ptsEsp.length && pts.length) setPtsEsp(pts.map(p => ({ ...p })));
+      if (!gradEsp.length && grad.length) setGradEsp(grad.map(g => autoCalc({ ...g })));
+    }
+    setTEsp(!tEsp);
+  };
+  const updGradEsp = (i: number, k: string, v: string) => {
+    setGradEsp(prev => prev.map((g, j) => {
+      if (j !== i) return g;
+      const upd = { ...g, [k]: v };
+      if (["m", "a1", "a2"].includes(k)) return autoCalc(upd);
+      return upd;
+    }));
+  };
+  const updPtsEsp = (i: number, k: string, v: string) => {
+    setPtsEsp(prev => prev.map((p, j) => j === i ? { ...p, [k]: v } : p));
+  };
+  /* pontos ativos e grad ativos (especial ou original) */
+  const ptsAtivo = tEsp ? ptsEsp : pts;
+  const gradAtivo = tEsp ? gradEsp : grad;
+
   // Print mode — render only the PDF component
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} grad={grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} />
       </div>
     );
   }
@@ -185,15 +220,40 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           </div>
 
           {!tm ? <div className="apple-card p-16 text-center"><p className="text-[16px] font-medium text-[var(--label-secondary)]">Nenhuma tabela selecionada</p></div> : (<>
+
+            {/* Toggle tabela especial */}
+            <div className="apple-card px-5 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Tabela de medidas</span>
+                {tEsp && <span className="text-[10px] font-bold uppercase tracking-[0.06em] px-2.5 py-0.5 rounded-full bg-[rgba(255,159,10,0.14)] text-[#c77c00]">Especial</span>}
+              </div>
+              <button onClick={toggleEsp} className={`px-3.5 py-1 rounded-full text-[12px] font-semibold border transition-all ${tEsp ? "bg-[rgba(255,159,10,0.14)] text-[#c77c00] border-[rgba(255,159,10,0.3)]" : "border-[var(--separator-opaque)] text-[var(--label-tertiary)] hover:border-[var(--label-secondary)]"}`}>
+                {tEsp ? "Desativar especial" : "Ativar tabela especial"}
+              </button>
+            </div>
+
+            {/* Tabela de medidas (pontos) */}
             <div className="apple-card overflow-x-auto"><table className="plm-table"><thead>
               <tr><th colSpan={3} className="border-b-0" /><th colSpan={2} className="text-center !text-[var(--system-blue)] border-b border-blue-100 !bg-[rgba(0,122,255,0.04)] py-1.5">Prova 1</th><th colSpan={2} className="text-center border-b py-1.5">Prova 2</th><th colSpan={2} className="text-center border-b py-1.5">Prova 3</th><th className="border-b-0" /></tr>
-              <tr><th className="text-center w-12">Cód</th><th>Descrição</th><th className="text-center w-16">Tabela</th><th className="text-center w-16 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Med.</th><th className="text-center w-14 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-24">Tol.</th></tr>
-            </thead><tbody>{pts.map((p: any) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (<tr key={p.cod}><td className="text-center font-bold text-[var(--label-secondary)] px-3">{p.cod}</td><td className="font-medium px-3">{p.desc}</td><td className="text-center tabnum font-semibold px-2">{p.tabela}</td>{(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}<td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{p.tol}</td></tr>); })}</tbody></table></div>
+              <tr><th className="text-center w-12">Cód</th><th>Descrição</th><th className="text-center w-16">{tEsp ? <span className="text-[var(--system-orange)]">Tabela</span> : "Tabela"}</th><th className="text-center w-16 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Med.</th><th className="text-center w-14 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-24">Tol.</th></tr>
+            </thead><tbody>{ptsAtivo.map((p: any, pi: number) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (<tr key={p.cod}>
+              <td className="text-center font-bold text-[var(--label-secondary)] px-3">{p.cod}</td>
+              <td className="font-medium px-3">{p.desc}</td>
+              <td className={`text-center tabnum font-semibold px-1 ${tEsp ? "bg-[rgba(255,159,10,0.04)]" : ""}`}>{tEsp
+                ? <input type="text" value={p.tabela} onChange={e => updPtsEsp(pi, "tabela", e.target.value)} className="w-14 text-center text-[13px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
+                : p.tabela
+              }</td>
+              {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}
+              <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{p.tol}</td>
+            </tr>); })}</tbody></table></div>
 
             {/* Graduação */}
-            {grad.length > 0 && (
+            {gradAtivo.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Graduação — {tm}</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Graduação — {tEsp ? "Especial" : tm}</span>
+                  {tEsp && <span className="text-[10px] text-[var(--system-orange)]">Edite M e ampliações — PP, P, G, GG são calculados</span>}
+                </div>
                 <div className="apple-card overflow-hidden overflow-x-auto">
                   <table className="plm-table">
                     <thead><tr>
@@ -203,22 +263,31 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                       <th className="text-center w-14">Ampl. ←</th><th className="text-center w-14">Ampl. →</th>
                       <th className="text-center w-24">Tolerância</th>
                     </tr></thead>
-                    <tbody>{grad.map((g: any, i: number) => (
+                    <tbody>{gradAtivo.map((g: any, i: number) => (
                       <tr key={i}>
                         <td className="font-medium px-3">{g.desc}</td>
-                        <td className="text-center tabnum px-2">{g.pp}</td>
-                        <td className="text-center tabnum px-2">{g.p}</td>
-                        <td className="text-center tabnum font-bold px-2 bg-[rgba(0,122,255,0.03)]">{g.m}</td>
-                        <td className="text-center tabnum px-2">{g.g}</td>
-                        <td className="text-center tabnum px-2">{g.gg}</td>
-                        <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-1 border-l border-[var(--separator)]">{g.a1}</td>
-                        <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-1">{g.a2}</td>
+                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.pp}</td>
+                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.p}</td>
+                        <td className={`text-center tabnum font-bold px-1 ${tEsp ? "bg-[rgba(255,159,10,0.04)]" : "bg-[rgba(0,122,255,0.03)]"}`}>{tEsp
+                          ? <input type="text" value={g.m} onChange={e => updGradEsp(i, "m", e.target.value)} className="w-14 text-center text-[13px] tabnum font-bold border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
+                          : g.m
+                        }</td>
+                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.g}</td>
+                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.gg}</td>
+                        <td className={`text-center tabnum text-[12px] px-1 border-l border-[var(--separator)] ${tEsp ? "" : "text-[var(--label-secondary)]"}`}>{tEsp
+                          ? <input type="text" value={g.a1} onChange={e => updGradEsp(i, "a1", e.target.value)} className="w-12 text-center text-[12px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
+                          : g.a1
+                        }</td>
+                        <td className={`text-center tabnum text-[12px] px-1 ${tEsp ? "" : "text-[var(--label-secondary)]"}`}>{tEsp
+                          ? <input type="text" value={g.a2} onChange={e => updGradEsp(i, "a2", e.target.value)} className="w-12 text-center text-[12px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
+                          : g.a2
+                        }</td>
                         <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{g.tol}</td>
                       </tr>
                     ))}</tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">Ampliação: diferença entre tamanhos (←M / M→)</p>
+                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? "PP, P, G, GG são calculados automaticamente a partir de M e das ampliações. As tabelas originais nos cadastros não são afetadas." : "Ampliação: diferença entre tamanhos (←M / M→)"}</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-5">
