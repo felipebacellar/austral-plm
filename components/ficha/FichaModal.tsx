@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { uploadImage } from "@/lib/storage";
+import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos } from "@/lib/db";
 import FichaPDF from "./FichaPDF";
 
@@ -61,6 +61,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   }, [row.ref, row.tab_medidas]);
 
   const hi = async (e: any, fd: string, s: (u: string) => void) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); } setUp(false); };
+  const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
+  const deleteImgModelo = async () => { if (imgModelo) await deleteImage(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
 
   const save = async () => {
     setSaving(true);
@@ -128,8 +130,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div className="border-t border-[var(--separator)]" />
             <div className="grid grid-cols-3">{([["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria], ["Subcategoria", row.subcategoria], ["Tipo", row.tipo]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}<div /></div>
           </div>
-          <div className="apple-card bg-[var(--bg-secondary)] cursor-pointer hover:border-[var(--system-blue)]" onClick={() => fr.current?.click()}>
+          <div className="apple-card bg-[var(--bg-secondary)] cursor-pointer hover:border-[var(--system-blue)] relative" onClick={() => fr.current?.click()}>
             <div className="aspect-[16/9] max-h-[380px] flex items-center justify-center">{img ? <img src={img} alt="Desenho" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Desenho técnico</p></div>}</div>
+            {img && <button onClick={e => { e.stopPropagation(); deleteImg(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
           </div>
           <input ref={fr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_url", setImg)} />
 
@@ -198,7 +201,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             )}
             <div className="grid grid-cols-2 gap-5">
               <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
-              <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden" onClick={() => mrr.current?.click()}>{imgModelo ? <img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}</div><input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} /></div>
+              <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div><div className="relative"><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden" onClick={() => mrr.current?.click()}>{imgModelo ? <img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}</div>{imgModelo && <button onClick={e => { e.stopPropagation(); deleteImgModelo(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</div><input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} /></div>
             </div>
             <div className="space-y-3">{([1, 2, 3] as const).map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k] || { texto: "", video: "" }; return (<div key={n} className="apple-card p-4"><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Anotações — Prova {n}</div><textarea value={a.texto} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, texto: e.target.value } }))} placeholder="Anotações..." className="apple-input w-full resize-none h-14 mb-2" /><div className="flex items-center gap-2"><span className="text-[11px] text-[var(--label-tertiary)]">Vídeo:</span><input type="text" value={a.video} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, video: e.target.value } }))} placeholder="https://..." className="apple-input flex-1 text-[12px]" /></div></div>); })}</div>
           </>)}
