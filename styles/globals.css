@@ -234,8 +234,22 @@ input:focus, select:focus, textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
-/* ═══ Print ═══ */
+/* ═══ Print — PDF Export ═══ */
 @media print {
-  .no-print { display: none !important; }
+  body { background: white !important; }
+  .no-print, .seg-control, .apple-btn-primary, .apple-btn-secondary,
+  nav, header, [class*="seg-"], button { display: none !important; }
   .apple-card { box-shadow: none; border: 0.5px solid #ddd; }
+
+  .print-overlay { position: static !important; background: none !important; backdrop-filter: none !important; padding: 0 !important; overflow: visible !important; }
+  .print-modal { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; width: 100% !important; }
+  .print-hide { display: none !important; }
+
+  .print-ficha { display: block !important; }
+  .print-page { page-break-inside: avoid; margin-bottom: 0; }
+
+  @page {
+    size: A4;
+    margin: 12mm 10mm;
+  }
 }

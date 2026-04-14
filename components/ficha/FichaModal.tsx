@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { uploadImage } from "@/lib/storage";
 import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchCadastros, fetchAviamentos } from "@/lib/db";
+import FichaPDF from "./FichaPDF";
 
 type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
 
@@ -12,6 +13,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [up, setUp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fichaId, setFichaId] = useState<number | null>(null);
+  const [showPrint, setShowPrint] = useState(false);
   const fr = useRef<HTMLInputElement>(null);
   const mrr = useRef<HTMLInputElement>(null);
 
@@ -23,64 +25,46 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [asq, setAsq] = useState("");
   const [corOpts, setCorOpts] = useState<string[]>([]);
   const [avCad, setAvCad] = useState<any[]>([]);
+  const [estamparia, setEstamparia] = useState<any>({ tecnicas: [] });
 
-  // Liberação
   const [pts, setPts] = useState<any[]>([]);
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
 
-  // Load ficha + cadastros from DB
   useEffect(() => {
     (async () => {
-      const [ficha, cadastros, aviCad] = await Promise.all([
-        fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(),
-      ]);
+      const [ficha, cadastros, aviCad] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos()]);
       setCorOpts(cadastros.cor || []);
       setAvCad(aviCad);
-
       if (ficha) {
-        setFichaId(ficha.id);
-        setImg(ficha.imagem_url);
-        setImgModelo(ficha.imagem_modelo);
-        setTec(ficha.tecidos || []);
-        setAvi(ficha.aviamentos || []);
+        setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
+        setTec(ficha.tecidos || []); setAvi(ficha.aviamentos || []);
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
         if (ficha.anotacoes) setAn(prev => ({ ...prev, ...ficha.anotacoes }));
+        if (ficha.estamparia) setEstamparia(ficha.estamparia);
       }
-
-      // Load pontos for liberação
       if (row.tab_medidas) {
         const p = await fetchPontosByTabelaNome(row.tab_medidas);
         setPts(p);
-        // Init provas for new points
-        if (!ficha?.provas) {
-          const init: any = {};
-          p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; });
-          setPv(init);
-        }
+        if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
     })();
   }, [row.ref, row.tab_medidas]);
 
-  const hi = async (e: any, fd: string, s: (u: string) => void) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setUp(true);
-    const url = await uploadImage(file, `${row.ref}/${fd}`);
-    if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); }
-    setUp(false);
-  };
+  const hi = async (e: any, fd: string, s: (u: string) => void) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); } setUp(false); };
 
   const save = async () => {
     setSaving(true);
     const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
-    // Update parent with ficha data for variantes
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
     setSaving(false);
   };
+
+  const exportPDF = () => { setShowPrint(true); setTimeout(() => { window.print(); setTimeout(() => setShowPrint(false), 500); }, 200); };
 
   const avT = avi.reduce((s: number, a: any) => s + (a.valor * a.qtd), 0);
   const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 4) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
@@ -91,18 +75,32 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
   const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return Math.abs(d) > 1 ? "text-[var(--system-red)] font-semibold" : d === 0 ? "text-[var(--system-green)]" : "text-[var(--system-orange)]"; };
   const tm = row.tab_medidas || "";
+  const hasEstamparia = (estamparia?.tecnicas || []).length > 0;
+
+  // Print mode — render only the PDF component
+  if (showPrint) {
+    return (
+      <div className="print-overlay">
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} />
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
       <div className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[var(--separator)]">
           <div className="seg-control">
-            {([["ficha", "Ficha técnica"], ["estamparia", "Estamparia"], ["liberacao", "Liberação"]] as const).map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id)} className={`seg-btn ${tab === id ? "active" : ""}`}>{l}</button>
+            {([["ficha", "Ficha técnica"], ...(hasEstamparia ? [["estamparia", "Estamparia"]] : []), ["liberacao", "Liberação"]] as [string, string][]).map(([id, l]) => (
+              <button key={id} onClick={() => setTab(id as any)} className={`seg-btn ${tab === id ? "active" : ""}`}>{l}</button>
             ))}
           </div>
           <div className="flex gap-2.5 items-center">
             {(up || saving) && <span className="text-[12px] text-[var(--system-blue)] animate-pulse font-medium">{saving ? "Salvando..." : "Enviando..."}</span>}
+            <button onClick={exportPDF} className="text-[13px] font-medium text-[var(--system-blue)] hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+              <svg className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar PDF
+            </button>
             <button onClick={save} className="apple-btn-primary">Salvar</button>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -149,18 +147,15 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {tab === "liberacao" && (<div className="px-6 py-6 space-y-5">
           <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
           <div className="apple-card"><div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
-
-          {!tm ? <div className="apple-card p-16 text-center"><p className="text-[16px] font-medium text-[var(--label-secondary)] mb-1">Nenhuma tabela selecionada</p><p className="text-[13px] text-[var(--label-tertiary)]">Selecione em "Tab. medidas" na tabela de desenvolvimento</p></div> : (<>
+          {!tm ? <div className="apple-card p-16 text-center"><p className="text-[16px] font-medium text-[var(--label-secondary)]">Nenhuma tabela selecionada</p></div> : (<>
             <div className="apple-card overflow-x-auto"><table className="plm-table"><thead>
               <tr><th colSpan={3} className="border-b-0" /><th colSpan={2} className="text-center !text-[var(--system-blue)] border-b border-blue-100 !bg-[rgba(0,122,255,0.04)] py-1.5">Prova 1</th><th colSpan={2} className="text-center border-b py-1.5">Prova 2</th><th colSpan={2} className="text-center border-b py-1.5">Prova 3</th><th className="border-b-0" /></tr>
               <tr><th className="text-center w-12">Cód</th><th>Descrição</th><th className="text-center w-16">Tabela</th><th className="text-center w-16 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Med.</th><th className="text-center w-14 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-24">Tol.</th></tr>
             </thead><tbody>{pts.map((p: any) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (<tr key={p.cod}><td className="text-center font-bold text-[var(--label-secondary)] px-3">{p.cod}</td><td className="font-medium px-3">{p.desc}</td><td className="text-center tabnum font-semibold px-2">{p.tabela}</td>{(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}<td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{p.tol}</td></tr>); })}</tbody></table></div>
-
             <div className="grid grid-cols-2 gap-5">
-              <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela de medidas</p></div></div></div>
+              <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
               <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden" onClick={() => mrr.current?.click()}>{imgModelo ? <img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}</div><input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} /></div>
             </div>
-
             <div className="space-y-3">{([1, 2, 3] as const).map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k] || { texto: "", video: "" }; return (<div key={n} className="apple-card p-4"><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Anotações — Prova {n}</div><textarea value={a.texto} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, texto: e.target.value } }))} placeholder="Anotações..." className="apple-input w-full resize-none h-14 mb-2" /><div className="flex items-center gap-2"><span className="text-[11px] text-[var(--label-tertiary)]">Vídeo:</span><input type="text" value={a.video} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, video: e.target.value } }))} placeholder="https://..." className="apple-input flex-1 text-[12px]" /></div></div>); })}</div>
           </>)}
         </div>)}
