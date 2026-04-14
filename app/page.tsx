@@ -6,6 +6,7 @@ import VariantesTable from "@/components/dev/VariantesTable";
 import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
+import { SAMPLE_ROWS_INIT } from "@/lib/sample-data";
 
 const TABS = [
   { id: "dev", label: "Desenvolvimento" },
@@ -13,12 +14,18 @@ const TABS = [
   { id: "cad", label: "Cadastros" },
   { id: "medidas", label: "Tab. medidas" },
 ] as const;
-
 type Tab = (typeof TABS)[number]["id"];
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("dev");
+  const [rows, setRows] = useState<any[]>(SAMPLE_ROWS_INIT);
   const [fichaRow, setFichaRow] = useState<any>(null);
+
+  // When ficha is saved, update the row in global state
+  const handleFichaSave = (updatedRow: any) => {
+    setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
+    setFichaRow(updatedRow); // keep modal open with fresh data
+  };
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
@@ -28,27 +35,20 @@ export default function Home() {
           <span className="text-sm text-gray-400 tracking-widest uppercase">PLM</span>
         </div>
         <div className="ml-auto inline-flex gap-0.5 bg-gray-100 rounded-xl p-[3px]">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
-                tab === t.id
-                  ? "font-semibold bg-white text-gray-900 shadow-sm"
-                  : "font-normal text-gray-500 hover:text-gray-700"
-              }`}
-            >
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              className={`px-4 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${tab===t.id?"font-semibold bg-white text-gray-900 shadow-sm":"font-normal text-gray-500 hover:text-gray-700"}`}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      {tab === "dev" && <DevTable onOpenFicha={setFichaRow} />}
-      {tab === "variantes" && <VariantesTable onOpenFicha={setFichaRow} />}
+      {tab === "dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} />}
+      {tab === "variantes" && <VariantesTable rows={rows} onOpenFicha={setFichaRow} />}
       {tab === "cad" && <CadView />}
       {tab === "medidas" && <MedidasView />}
-      {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} />}
+      {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} onSave={handleFichaSave} />}
     </div>
   );
 }

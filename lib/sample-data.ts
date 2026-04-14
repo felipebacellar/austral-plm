@@ -1,56 +1,30 @@
 export const SAMPLE_CAD: Record<string, any> = {
-  grupo: ["BERMUDA","CALCA","CAMISA","CAMISETA","CASACO","JAQUETA","OVERSHIRT","POLO"],
-  subgrupo: ["JOGGER","JOGGER CARGO","CÓS FIXO CHINO","CÓS FIXO FIVE POCKETS","SHORTS JOGGER","BERMUDA JOGGER","BOARDSHORTS","SWIMSHORTS","S/BOLSO MANGA LONGA","S/BOLSO MANGA CURTA","C/BOLSO MANGA LONGA","C/BOLSO MANGA CURTA","CUBANA MANGA CURTA","CUBANA MANGA LONGA","GOLA CARECA MC BASICA","GOLA CARECA MC DIFERENCIADA","GOLA CARECA ML DIFERENCIADA","HENLEY DIFERENCIADA MC","MOLETOM CANGURU","OVERSHIRT","POLO MANGA CURTA","POLO MANGA LONGA"],
-  categoria: ["FLANELA","VELUDO","LINHO","MALHA","NYLON","TRICOLINE","FLEECE","MOLETOM","PLANO","SARJA","DENIM","LYOCELL","VISCOSE"],
-  subcategoria: ["LISO","XADREZ","ESTAMPADO","SILK FRENTE","SILK PEITO","SILK COSTAS","LISTRADO","BLACK DENIM"],
-  linha: ["CASUAL","EARTH","GRAPHIC","OUTDOOR","CONCEPT","DOWNWIND","BLACK"],
-  grade: ["XPP-GG","PP-GG","38-46","ÚNICO"],
-  operacao: ["INTERNO","TERCEIRIZADO","SEMI-TERCEIRIZADO"],
-  tipo: ["COR FIRME","REATIVO","ESTONADO","MARMORIZADO","PURGA"],
-  fornecedor: ["CH GARMENT","CONVÉS","COR A COR","DOPIO SENSO","DSK","EC","GNG","GRADUAL","HC BRASIL","JHR","JUMA","K2","LAC TÊXTIL","LEO HOLANDA","LETOCHE","MUTUAL","PL","RIZZATTI","SEEDER","VAPE","VILLA TEXTIL"],
-  drop: ["0","1","2","3"],
-  colecao: ["VERÃO 27","CLÁSSICOS","INVERNO 26","GAIA","COPA 26","BAMBA","XP INC."],
-  status: ["DESENVOLVIMENTO","MOSTRUÁRIO LIBERADO","PRODUÇÃO LIBERADA","CANCELADO"],
-  piloto_most: ["PILOTO","MOSTRUÁRIO DIRETO"],
-  estilista: ["THABATA","LIVIA","FELIPE","CAMILA"],
-  cor: [
-    {cod:"C01",nome:"BRANCO"},{cod:"C02",nome:"PRETO"},{cod:"C03",nome:"OFF WHITE"},
-    {cod:"C04",nome:"NATURAL"},{cod:"C05",nome:"BEGE"},{cod:"C06",nome:"AZUL CLARO"},
-    {cod:"C07",nome:"AZUL ESCURO"},{cod:"C08",nome:"CINZA CLARO"},{cod:"C09",nome:"CINZA ESCURO"},
-    {cod:"C10",nome:"VERDE"},{cod:"C11",nome:"MARROM"},{cod:"C13",nome:"CORAL"},
-    {cod:"C14",nome:"VD CLARO"},{cod:"C17",nome:"AMARELO"},{cod:"C20",nome:"AREIA"},{cod:"C25",nome:"KHAKI"},
-  ],
-  aviamento: [
-    {cod:"ET0050",nome:"ETIQUETA DE MARCA GRANDE",preco:0.70},
-    {cod:"ET0045",nome:"ETIQUETA DE MARCA MÉDIA",preco:0.35},
-    {cod:"ET0042",nome:"ETIQUETA DE MARCA PALITO",preco:0.19},
-    {cod:"ET0049",nome:"ETIQUETA DE MARCA PEQUENA",preco:0.19},
-    {cod:"ET0047",nome:"ETIQUETA MARCA RETANGULAR",preco:0},
-    {cod:"ET0046",nome:"ETIQUETA BANDEIRA",preco:0.28},
-    {cod:"ET0051",nome:"ETIQUETA TAMANHO XPP",preco:0.12},
-    {cod:"ET0052",nome:"ETIQUETA TAMANHO PP",preco:0.12},
-    {cod:"ET0053",nome:"ETIQUETA TAMANHO P",preco:0.12},
-    {cod:"ET0054",nome:"ETIQUETA TAMANHO M",preco:0.12},
-    {cod:"ET0055",nome:"ETIQUETA TAMANHO G",preco:0.12},
-    {cod:"ET0056",nome:"ETIQUETA TAMANHO GG",preco:0.12},
-    {cod:"ET0082",nome:"ETIQUETA MARCA LOGO PINGUIM",preco:0.70},
-    {cod:"AD0001",nome:"ADESIVO DE CÓDIGO DE BARRAS",preco:0.10},
-    {cod:"TA0003",nome:"TAG CASUAL",preco:0.50},
-    {cod:"TA0004",nome:"TAG EARTH",preco:0.50},
-    {cod:"TA0005",nome:"TAG GRAPHIC",preco:0.50},
-    {cod:"IL17CA01",nome:"ILHÓS PERSONALIZADO",preco:0.20},
-    {cod:"ZP.00.24P",nome:"ZIPER INTEIRO TRATOR DESTACÁVEL P",preco:0},
-    {cod:"ZP.00.25M",nome:"ZIPER INTEIRO TRATOR DESTACÁVEL M",preco:0},
-  ],
-  tecido: [
-    {nome:"MOLETOM COPAT",forn:"COPAT",comp:"80% CO, 20% PES",preco:""},
-    {nome:"ETBQP - QUÊNIA",forn:"HUDTELFA",comp:"98% CO, 2% PUE",preco:"14.90"},
-    {nome:"LINHO PIENZA ECO",forn:"MN",comp:"100% LI",preco:""},
-    {nome:"GAZE FLAMÊ K2",forn:"K2",comp:"100% CO",preco:""},
-    {nome:"MALHA 30/01",forn:"STICLE",comp:"100% CO",preco:""},
-    {nome:"TABHAE1054 - SPINNING PLUS",forn:"VICUNHA",comp:"98% CO, 2% PUE",preco:""},
-    {nome:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn:"CANATIBA",comp:"",preco:""},
-  ],
+  grupo:["BERMUDA","CALCA","CAMISA","CAMISETA","CASACO","JAQUETA","OVERSHIRT","POLO"],
+  subgrupo:["JOGGER","JOGGER CARGO","CÓS FIXO CHINO","CÓS FIXO FIVE POCKETS","SHORTS JOGGER","BERMUDA JOGGER","BOARDSHORTS","SWIMSHORTS","S/BOLSO MANGA LONGA","S/BOLSO MANGA CURTA","C/BOLSO MANGA LONGA","CUBANA MANGA CURTA","GOLA CARECA MC BASICA","GOLA CARECA MC DIFERENCIADA","MOLETOM CANGURU","OVERSHIRT","POLO MANGA CURTA","POLO MANGA LONGA"],
+  categoria:["FLANELA","VELUDO","LINHO","MALHA","NYLON","TRICOLINE","FLEECE","MOLETOM","PLANO","SARJA","DENIM","LYOCELL","VISCOSE"],
+  subcategoria:["LISO","XADREZ","ESTAMPADO","SILK FRENTE","SILK PEITO","SILK COSTAS","LISTRADO","BLACK DENIM"],
+  linha:["CASUAL","EARTH","GRAPHIC","OUTDOOR","CONCEPT","DOWNWIND","BLACK"],
+  grade:["XPP-GG","PP-GG","38-46","ÚNICO"],
+  operacao:["INTERNO","TERCEIRIZADO","SEMI-TERCEIRIZADO"],
+  tipo:["COR FIRME","REATIVO","ESTONADO","MARMORIZADO","PURGA"],
+  fornecedor:["CH GARMENT","CONVÉS","COR A COR","DOPIO SENSO","DSK","EC","GNG","GRADUAL","HC BRASIL","JHR","JUMA","K2","LAC TÊXTIL","LEO HOLANDA","LETOCHE","MUTUAL","PL","RIZZATTI","SEEDER","VAPE","VILLA TEXTIL"],
+  drop:["0","1","2","3"],
+  colecao:["VERÃO 27","CLÁSSICOS","INVERNO 26","GAIA","COPA 26","BAMBA","XP INC."],
+  status:["DESENVOLVIMENTO","MOSTRUÁRIO LIBERADO","PRODUÇÃO LIBERADA","CANCELADO"],
+  piloto_most:["PILOTO","MOSTRUÁRIO DIRETO"],
+  estilista:["THABATA","LIVIA","FELIPE","CAMILA"],
+  tab_medidas:["CALÇA JOGGER","CALÇA JOGGER CARGO","CALÇA CÓS FIXO CHINO","CALÇA SLIM","SHORTS JOGGER","BERMUDA JOGGER","BERMUDA CÓS FIXO CHINO","SWIMSHORTS","BOARDSHORTS","CAMISA PLANO BÁSICA ML","CAMISA PLANO COMFORT ML","CAMISA MALHA MANGA CURTA","CAMISETA SLIM MC","CAMISETA REGULAR MC","CAMISETA OVERSIZED MC","CAMISETA COMFORT MC","CAMISETA REGULAR ML","CASACO MOLETOM CAPUZ","CASACO GOLA ZIPER INTEIRO","OVERSHIRT","POLO REGULAR MC","POLO SLIM MC","POLO REGULAR ML","JAQUETA WINDBREAKER"],
+  cor:[{cod:"C01",nome:"BRANCO"},{cod:"C02",nome:"PRETO"},{cod:"C03",nome:"OFF WHITE"},{cod:"C04",nome:"NATURAL"},{cod:"C05",nome:"BEGE"},{cod:"C06",nome:"AZUL CLARO"},{cod:"C07",nome:"AZUL ESCURO"},{cod:"C08",nome:"CINZA CLARO"},{cod:"C09",nome:"CINZA ESCURO"},{cod:"C10",nome:"VERDE"},{cod:"C11",nome:"MARROM"},{cod:"C13",nome:"CORAL"},{cod:"C14",nome:"VD CLARO"},{cod:"C17",nome:"AMARELO"},{cod:"C20",nome:"AREIA"},{cod:"C25",nome:"KHAKI"}],
+  aviamento:[{cod:"ET0050",nome:"ETIQUETA DE MARCA GRANDE",preco:0.70},{cod:"ET0045",nome:"ETIQUETA DE MARCA MÉDIA",preco:0.35},{cod:"ET0042",nome:"ETIQUETA DE MARCA PALITO",preco:0.19},{cod:"ET0049",nome:"ETIQUETA DE MARCA PEQUENA",preco:0.19},{cod:"ET0046",nome:"ETIQUETA BANDEIRA",preco:0.28},{cod:"ET0052",nome:"ETIQUETA TAMANHO PP",preco:0.12},{cod:"ET0053",nome:"ETIQUETA TAMANHO P",preco:0.12},{cod:"ET0054",nome:"ETIQUETA TAMANHO M",preco:0.12},{cod:"ET0055",nome:"ETIQUETA TAMANHO G",preco:0.12},{cod:"ET0056",nome:"ETIQUETA TAMANHO GG",preco:0.12},{cod:"ET0082",nome:"ETIQUETA MARCA LOGO PINGUIM",preco:0.70},{cod:"AD0001",nome:"ADESIVO DE CÓDIGO DE BARRAS",preco:0.10},{cod:"TA0003",nome:"TAG CASUAL",preco:0.50},{cod:"IL17CA01",nome:"ILHÓS PERSONALIZADO",preco:0.20}],
+  tecido:[{nome:"MOLETOM COPAT",forn:"COPAT",comp:"80% CO, 20% PES",preco:""},{nome:"ETBQP - QUÊNIA",forn:"HUDTELFA",comp:"98% CO, 2% PUE",preco:"14.90"},{nome:"LINHO PIENZA ECO",forn:"MN",comp:"100% LI",preco:""},{nome:"GAZE FLAMÊ K2",forn:"K2",comp:"100% CO",preco:""},{nome:"MALHA 30/01",forn:"STICLE",comp:"100% CO",preco:""},{nome:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn:"CANATIBA",comp:"",preco:""}],
+};
+
+// Pontos de medida por tabela (para a ficha de liberação)
+export const TABELA_PONTOS: Record<string, any[]> = {
+  "CALÇA JOGGER":[{cod:"A",desc:"CINTURA",tabela:"43",tol:"1,0 + OU -"},{cod:"B",desc:"QUADRIL",tabela:"54",tol:"1,0 + OU -"},{cod:"C",desc:"COXA",tabela:"32",tol:"1,0 + OU -"},{cod:"D",desc:"JOELHO A 31CM DO GANCHO",tabela:"23",tol:"0,5 + OU -"},{cod:"E",desc:"BARRA",tabela:"18",tol:"0,5 + OU -"},{cod:"F",desc:"GANCHO DIANTEIRO COM CÓS",tabela:"30",tol:"0,5 + OU -"},{cod:"G",desc:"GANCHO TRASEIRO COM CÓS",tabela:"40",tol:"0,5 + OU -"},{cod:"H",desc:"ENTREPERNAS",tabela:"80",tol:"1,0 + OU -"}],
+  "CAMISETA SLIM MC":[{cod:"A",desc:"TORAX",tabela:"52",tol:"1,0 + OU -"},{cod:"B",desc:"OMBRO A OMBRO",tabela:"45",tol:"1,0 + OU -"},{cod:"C",desc:"CAVA RETA",tabela:"23",tol:"1,0 + OU -"},{cod:"D",desc:"COMP. MANGA",tabela:"21",tol:"0,5 + OU -"},{cod:"E",desc:"ABERTURA MANGA",tabela:"18",tol:"1,0 + OU -"},{cod:"F",desc:"ABERTURA DECOTE",tabela:"15",tol:"0,5 + OU -"},{cod:"G",desc:"PROF. DECOTE FRENTE",tabela:"10",tol:"0,5 + OU -"},{cod:"H",desc:"PROF. DECOTE COSTAS",tabela:"2",tol:"0,5 + OU -"},{cod:"J",desc:"COMP. TOTAL",tabela:"71",tol:"1,0 + OU -"},{cod:"K",desc:"BARRA",tabela:"52",tol:"1,0 + OU -"}],
+  "BERMUDA JOGGER":[{cod:"A",desc:"CINTURA",tabela:"43",tol:"1,0 + OU -"},{cod:"B",desc:"QUADRIL",tabela:"55",tol:"1,0 + OU -"},{cod:"C",desc:"COXA",tabela:"32",tol:"1,0 + OU -"},{cod:"D",desc:"BARRA",tabela:"29",tol:"0,5 + OU -"},{cod:"E",desc:"GANCHO DIANT. C/ CÓS",tabela:"30",tol:"0,5 + OU -"},{cod:"F",desc:"GANCHO TRAS. C/ CÓS",tabela:"40",tol:"0,5 + OU -"},{cod:"G",desc:"COMP. LATERAL",tabela:"47",tol:"0,5 + OU -"}],
+  "SHORTS JOGGER":[{cod:"A",desc:"CINTURA",tabela:"43",tol:"1,0 + OU -"},{cod:"B",desc:"QUADRIL",tabela:"55",tol:"1,0 + OU -"},{cod:"C",desc:"COXA",tabela:"32",tol:"1,0 + OU -"},{cod:"D",desc:"BARRA",tabela:"29",tol:"0,5 + OU -"},{cod:"E",desc:"GANCHO DIANT. C/ CÓS",tabela:"30",tol:"0,5 + OU -"},{cod:"F",desc:"GANCHO TRAS. C/ CÓS",tabela:"40",tol:"0,5 + OU -"},{cod:"G",desc:"COMP. LATERAL",tabela:"47",tol:"0,5 + OU -"}],
 };
 
 export function getVariantes(rows: any[]): Record<string, string[]> {
@@ -67,9 +41,9 @@ export function getVariantes(rows: any[]): Record<string, string[]> {
   return result;
 }
 
-export const SAMPLE_ROWS = [
-  {id:1,ref:"21.01.00.43",desc:"CALÇA MOLETOM JOGGER BASIC",tecido:"MOLETOM COPAT",forn_tecido:"COPAT",status:"MOSTRUÁRIO LIBERADO",piloto_most:"MOSTRUÁRIO DIRETO",colecao:"VERÃO 27",link_ficha:"",grupo:"CALCA",subgrupo:"JOGGER",operacao:"SEMI-TERCEIRIZADO",fornecedor:"COR A COR",grade:"PP-GG",categoria:"MOLETOM",subcategoria:"LISO",lavagem:"COR FIRME",base2:"CALÇA JOGGER",tipo:"COR FIRME",linha:"CASUAL",drop:"2",estilista:"THABATA",ficha:{tabelaMedidas:"CALÇA JOGGER",ncm:"",observacoes:"",obsFechamento:"",tecidos:[{artigo:"MOLETOM COPAT",forn:"COPAT",preco:0,codigo:"",localizacao:"",cores:["C02 - PRETO","C09 - CINZA ESCURO","C07 - AZUL ESCURO"]}],aviamentos:[{item:"ADESIVO DE CÓDIGO DE BARRAS",cod:"AD0001",qtd:1,valor:0.10,local:"COLADO NO VERSO DO TAG",var01:"BRANCO"},{item:"TAG CASUAL",cod:"TA0003",qtd:1,valor:0.50,local:"APLICADO COM LACRE PRETO NA ETIQUETA INTERNA",var01:"BRANCO"},{item:"ETIQUETA DE MARCA MÉDIA",cod:"ET0045",qtd:1,valor:0.35,local:"COSTURADO NAS LATERAIS",var01:"CRU"},{item:"ETIQUETA TAMANHO PP",cod:"ET0052",qtd:1,valor:0.12,local:"NA LATERAL DA ET. DE MARCA PALITO",var01:"CRU"},{item:"ETIQUETA MARCA LOGO PINGUIM",cod:"ET0082",qtd:1,valor:0.70,local:"BOLSO COSTAS, A 1CM DA LATERAL",var01:"CRU"},{item:"ILHÓS PERSONALIZADO",cod:"IL17CA01",qtd:2,valor:0.20,local:"CENTRALIZADO NO CÓS COM 8CM DE DISTÂNCIA",var01:"C09 - CINZA ESCURO"}],pilotagem:[{num:"Piloto 1",lacre:"",envio:"",receb:"",prova:"",status:"Aguardando"},{num:"Piloto 2",lacre:"",envio:"",receb:"",prova:"",status:""},{num:"Piloto 3",lacre:"",envio:"",receb:"",prova:"",status:""}],qtdMostruario:{"C02 - PRETO":1,"C09 - CINZA ESCURO":7,"C07 - AZUL ESCURO":1},estamparia:{tecnica:"SILK ZERO TOQUE",observacoes:"",tecnicas:[{num:"1",tecnica:"SILK ZERO TOQUE"}]}}},
-  {id:2,ref:"21.02.00.06",desc:"SHORTS JOGGER ANGRA",tecido:"ETBQP - QUÊNIA",forn_tecido:"HUDTELFA",status:"MOSTRUÁRIO LIBERADO",piloto_most:"PILOTO",colecao:"VERÃO 27",link_ficha:"",grupo:"BERMUDA",subgrupo:"SHORTS JOGGER",operacao:"TERCEIRIZADO",fornecedor:"CONVÉS",grade:"PP-GG",categoria:"SARJA",subcategoria:"LISO",lavagem:"ESTONADO",base2:"SHORTS JOGGER",tipo:"ESTONADO",linha:"CASUAL",drop:"2",estilista:"LIVIA",ficha:{tecidos:[{artigo:"ETBQP - QUÊNIA",forn:"HUDTELFA",preco:14.90,codigo:"",localizacao:"",cores:["C10 - VERDE","C25 - KHAKI","C06 - AZUL CLARO"]}],aviamentos:[],pilotagem:[],observacoes:"",estamparia:{tecnicas:[]}}},
-  {id:3,ref:"11.03.01.01",desc:"CAMISA LINHO BELIZE MANGA LONGA",tecido:"LINHO PIENZA ECO",forn_tecido:"MN",status:"MOSTRUÁRIO LIBERADO",piloto_most:"MOSTRUÁRIO DIRETO",colecao:"CLÁSSICOS",link_ficha:"",grupo:"CAMISA",subgrupo:"S/BOLSO MANGA LONGA",operacao:"TERCEIRIZADO",fornecedor:"DSK",grade:"PP-GG",categoria:"LINHO",subcategoria:"LISO",lavagem:"COR FIRME",base2:"CAMISA MANGA LONGA SLIM",tipo:"COR FIRME",linha:"CASUAL",drop:"2",estilista:"LIVIA",ficha:{tecidos:[{artigo:"LINHO PIENZA ECO",forn:"MN",preco:0,codigo:"",localizacao:"",cores:["C06 - AZUL CLARO","C01 - BRANCO","C04 - NATURAL"]}],aviamentos:[],pilotagem:[],observacoes:"",estamparia:{tecnicas:[]}}},
-  {id:4,ref:"21.02.00.07",desc:"BERMUDA JOGGER ENSEADA",tecido:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn_tecido:"CANATIBA",status:"MOSTRUÁRIO LIBERADO",piloto_most:"PILOTO",colecao:"VERÃO 27",link_ficha:"",grupo:"BERMUDA",subgrupo:"BERMUDA JOGGER",operacao:"TERCEIRIZADO",fornecedor:"VAPE",grade:"PP-GG",categoria:"SARJA",subcategoria:"LISO",lavagem:"ESTONADO",base2:"BERMUDA JOGGER",tipo:"ESTONADO",linha:"CASUAL",drop:"1",estilista:"LIVIA",ficha:{tecidos:[{artigo:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn:"CANATIBA",preco:0,codigo:"",localizacao:"",cores:["C25 - KHAKI","C11 - MARROM","C20 - AREIA"]}],aviamentos:[],pilotagem:[],observacoes:"",estamparia:{tecnicas:[]}}},
+export const SAMPLE_ROWS_INIT = [
+  {id:1,ref:"21.01.00.43",desc:"CALÇA MOLETOM JOGGER BASIC",tecido:"MOLETOM COPAT",forn_tecido:"COPAT",status:"MOSTRUÁRIO LIBERADO",piloto_most:"MOSTRUÁRIO DIRETO",colecao:"VERÃO 27",link_ficha:"",grupo:"CALCA",subgrupo:"JOGGER",operacao:"SEMI-TERCEIRIZADO",fornecedor:"COR A COR",grade:"PP-GG",categoria:"MOLETOM",subcategoria:"LISO",lavagem:"COR FIRME",tab_medidas:"CALÇA JOGGER",tipo:"COR FIRME",linha:"CASUAL",drop:"2",estilista:"THABATA",ficha:{tabelaMedidas:"CALÇA JOGGER",ncm:"",observacoes:"",obsFechamento:"",tecidos:[{artigo:"MOLETOM COPAT",forn:"COPAT",preco:0,codigo:"",localizacao:"",cores:["C02 - PRETO","C09 - CINZA ESCURO","C07 - AZUL ESCURO"]}],aviamentos:[{item:"ADESIVO DE CÓDIGO DE BARRAS",cod:"AD0001",qtd:1,valor:0.10,local:"COLADO NO VERSO DO TAG",var01:"BRANCO"},{item:"TAG CASUAL",cod:"TA0003",qtd:1,valor:0.50,local:"APLICADO COM LACRE PRETO",var01:"BRANCO"},{item:"ETIQUETA DE MARCA MÉDIA",cod:"ET0045",qtd:1,valor:0.35,local:"COSTURADO NAS LATERAIS",var01:"CRU"},{item:"ETIQUETA MARCA LOGO PINGUIM",cod:"ET0082",qtd:1,valor:0.70,local:"BOLSO COSTAS",var01:"CRU"},{item:"ILHÓS PERSONALIZADO",cod:"IL17CA01",qtd:2,valor:0.20,local:"CENTRALIZADO NO CÓS",var01:"C09 - CINZA ESCURO"}],pilotagem:[{num:"Piloto 1",lacre:"",envio:"",receb:"",prova:"",status:"Aguardando"},{num:"Piloto 2",lacre:"",envio:"",receb:"",prova:"",status:""},{num:"Piloto 3",lacre:"",envio:"",receb:"",prova:"",status:""}],estamparia:{tecnicas:[{num:"1",tecnica:"SILK ZERO TOQUE"}]}}},
+  {id:2,ref:"21.02.00.06",desc:"SHORTS JOGGER ANGRA",tecido:"ETBQP - QUÊNIA",forn_tecido:"HUDTELFA",status:"MOSTRUÁRIO LIBERADO",piloto_most:"PILOTO",colecao:"VERÃO 27",link_ficha:"",grupo:"BERMUDA",subgrupo:"SHORTS JOGGER",operacao:"TERCEIRIZADO",fornecedor:"CONVÉS",grade:"PP-GG",categoria:"SARJA",subcategoria:"LISO",lavagem:"ESTONADO",tab_medidas:"SHORTS JOGGER",tipo:"ESTONADO",linha:"CASUAL",drop:"2",estilista:"LIVIA",ficha:{tecidos:[{artigo:"ETBQP - QUÊNIA",forn:"HUDTELFA",preco:14.90,codigo:"",localizacao:"",cores:["C10 - VERDE","C25 - KHAKI","C06 - AZUL CLARO"]}],aviamentos:[],pilotagem:[],estamparia:{tecnicas:[]}}},
+  {id:3,ref:"11.03.01.01",desc:"CAMISA LINHO BELIZE ML",tecido:"LINHO PIENZA ECO",forn_tecido:"MN",status:"MOSTRUÁRIO LIBERADO",piloto_most:"MOSTRUÁRIO DIRETO",colecao:"CLÁSSICOS",link_ficha:"",grupo:"CAMISA",subgrupo:"S/BOLSO MANGA LONGA",operacao:"TERCEIRIZADO",fornecedor:"DSK",grade:"PP-GG",categoria:"LINHO",subcategoria:"LISO",lavagem:"COR FIRME",tab_medidas:"",tipo:"COR FIRME",linha:"CASUAL",drop:"2",estilista:"LIVIA",ficha:{tecidos:[{artigo:"LINHO PIENZA ECO",forn:"MN",preco:0,codigo:"",localizacao:"",cores:["C06 - AZUL CLARO","C01 - BRANCO","C04 - NATURAL"]}],aviamentos:[],pilotagem:[],estamparia:{tecnicas:[]}}},
+  {id:4,ref:"21.02.00.07",desc:"BERMUDA JOGGER ENSEADA",tecido:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn_tecido:"CANATIBA",status:"MOSTRUÁRIO LIBERADO",piloto_most:"PILOTO",colecao:"VERÃO 27",link_ficha:"",grupo:"BERMUDA",subgrupo:"BERMUDA JOGGER",operacao:"TERCEIRIZADO",fornecedor:"VAPE",grade:"PP-GG",categoria:"SARJA",subcategoria:"LISO",lavagem:"ESTONADO",tab_medidas:"BERMUDA JOGGER",tipo:"ESTONADO",linha:"CASUAL",drop:"1",estilista:"LIVIA",ficha:{tecidos:[{artigo:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn:"CANATIBA",preco:0,codigo:"",localizacao:"",cores:["C25 - KHAKI","C11 - MARROM","C20 - AREIA"]}],aviamentos:[],pilotagem:[],estamparia:{tecnicas:[]}}},
 ];
