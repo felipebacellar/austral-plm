@@ -22,7 +22,6 @@ const COLUMNS: ColDef[] = [
   { key: "grade",          label: "Grade",             width: 90,  type: "select", cad: "grade" },
   { key: "categoria",      label: "Categoria",         width: 130, type: "select", cad: "categoria" },
   { key: "subcategoria",   label: "Subcategoria",      width: 130, type: "select", cad: "subcategoria" },
-  { key: "lavagem",        label: "Lavagem",           width: 120, type: "text" },
   { key: "tab_medidas",    label: "Tab. medidas",      width: 200, type: "select", cad: "tab_medidas" },
   { key: "tipo",           label: "Tipo",              width: 130, type: "select", cad: "tipo" },
   { key: "linha",          label: "Linha",             width: 100, type: "select", cad: "linha" },

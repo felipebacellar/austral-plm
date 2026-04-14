@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
-import { fetchCadastros, fetchTecidos, fetchTabelasMedidas, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
+import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
 
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad);
@@ -17,13 +17,13 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
   // Load cadastros from DB
   useEffect(() => {
     (async () => {
-      const [cadastros, tecidos, tabMedidas] = await Promise.all([
-        fetchCadastros(), fetchTecidos(), fetchTabelasMedidas(),
+      const [cadastros, tecidos, tabNomes] = await Promise.all([
+        fetchCadastros(), fetchTecidos(), fetchTabelasComPontos(),
       ]);
       setCad({
         ...cadastros,
         tecido: tecidos.map((t: any) => t.nome),
-        tab_medidas: tabMedidas.map((t: any) => t.nome),
+        tab_medidas: tabNomes,
         _tecidoData: tecidos,
       });
     })();
@@ -32,7 +32,7 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
   const filtered = useMemo(() => {
     let r = rows;
     Object.entries(fl).forEach(([k,v]) => { if(v) r = r.filter((x:any) => x[k]===v); });
-    if(q) { const s=q.toLowerCase(); r = r.filter((x:any) => (x.ref+x.desc+x.tecido+x.fornecedor+x.forn_tecido+x.estilista+x.tab_medidas+x.lavagem).toLowerCase().includes(s)); }
+    if(q) { const s=q.toLowerCase(); r = r.filter((x:any) => (x.ref+x.desc+x.tecido+x.fornecedor+x.forn_tecido+x.estilista+x.tab_medidas).toLowerCase().includes(s)); }
     return r;
   }, [rows, fl, q]);
 

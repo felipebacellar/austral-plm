@@ -6,7 +6,6 @@ import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
 import { fetchProdutos } from "@/lib/db";
-import { SAMPLE_ROWS_INIT } from "@/lib/sample-data";
 
 const TABS = [
   { id: "dev", label: "Desenvolvimento" },
@@ -27,8 +26,7 @@ export default function Home() {
   const loadProdutos = async () => {
     setLoading(true);
     const data = await fetchProdutos();
-    // If DB is empty, use sample data as fallback
-    setRows(data.length > 0 ? data : SAMPLE_ROWS_INIT);
+    setRows(data);
     setLoading(false);
   };
 
