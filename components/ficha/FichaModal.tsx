@@ -82,10 +82,11 @@ export default function FichaModal({ row, onClose }: Props) {
             <div className="border border-t-0 border-gray-200 rounded-b-xl overflow-hidden mb-4">
               <div className="grid grid-cols-2 text-[13px]">
                 <F l="Referência" v={row.ref}/><F l="Descrição" v={row.desc}/>
+                <F l="Tecido" v={row.tecido}/><F l="Forn. tecido" v={row.forn_tecido}/>
                 <F l="Data" v={new Date().toLocaleDateString("pt-BR")}/><F l="Operação" v={row.operacao}/>
                 <F l="Estilista" v={row.estilista}/><F l="Fornecedor" v={row.fornecedor}/>
               </div>
-              <div className="grid grid-cols-3 text-[13px]"><F l="Drop" v={row.drop}/><F l="Grade" v={row.grade}/><div/></div>
+              <div className="grid grid-cols-4 text-[13px]"><F l="Drop" v={row.drop}/><F l="Grade" v={row.grade}/><F l="Lavagem" v={row.lavagem}/><F l="Base 2" v={row.base2}/></div>
               <div className="border-t border-gray-200"/>
               <div className="grid grid-cols-3 text-[13px]">
                 <F l="Grupo" v={row.grupo}/><F l="Subgrupo" v={row.subgrupo}/><F l="Linha" v={row.linha}/>
@@ -229,7 +230,7 @@ export default function FichaModal({ row, onClose }: Props) {
               <div className="text-[12px]"><span className="text-white/60">Coleção:</span> <span className="font-semibold">{row.colecao}</span></div>
             </div>
             <div className="border border-t-0 border-gray-200 rounded-b-xl overflow-hidden mb-4">
-              <div className="grid grid-cols-2 text-[13px]"><F l="Referência" v={row.ref}/><F l="Descrição" v={row.desc}/><F l="Operação" v={row.operacao}/><F l="Fornecedor" v={row.fornecedor}/><F l="Estilista" v={row.estilista}/><F l="Grade" v={row.grade}/></div>
+              <div className="grid grid-cols-2 text-[13px]"><F l="Referência" v={row.ref}/><F l="Descrição" v={row.desc}/><F l="Tecido" v={row.tecido}/><F l="Forn. tecido" v={row.forn_tecido}/><F l="Operação" v={row.operacao}/><F l="Fornecedor" v={row.fornecedor}/><F l="Estilista" v={row.estilista}/><F l="Grade" v={row.grade}/></div>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div><ImgUp image={imgFrente} inputRef={fileFRef} label="Frente" aspect="aspect-[4/3]" onChange={e=>handleImg(e,"imagem_estampa_frente",setImgFrente)}/><input ref={fileFRef} type="file" accept="image/*" className="hidden" onChange={e=>handleImg(e,"imagem_estampa_frente",setImgFrente)}/></div>
