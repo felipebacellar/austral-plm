@@ -101,7 +101,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   };
 
   const exportPDF = () => { setShowExportDlg(true); };
-  const doExport = () => { setShowExportDlg(false); setShowPrint(true); setTimeout(() => { window.print(); setTimeout(() => setShowPrint(false), 500); }, 200); };
+  const doExport = () => { setShowExportDlg(false); setShowPrint(true); document.body.classList.add("printing-pdf"); setTimeout(() => { window.print(); setTimeout(() => { setShowPrint(false); document.body.classList.remove("printing-pdf"); }, 500); }, 200); };
 
   const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
 
