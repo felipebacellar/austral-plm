@@ -11,20 +11,18 @@ type Props = {
   ncm?: string;
 };
 
-/* ── Apple-style color tokens ── */
-const C = {
-  black: "#1d1d1f",
-  secondary: "#86868b",
-  tertiary: "#aeaeb2",
-  separator: "#d2d2d7",
-  separatorLight: "#e8e8ed",
-  fill: "#f5f5f7",
-  blue: "#007AFF",
-  green: "#34C759",
-  orange: "#FF9F0A",
-  red: "#FF3B30",
-  white: "#fff",
-};
+/* ── Design tokens ── */
+const navy = "#0C1D2E";
+const accent = "#2563EB";
+const muted = "#64748B";
+const light = "#94A3B8";
+const line = "#E2E8F0";
+const lineDark = "#CBD5E1";
+const bg = "#F8FAFC";
+const success = "#059669";
+const warn = "#D97706";
+const danger = "#DC2626";
+const white = "#FFFFFF";
 
 export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm }: Props) {
   const sec = sections || { ficha: true, estamparia: true, liberacao: true };
@@ -35,106 +33,111 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
   const artes = estamparia?.artes || [];
   const tecnicas = estamparia?.tecnicas || [];
   const sims = estamparia?.simulacoes || {};
-  let isFirstPage = true;
-  const pb = (): React.CSSProperties => { if (isFirstPage) { isFirstPage = false; return {}; } return { pageBreakBefore: "always" }; };
+  let pageNum = 0;
+  const pb = (): React.CSSProperties => { pageNum++; return pageNum > 1 ? { pageBreakBefore: "always" } : {}; };
+
+  const PageHead = ({ title, sub }: { title: string; sub?: string }) => (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingBottom: "10px", borderBottom: `2px solid ${navy}`, marginBottom: "14px" }}>
+      <div>
+        <div style={{ fontSize: "7px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "2px" }}>Austral®</div>
+        <div style={{ fontSize: "18px", fontWeight: 800, color: navy, letterSpacing: "-0.03em", lineHeight: 1.1 }}>{title}</div>
+      </div>
+      <div style={{ textAlign: "right" }}>
+        <div style={{ fontSize: "8px", color: light, lineHeight: 1.5 }}>Coleção <strong style={{ color: navy }}>{row.colecao}</strong></div>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: navy, letterSpacing: "-0.01em" }}>{row.ref}</div>
+        {sub && <div style={{ fontSize: "7.5px", color: muted }}>{sub}</div>}
+      </div>
+    </div>
+  );
+
+  const Field = ({ label, value, mono }: { label: string; value: string; mono?: boolean }) => (
+    <div style={{ padding: "6px 0", borderBottom: `0.5px solid ${line}` }}>
+      <div style={{ fontSize: "6.5px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1px" }}>{label}</div>
+      <div style={{ fontSize: "9.5px", fontWeight: 600, color: navy, ...(mono ? { fontFamily: "monospace", letterSpacing: "0.02em" } : {}) }}>{value || "—"}</div>
+    </div>
+  );
+
+  const Badge = ({ text, color }: { text: string; color: string }) => (
+    <span style={{ display: "inline-block", fontSize: "7px", fontWeight: 700, color: white, background: color, padding: "2px 8px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>{text}</span>
+  );
 
   return (
-    <div className="print-ficha" style={{ fontFamily: "-apple-system, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: "9.5px", color: C.black, lineHeight: 1.5, WebkitFontSmoothing: "antialiased" }}>
+    <div className="print-ficha" style={{ fontFamily: "'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif", fontSize: "9px", color: navy, lineHeight: 1.5 }}>
 
-      {/* ════════════════════════════════════════════════════════════ */}
-      {/*  FICHA TÉCNICA                                             */}
-      {/* ════════════════════════════════════════════════════════════ */}
+      {/* ══════════ FICHA TÉCNICA ══════════ */}
       {sec.ficha && (<>
         <div className="print-page" style={pb()}>
-          {/* Masthead */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
-            <div>
-              <span style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em", color: C.black }}>Ficha Técnica</span>
-              <span style={{ fontSize: "11px", fontWeight: 500, color: C.secondary, marginLeft: "10px" }}>{row.ref}</span>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontSize: "9px", color: C.tertiary }}>Coleção</span>
-              <span style={{ fontSize: "10px", fontWeight: 600, color: C.black, marginLeft: "5px" }}>{row.colecao}</span>
-            </div>
-          </div>
-          <Hairline />
+          <PageHead title="Ficha Técnica" />
 
-          {/* Product info — 2-col grid */}
-          <div style={{ display: "flex", flexWrap: "wrap", margin: "10px 0" }}>
-            {([
-              ["Referência", row.ref], ["Descrição", row.desc],
-              ["Tecido", row.tecido], ["Forn. tecido", row.forn_tecido],
-              ["Composição", compOf(row.tecido)], ["Operação", row.operacao],
-              ["Fornecedor", row.fornecedor], ["Estilista", row.estilista],
-              ["Tab. medidas", row.tab_medidas], ["NCM", ncm || ""],
-            ] as [string, string][]).map(([l, v]) => (
-              <div key={l} style={{ width: "50%", padding: "3px 0", display: "flex" }}>
-                <span style={{ ...lbl, minWidth: "75px" }}>{l}</span>
-                <span style={{ fontSize: "9.5px", fontWeight: 600 }}>{v || "—"}</span>
-              </div>
-            ))}
+          {/* Grid de campos */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 20px", marginBottom: "14px" }}>
+            <Field label="Referência" value={row.ref} mono />
+            <Field label="Descrição" value={row.desc} />
+            <Field label="Coleção" value={row.colecao} />
+            <Field label="Tecido" value={row.tecido} />
+            <Field label="Fornecedor Tecido" value={row.forn_tecido} />
+            <Field label="Composição" value={compOf(row.tecido)} />
+            <Field label="Operação" value={row.operacao} />
+            <Field label="Fornecedor" value={row.fornecedor} />
+            <Field label="Estilista" value={row.estilista} />
+            <Field label="Tab. Medidas" value={row.tab_medidas} />
+            <Field label="NCM" value={ncm || ""} mono />
+            <Field label="Grade" value={row.grade} />
           </div>
 
-          {/* Tags row */}
-          <div style={{ display: "flex", gap: "16px", marginBottom: "10px", flexWrap: "wrap" }}>
-            {([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha], ["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria]] as [string, string][]).map(([l, v]) => v ? (
-              <span key={l} style={{ fontSize: "8px" }}>
-                <span style={{ color: C.tertiary, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>{l} </span>
-                <span style={{ fontWeight: 600, color: C.black }}>{v}</span>
+          {/* Tags */}
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
+            {([["Drop", row.drop], ["Tipo", row.tipo], ["Linha", row.linha], ["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria]] as [string, string][]).map(([l, v]) => v ? (
+              <span key={l} style={{ fontSize: "7.5px", fontWeight: 600, background: bg, border: `0.5px solid ${line}`, borderRadius: "3px", padding: "2px 7px", color: muted }}>
+                <span style={{ color: light, marginRight: "3px" }}>{l}</span>{v}
               </span>
             ) : null)}
           </div>
-          <Hairline />
 
-          {/* Desenho técnico */}
+          {/* Desenho */}
           {img && (
-            <div style={{ margin: "12px 0", textAlign: "center" }}>
-              <img src={img} alt="Desenho" style={{ maxHeight: "230px", maxWidth: "100%", objectFit: "contain" }} />
+            <div style={{ background: bg, border: `0.5px solid ${line}`, borderRadius: "6px", padding: "10px", marginBottom: "14px", textAlign: "center" }}>
+              <img src={img} alt="Desenho técnico" style={{ maxHeight: "240px", maxWidth: "100%", objectFit: "contain" }} />
             </div>
           )}
 
           {/* Tecidos */}
           {tec.length > 0 && (
-            <div style={{ marginBottom: "12px" }}>
-              <SectionTitle>Tecidos</SectionTitle>
+            <div style={{ marginBottom: "14px" }}>
+              <div style={secTitle}>Tecidos & Variantes</div>
               <table style={tbl}>
-                <thead><tr>
-                  <th style={th}>Artigo</th><th style={{ ...th, width: "65px" }}>Fornecedor</th><th style={{ ...th, width: "85px" }}>Composição</th><th style={{ ...th, textAlign: "center", width: "45px" }}>Preço</th>
-                  {[0, 1, 2, 3].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "75px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
+                <thead><tr style={headRow}>
+                  <th style={th}>Artigo</th><th style={{ ...th, width: "60px" }}>Forn.</th><th style={{ ...th, width: "80px" }}>Composição</th><th style={{ ...th, textAlign: "right", width: "42px" }}>Preço</th>
+                  {[0, 1, 2, 3].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "72px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
                 </tr></thead>
                 <tbody>{tec.map((t, i) => { const cs = t.cores || []; return (
-                  <tr key={i} style={i % 2 ? { background: C.fill } : {}}>
-                    <td style={td}><strong>{t.artigo}</strong></td>
-                    <td style={{ ...td, color: C.secondary }}>{t.forn}</td>
-                    <td style={{ ...td, fontSize: "8px", color: C.secondary }}>{compOf(t.artigo) || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{t.preco > 0 ? t.preco.toFixed(2) : "—"}</td>
-                    {[0, 1, 2, 3].map(j => <td key={j} style={{ ...td, textAlign: "center", fontWeight: cs[j] ? 600 : 400, color: cs[j] ? C.black : C.tertiary, fontSize: "8.5px" }}>{cs[j] || "—"}</td>)}
+                  <tr key={i}>
+                    <td style={{ ...td, fontWeight: 700 }}>{t.artigo}</td>
+                    <td style={{ ...td, color: muted }}>{t.forn}</td>
+                    <td style={{ ...td, fontSize: "8px", color: muted }}>{compOf(t.artigo) || "—"}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{t.preco > 0 ? `R$ ${t.preco.toFixed(2)}` : "—"}</td>
+                    {[0, 1, 2, 3].map(j => <td key={j} style={{ ...td, textAlign: "center", fontWeight: cs[j] ? 700 : 400, color: cs[j] ? navy : lineDark, fontSize: "8.5px" }}>{cs[j] || "—"}</td>)}
                   </tr>
                 ); })}</tbody>
               </table>
               {pantones && (pantones.var01 || pantones.var02 || pantones.var03 || pantones.var04) && (
-                <div style={{ display: "flex", gap: "0", borderTop: `0.5px solid ${C.separator}`, marginTop: "-8px", marginBottom: "8px" }}>
-                  <div style={{ flex: "0 0 50%", padding: "4px 8px", fontSize: "7.5px", fontWeight: 600, color: C.tertiary, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pantone / Código</div>
-                  {(["var01", "var02", "var03", "var04"] as const).map(k => <div key={k} style={{ flex: 1, padding: "4px 4px", textAlign: "center", fontFamily: "monospace", fontSize: "8.5px", fontWeight: 600 }}>{pantones[k] || "—"}</div>)}
+                <div style={{ display: "flex", marginTop: "4px", background: bg, borderRadius: "4px", padding: "4px 0" }}>
+                  <div style={{ flex: "0 0 calc(100% - 288px)", padding: "0 8px", fontSize: "7px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "18px" }}>Pantone</div>
+                  {(["var01", "var02", "var03", "var04"] as const).map(k => <div key={k} style={{ width: "72px", textAlign: "center", fontFamily: "'SF Mono', monospace", fontSize: "8px", fontWeight: 700, color: navy, lineHeight: "18px" }}>{pantones[k] || "—"}</div>)}
                 </div>
               )}
             </div>
           )}
 
-          {/* Observações + Custos */}
-          <div style={{ display: "flex", gap: "12px" }}>
-            <div style={{ flex: 1 }}>
-              <SectionTitle>Custos</SectionTitle>
-              <div style={{ background: C.fill, borderRadius: "8px", padding: "10px 12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
-                  <span style={{ color: C.secondary }}>Total aviamentos</span>
-                  <strong style={{ fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</strong>
-                </div>
-              </div>
+          {/* Footer: Custos + Obs */}
+          <div style={{ display: "flex", gap: "14px" }}>
+            <div style={{ width: "160px", background: navy, borderRadius: "6px", padding: "12px 14px", color: white }}>
+              <div style={{ fontSize: "7px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.6, marginBottom: "4px" }}>Total Aviamentos</div>
+              <div style={{ fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</div>
             </div>
-            <div style={{ flex: 2 }}>
-              <SectionTitle>Observações</SectionTitle>
-              <div style={{ background: C.fill, borderRadius: "8px", padding: "10px 12px", fontSize: "9px", whiteSpace: "pre-wrap", minHeight: "32px", color: obs ? C.black : C.tertiary }}>{obs || "Nenhuma observação."}</div>
+            <div style={{ flex: 1, background: bg, borderRadius: "6px", padding: "10px 14px", border: `0.5px solid ${line}` }}>
+              <div style={{ fontSize: "7px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>Observações</div>
+              <div style={{ fontSize: "8.5px", color: obs ? navy : light, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{obs || "Nenhuma observação."}</div>
             </div>
           </div>
         </div>
@@ -142,48 +145,43 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         {/* ── Aviamentação ── */}
         {avi.length > 0 && (
           <div className="print-page" style={pb()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
-              <span style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em" }}>Aviamentação</span>
-              <span style={{ fontSize: "9px", color: C.secondary }}>{row.ref} · {row.desc}</span>
-            </div>
-            <Hairline />
-
-            <table style={{ ...tbl, marginTop: "10px" }}>
-              <thead><tr>
-                <th style={th}>Matéria prima</th><th style={{ ...th, width: "55px" }}>Código</th><th style={{ ...th, textAlign: "center", width: "28px" }}>Qtd</th>
-                <th style={{ ...th, textAlign: "right", width: "42px" }}>Valor</th><th style={th}>Localização</th>
-                {[1, 2, 3, 4].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "60px" }}>Var {String(i).padStart(2, "0")}</th>)}
+            <PageHead title="Aviamentação" />
+            <table style={tbl}>
+              <thead><tr style={headRow}>
+                <th style={th}>Matéria prima</th><th style={{ ...th, width: "52px" }}>Código</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
+                <th style={{ ...th, textAlign: "right", width: "45px" }}>Valor</th><th style={th}>Localização</th>
+                {[1, 2, 3, 4].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "58px" }}>Var {String(i).padStart(2, "0")}</th>)}
               </tr></thead>
               <tbody>
                 {avi.map((a, i) => (
-                  <tr key={i} style={i % 2 ? { background: C.fill } : {}}>
-                    <td style={{ ...td, fontWeight: 600 }}>{a.item}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "8px", color: C.secondary }}>{a.cod}</td>
+                  <tr key={i} style={i % 2 ? { background: bg } : {}}>
+                    <td style={{ ...td, fontWeight: 700 }}>{a.item}</td>
+                    <td style={{ ...td, fontFamily: "monospace", fontSize: "7.5px", color: muted }}>{a.cod}</td>
                     <td style={{ ...td, textAlign: "center" }}>{a.qtd}</td>
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
-                    <td style={{ ...td, fontSize: "8px", color: C.secondary }}>{a.local || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px" }}>{a.var01 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px" }}>{a.var02 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px" }}>{a.var03 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px" }}>{a.var04 || "—"}</td>
+                    <td style={{ ...td, fontSize: "8px", color: muted }}>{a.local || "—"}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var01 || "—"}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var02 || "—"}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var03 || "—"}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var04 || "—"}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot><tr>
-                <td colSpan={3} style={{ ...td, fontWeight: 700, borderTop: `1.5px solid ${C.black}`, fontSize: "10px" }}>Total</td>
-                <td style={{ ...td, textAlign: "right", fontWeight: 700, borderTop: `1.5px solid ${C.black}`, fontSize: "10px", fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</td>
-                <td colSpan={5} style={{ ...td, borderTop: `1.5px solid ${C.black}` }} />
+                <td colSpan={3} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${navy}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
+                <td style={{ ...td, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${navy}`, fontSize: "10px", fontVariantNumeric: "tabular-nums", paddingTop: "6px" }}>R$ {avT.toFixed(2)}</td>
+                <td colSpan={5} style={{ ...td, borderTop: `2px solid ${navy}` }} />
               </tr></tfoot>
             </table>
 
             {pil.length > 0 && (
-              <div style={{ marginTop: "16px" }}>
-                <SectionTitle>Pilotagem</SectionTitle>
+              <div style={{ marginTop: "18px" }}>
+                <div style={secTitle}>Pilotagem</div>
                 <table style={tbl}>
-                  <thead><tr><th style={th}>Piloto</th><th style={th}>Lacre</th><th style={th}>Envio</th><th style={th}>Recebimento</th><th style={th}>Prova</th><th style={th}>Status</th></tr></thead>
+                  <thead><tr style={headRow}><th style={th}>Piloto</th><th style={th}>Lacre</th><th style={th}>Envio</th><th style={th}>Recebimento</th><th style={th}>Prova</th><th style={th}>Status</th></tr></thead>
                   <tbody>{pil.map((p, i) => (
-                    <tr key={i} style={i % 2 ? { background: C.fill } : {}}>
-                      <td style={{ ...td, fontWeight: 600 }}>{p.num}</td><td style={td}>{p.lacre || "—"}</td><td style={td}>{p.envio || "—"}</td><td style={td}>{p.receb || "—"}</td><td style={td}>{p.prova || "—"}</td><td style={td}>{p.status || "—"}</td>
+                    <tr key={i} style={i % 2 ? { background: bg } : {}}>
+                      <td style={{ ...td, fontWeight: 700 }}>{p.num}</td><td style={td}>{p.lacre || "—"}</td><td style={td}>{p.envio || "—"}</td><td style={td}>{p.receb || "—"}</td><td style={td}>{p.prova || "—"}</td><td style={td}>{p.status || "—"}</td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -193,71 +191,63 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         )}
       </>)}
 
-      {/* ════════════════════════════════════════════════════════════ */}
-      {/*  ESTAMPARIA                                                */}
-      {/* ════════════════════════════════════════════════════════════ */}
+      {/* ══════════ ESTAMPARIA ══════════ */}
       {sec.estamparia && hasEstamparia && (<>
         <div className="print-page" style={pb()}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
-            <span style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em" }}>Estamparia</span>
-            <span style={{ fontSize: "9px", color: C.secondary }}>{row.ref} · {row.desc} · {row.colecao}</span>
-          </div>
-          <Hairline />
-
-          {/* Info compacta */}
-          <div style={{ display: "flex", gap: "16px", margin: "8px 0 12px", flexWrap: "wrap" }}>
-            {([["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, string][]).map(([l, v]) => (
-              <span key={l} style={{ fontSize: "8.5px" }}>
-                <span style={{ color: C.tertiary, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>{l} </span>
-                <span style={{ fontWeight: 600 }}>{v || "—"}</span>
-              </span>
-            ))}
-          </div>
+          <PageHead title="Estamparia" sub={`${row.operacao} · ${row.fornecedor} · ${row.estilista}`} />
 
           {/* Artes */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "14px" }}>
+          <div style={{ display: "flex", gap: "14px", marginBottom: "16px" }}>
             {artes.filter((a: any) => a.posicao !== "TAGLESS").map((arte: any) => (
               <div key={arte.posicao} style={{ flex: 1 }}>
-                <div style={{ fontSize: "8px", fontWeight: 700, color: C.secondary, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Arte {arte.posicao}</div>
-                <div style={{ background: C.fill, borderRadius: "8px", padding: "8px", textAlign: "center", minHeight: "150px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "6px" }}>
-                  {arte.imagem ? <img src={arte.imagem} alt={arte.posicao} style={{ maxHeight: "180px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: C.tertiary, fontSize: "9px" }}>Sem imagem</span>}
+                <div style={{ background: navy, color: white, padding: "5px 10px", borderRadius: "4px 4px 0 0", fontSize: "8px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Arte {arte.posicao}</div>
+                <div style={{ border: `0.5px solid ${line}`, borderTop: "none", borderRadius: "0 0 6px 6px", overflow: "hidden" }}>
+                  {arte.largura && <div style={{ textAlign: "center", fontSize: "9px", fontWeight: 700, color: accent, padding: "4px 0", background: bg }}>{arte.largura}</div>}
+                  <div style={{ padding: "8px", textAlign: "center", minHeight: "160px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {arte.imagem ? <img src={arte.imagem} alt={arte.posicao} style={{ maxHeight: "180px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>Sem imagem</span>}
+                  </div>
+                  {arte.localizacao && <div style={{ background: bg, borderTop: `0.5px solid ${line}`, padding: "6px 10px" }}>
+                    <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px" }}>Localização</div>
+                    <div style={{ fontSize: "8px", color: muted, lineHeight: 1.5 }}>{arte.localizacao}</div>
+                  </div>}
                 </div>
-                {arte.largura && <div style={{ fontSize: "9px", fontWeight: 600, color: C.blue, marginBottom: "2px" }}>{arte.largura}</div>}
-                {arte.localizacao && <div style={{ fontSize: "8px", color: C.secondary, lineHeight: 1.4 }}>{arte.localizacao}</div>}
               </div>
             ))}
           </div>
 
           {/* Tagless */}
           {(() => { const tg = artes.find((a: any) => a.posicao === "TAGLESS"); if (!tg || (!tg.imagem && !tg.localizacao)) return null; return (
-            <div style={{ display: "flex", gap: "12px", marginBottom: "14px", alignItems: "flex-start" }}>
-              <div style={{ flex: "0 0 40%" }}>
-                <div style={{ fontSize: "8px", fontWeight: 700, color: C.secondary, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Tagless</div>
-                <div style={{ background: C.fill, borderRadius: "8px", padding: "8px", textAlign: "center", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {tg.imagem ? <img src={tg.imagem} alt="Tagless" style={{ maxHeight: "100px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: C.tertiary, fontSize: "9px" }}>Sem imagem</span>}
+            <div style={{ display: "flex", gap: "14px", marginBottom: "16px", border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
+              <div style={{ flex: "0 0 35%", borderRight: `0.5px solid ${line}` }}>
+                <div style={{ background: navy, color: white, padding: "5px 10px", fontSize: "8px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Tagless</div>
+                <div style={{ padding: "8px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "70px" }}>
+                  {tg.imagem ? <img src={tg.imagem} alt="Tagless" style={{ maxHeight: "80px", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>Sem imagem</span>}
                 </div>
               </div>
-              <div style={{ flex: 1, paddingTop: "16px" }}>
-                {tg.largura && <div style={{ fontSize: "9px", fontWeight: 600, color: C.blue, marginBottom: "3px" }}>{tg.largura}</div>}
-                <div style={{ fontSize: "8.5px", color: C.secondary, lineHeight: 1.5 }}>{tg.localizacao || "—"}</div>
+              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                {tg.largura && <div style={{ fontSize: "9px", fontWeight: 700, color: accent, marginBottom: "4px" }}>{tg.largura}</div>}
+                <div style={{ fontSize: "8.5px", color: muted, lineHeight: 1.5 }}>{tg.localizacao || "—"}</div>
               </div>
             </div>
           ); })()}
 
           {/* Técnicas */}
           {tecnicas.length > 0 && (
-            <div style={{ marginBottom: "12px" }}>
-              <SectionTitle>Técnicas de Estamparia</SectionTitle>
+            <div>
+              <div style={secTitle}>Técnicas de Estamparia</div>
               <table style={tbl}>
-                <thead><tr>
-                  <th style={{ ...th, textAlign: "center", width: "28px" }}>#</th>
+                <thead><tr style={headRow}>
+                  <th style={{ ...th, textAlign: "center", width: "26px" }}>#</th>
                   <th style={th}>Técnica</th>
-                  {[0, 1, 2, 3].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "85px" }}>Var {String(i + 1).padStart(2, "0")}{tec[0]?.cores?.[i] ? <div style={{ fontWeight: 400, fontSize: "7px", color: C.tertiary, marginTop: "1px" }}>{tec[0].cores[i]}</div> : null}</th>)}
+                  {[0, 1, 2, 3].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "82px" }}>
+                    <div>Var {String(i + 1).padStart(2, "0")}</div>
+                    {tec[0]?.cores?.[i] && <div style={{ fontWeight: 400, fontSize: "6.5px", color: light }}>{tec[0].cores[i]}</div>}
+                  </th>)}
                 </tr></thead>
                 <tbody>{tecnicas.map((t: any, i: number) => (
-                  <tr key={i} style={i % 2 ? { background: C.fill } : {}}>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 700, fontSize: "11px", color: C.secondary }}>{i + 1}</td>
-                    <td style={{ ...td, fontWeight: 600 }}>{t.tecnica || "—"}</td>
+                  <tr key={i} style={i % 2 ? { background: bg } : {}}>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 800, fontSize: "12px", color: muted }}>{i + 1}</td>
+                    <td style={{ ...td, fontWeight: 700 }}>{t.tecnica || "—"}</td>
                     <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var01 || "—"}</td>
                     <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var02 || "—"}</td>
                     <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var03 || "—"}</td>
@@ -269,47 +259,52 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           )}
 
           {estamparia?.observacoes && (
-            <div style={{ background: C.fill, borderRadius: "8px", padding: "10px 12px", fontSize: "9px", color: C.secondary }}>{estamparia.observacoes}</div>
+            <div style={{ marginTop: "10px", background: bg, borderRadius: "6px", padding: "10px 14px", border: `0.5px solid ${line}` }}>
+              <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>Observações</div>
+              <div style={{ fontSize: "8.5px", color: muted, whiteSpace: "pre-wrap" }}>{estamparia.observacoes}</div>
+            </div>
           )}
         </div>
 
-        {/* Simulações — 2 variantes por página */}
+        {/* Simulações */}
         {[["var01", "var02"], ["var03", "var04"]].map((pair, pageIdx) => {
           const hasContent = pair.some(vk => sims[vk]?.imgSim || sims[vk]?.imgFoto);
           if (!hasContent) return null;
           return (
             <div key={pageIdx} className="print-page" style={pb()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em" }}>Simulações</span>
-                <span style={{ fontSize: "9px", color: C.secondary }}>{row.ref} · {row.colecao}</span>
-              </div>
-              <Hairline />
-
-              <div style={{ display: "flex", gap: "14px", marginTop: "10px", marginBottom: "10px" }}>
+              <PageHead title="Simulações" sub={`${row.operacao} · ${row.fornecedor}`} />
+              <div style={{ display: "flex", gap: "16px" }}>
                 {pair.map((vk, vi) => {
                   const sim = sims[vk] || {};
                   const corIdx = pageIdx * 2 + vi;
                   const corName = tec[0]?.cores?.[corIdx] || "";
+                  const st = sim.status || "";
+                  const stColor = st.includes("LIBERADA") ? success : st === "REPROVADA" ? danger : st.includes("AJUSTE") ? warn : muted;
                   return (
                     <div key={vk} style={{ flex: 1 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      {/* Variant header */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                         <div>
-                          <span style={{ fontSize: "12px", fontWeight: 700 }}>Variante {String(corIdx + 1).padStart(2, "0")}</span>
-                          {corName && <span style={{ fontSize: "9px", fontWeight: 500, color: C.blue, marginLeft: "8px" }}>{corName}</span>}
+                          <div style={{ fontSize: "13px", fontWeight: 800, color: navy }}>Variante {String(corIdx + 1).padStart(2, "0")}</div>
+                          {corName && <div style={{ fontSize: "8.5px", fontWeight: 600, color: accent }}>{corName}</div>}
                         </div>
-                        {sim.status && <StatusPill status={sim.status} />}
+                        {st && <Badge text={st} color={stColor} />}
                       </div>
 
                       {/* Simulação */}
-                      <div style={{ fontSize: "7.5px", fontWeight: 600, color: C.tertiary, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>Simulação</div>
-                      <div style={{ background: C.fill, borderRadius: "8px", padding: "6px", textAlign: "center", minHeight: "200px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "10px" }}>
-                        {sim.imgSim ? <img src={sim.imgSim} alt="Simulação" style={{ maxHeight: "240px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: C.tertiary, fontSize: "9px" }}>—</span>}
+                      <div style={{ marginBottom: "10px" }}>
+                        <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Simulação</div>
+                        <div style={{ background: bg, borderRadius: "6px", border: `0.5px solid ${line}`, padding: "8px", textAlign: "center", minHeight: "210px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {sim.imgSim ? <img src={sim.imgSim} alt="Simulação" style={{ maxHeight: "250px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>—</span>}
+                        </div>
                       </div>
 
                       {/* Foto */}
-                      <div style={{ fontSize: "7.5px", fontWeight: 600, color: C.tertiary, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>Foto</div>
-                      <div style={{ background: C.fill, borderRadius: "8px", padding: "6px", textAlign: "center", minHeight: "160px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {sim.imgFoto ? <img src={sim.imgFoto} alt="Foto" style={{ maxHeight: "200px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: C.tertiary, fontSize: "9px" }}>—</span>}
+                      <div>
+                        <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Foto</div>
+                        <div style={{ background: bg, borderRadius: "6px", border: `0.5px solid ${line}`, padding: "8px", textAlign: "center", minHeight: "170px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {sim.imgFoto ? <img src={sim.imgFoto} alt="Foto" style={{ maxHeight: "200px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>—</span>}
+                        </div>
                       </div>
                     </div>
                   );
@@ -320,85 +315,83 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         })}
       </>)}
 
-      {/* ════════════════════════════════════════════════════════════ */}
-      {/*  LIBERAÇÃO                                                 */}
-      {/* ════════════════════════════════════════════════════════════ */}
+      {/* ══════════ LIBERAÇÃO ══════════ */}
       {sec.liberacao && tm && pts.length > 0 && (
         <div className="print-page" style={pb()}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-              <span style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.02em" }}>Liberação</span>
-              {statusLib && <StatusPill status={statusLib} />}
+          <PageHead title="Liberação" sub={statusLib ? undefined : "Pendente"} />
+
+          {/* Status */}
+          {statusLib && (
+            <div style={{ marginBottom: "12px" }}>
+              <Badge text={statusLib} color={statusLib === "APROVADO" ? success : statusLib === "REPROVADO" ? danger : warn} />
             </div>
-            <span style={{ fontSize: "9px", color: C.secondary }}>{row.ref} · {row.colecao}</span>
-          </div>
-          <Hairline />
+          )}
 
           {/* Info compacta */}
-          <div style={{ display: "flex", gap: "16px", margin: "8px 0 12px", flexWrap: "wrap" }}>
-            {([["Tabela", tm], ["Tamanho base", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, string][]).map(([l, v]) => (
-              <span key={l} style={{ fontSize: "8.5px" }}>
-                <span style={{ color: C.tertiary, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>{l} </span>
-                <span style={{ fontWeight: 600 }}>{v || "—"}</span>
-              </span>
-            ))}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 20px", marginBottom: "14px" }}>
+            <Field label="Tabela" value={tm} />
+            <Field label="Tamanho Base" value="M" />
+            <Field label="Tecido" value={row.tecido} />
+            <Field label="Fornecedor" value={row.fornecedor} />
+            <Field label="Estilista" value={row.estilista} />
+            <Field label="Grade" value={row.grade} />
           </div>
 
           {/* Medidas */}
           <table style={tbl}>
-            <thead><tr>
-              <th style={{ ...th, textAlign: "center", width: "28px" }}>Cód</th>
+            <thead><tr style={headRow}>
+              <th style={{ ...th, textAlign: "center", width: "26px" }}>Cód</th>
               <th style={th}>Descrição</th>
-              <th style={{ ...th, textAlign: "center", width: "42px" }}>Tabela</th>
-              <th style={{ ...th, textAlign: "center", width: "38px", color: C.blue }}>P1</th>
-              <th style={{ ...th, textAlign: "center", width: "30px", color: C.blue }}>Dif</th>
-              <th style={{ ...th, textAlign: "center", width: "38px" }}>P2</th>
-              <th style={{ ...th, textAlign: "center", width: "30px" }}>Dif</th>
-              <th style={{ ...th, textAlign: "center", width: "38px" }}>P3</th>
-              <th style={{ ...th, textAlign: "center", width: "30px" }}>Dif</th>
-              <th style={{ ...th, textAlign: "center", width: "50px" }}>Tol.</th>
+              <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800 }}>Tab.</th>
+              <th style={{ ...th, textAlign: "center", width: "36px", background: "#EFF6FF", color: accent }}>P1</th>
+              <th style={{ ...th, textAlign: "center", width: "28px", background: "#EFF6FF", color: accent }}>Dif</th>
+              <th style={{ ...th, textAlign: "center", width: "36px" }}>P2</th>
+              <th style={{ ...th, textAlign: "center", width: "28px" }}>Dif</th>
+              <th style={{ ...th, textAlign: "center", width: "36px" }}>P3</th>
+              <th style={{ ...th, textAlign: "center", width: "28px" }}>Dif</th>
+              <th style={{ ...th, textAlign: "center", width: "46px" }}>Tol.</th>
             </tr></thead>
             <tbody>{pts.map((p: any, pi: number) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (
-              <tr key={p.cod} style={pi % 2 ? { background: C.fill } : {}}>
-                <td style={{ ...td, textAlign: "center", fontWeight: 700, color: C.secondary, fontSize: "8px" }}>{p.cod}</td>
-                <td style={{ ...td, fontWeight: 500 }}>{p.desc}</td>
-                <td style={{ ...td, textAlign: "center", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{p.tabela}</td>
+              <tr key={p.cod} style={pi % 2 ? { background: bg } : {}}>
+                <td style={{ ...td, textAlign: "center", fontWeight: 800, color: light, fontSize: "8px" }}>{p.cod}</td>
+                <td style={{ ...td, fontWeight: 600 }}>{p.desc}</td>
+                <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{p.tabela}</td>
                 {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const absD = Math.abs(parseFloat(d) || 0); const isOk = d === "0"; const isBad = d && !isOk && absD > 1; const isWarn = d && !isOk && !isBad; return [
-                  <td key={pk} style={{ ...td, textAlign: "center", fontWeight: val ? 600 : 400, fontVariantNumeric: "tabular-nums" }}>{val || "—"}</td>,
-                  <td key={pk + "d"} style={{ ...td, textAlign: "center", fontSize: "8px", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: isOk ? C.green : isBad ? C.red : isWarn ? C.orange : C.tertiary }}>{d || "—"}</td>
+                  <td key={pk} style={{ ...td, textAlign: "center", fontWeight: val ? 700 : 400, fontVariantNumeric: "tabular-nums" }}>{val || "—"}</td>,
+                  <td key={pk + "d"} style={{ ...td, textAlign: "center", fontSize: "8px", fontWeight: 800, fontVariantNumeric: "tabular-nums", color: isOk ? success : isBad ? danger : isWarn ? warn : lineDark }}>{d || "—"}</td>
                 ]; })}
-                <td style={{ ...td, textAlign: "center", fontSize: "8px", color: C.secondary }}>{p.tol}</td>
+                <td style={{ ...td, textAlign: "center", fontSize: "7.5px", color: light }}>{p.tol}</td>
               </tr>
             ); })}</tbody>
           </table>
 
           {/* Graduação */}
           {grad.length > 0 && (
-            <div style={{ marginTop: "14px" }}>
-              <SectionTitle>Graduação — {tm}</SectionTitle>
+            <div style={{ marginTop: "16px" }}>
+              <div style={secTitle}>Graduação — {tm}</div>
               <table style={tbl}>
-                <thead><tr>
+                <thead><tr style={headRow}>
                   <th style={th}>Descrição</th>
-                  <th style={{ ...th, textAlign: "center", width: "38px" }}>PP</th>
-                  <th style={{ ...th, textAlign: "center", width: "38px" }}>P</th>
-                  <th style={{ ...th, textAlign: "center", width: "38px", color: C.blue }}>M</th>
-                  <th style={{ ...th, textAlign: "center", width: "38px" }}>G</th>
-                  <th style={{ ...th, textAlign: "center", width: "38px" }}>GG</th>
-                  <th style={{ ...th, textAlign: "center", width: "32px" }}>←</th>
-                  <th style={{ ...th, textAlign: "center", width: "32px" }}>→</th>
-                  <th style={{ ...th, textAlign: "center", width: "48px" }}>Tol.</th>
+                  <th style={{ ...th, textAlign: "center", width: "36px" }}>PP</th>
+                  <th style={{ ...th, textAlign: "center", width: "36px" }}>P</th>
+                  <th style={{ ...th, textAlign: "center", width: "36px", background: "#EFF6FF", color: accent, fontWeight: 800 }}>M</th>
+                  <th style={{ ...th, textAlign: "center", width: "36px" }}>G</th>
+                  <th style={{ ...th, textAlign: "center", width: "36px" }}>GG</th>
+                  <th style={{ ...th, textAlign: "center", width: "30px" }}>←</th>
+                  <th style={{ ...th, textAlign: "center", width: "30px" }}>→</th>
+                  <th style={{ ...th, textAlign: "center", width: "45px" }}>Tol.</th>
                 </tr></thead>
                 <tbody>{grad.map((g: any, i: number) => (
-                  <tr key={i} style={i % 2 ? { background: C.fill } : {}}>
-                    <td style={{ ...td, fontWeight: 500 }}>{g.desc}</td>
+                  <tr key={i} style={i % 2 ? { background: bg } : {}}>
+                    <td style={{ ...td, fontWeight: 600 }}>{g.desc}</td>
                     <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.pp}</td>
                     <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.p}</td>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{g.m}</td>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: "#FAFCFF" }}>{g.m}</td>
                     <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.g}</td>
                     <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.gg}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: C.secondary }}>{g.a1}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: C.secondary }}>{g.a2}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: C.secondary }}>{g.tol}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a1}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a2}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{g.tol}</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -407,32 +400,33 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
 
           {/* Modelo */}
           {imgModelo && (
-            <div style={{ marginTop: "14px", textAlign: "center" }}>
-              <div style={{ fontSize: "7.5px", fontWeight: 600, color: C.tertiary, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Modelo</div>
-              <img src={imgModelo} alt="Modelo" style={{ maxHeight: "180px", maxWidth: "100%", objectFit: "contain" }} />
+            <div style={{ marginTop: "16px", textAlign: "center" }}>
+              <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>Modelo</div>
+              <img src={imgModelo} alt="Modelo" style={{ maxHeight: "180px", objectFit: "contain" }} />
             </div>
           )}
 
           {/* Anotações */}
           {[1, 2, 3].map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k]; if (!a?.texto && !a?.video) return null; return (
-            <div key={n} style={{ marginTop: "10px", background: C.fill, borderRadius: "8px", padding: "10px 12px" }}>
-              <div style={{ fontSize: "7.5px", fontWeight: 700, color: C.tertiary, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Anotações — Prova {n}</div>
-              {a?.texto && <div style={{ fontSize: "9px", marginBottom: "2px" }}>{a.texto}</div>}
-              {a?.video && <div style={{ fontSize: "8px", color: C.blue }}>Vídeo: {a.video}</div>}
+            <div key={n} style={{ marginTop: "10px", background: bg, borderRadius: "6px", padding: "10px 14px", border: `0.5px solid ${line}` }}>
+              <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>Anotações — Prova {n}</div>
+              {a?.texto && <div style={{ fontSize: "8.5px", color: navy }}>{a.texto}</div>}
+              {a?.video && <div style={{ fontSize: "8px", color: accent, marginTop: "2px" }}>Vídeo: {a.video}</div>}
             </div>
           ); })}
         </div>
       )}
 
-      {/* Footer on every page via CSS */}
+      {/* Watermark footer via CSS */}
       <style>{`
         @media print {
-          .print-page { position: relative; padding-bottom: 20px; }
+          .print-page { position: relative; padding-bottom: 24px; }
           .print-page::after {
-            content: "Austral PLM";
-            position: absolute; bottom: 0; right: 0;
-            font-size: 7px; color: ${C.tertiary}; letter-spacing: 0.05em;
-            font-family: -apple-system, 'SF Pro Text', Helvetica, sans-serif;
+            content: "Austral® · Confidencial";
+            position: absolute; bottom: 4px; left: 0; right: 0;
+            text-align: center;
+            font-size: 6.5px; color: ${lineDark}; letter-spacing: 0.08em;
+            font-family: -apple-system, Helvetica, sans-serif;
           }
         }
       `}</style>
@@ -440,27 +434,9 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
   );
 }
 
-/* ── Sub-components ── */
-
-function Hairline() {
-  return <div style={{ height: "1px", background: C.separator, marginBottom: "8px" }} />;
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: "11px", fontWeight: 700, color: C.black, marginBottom: "6px", letterSpacing: "-0.01em" }}>{children}</div>;
-}
-
-function StatusPill({ status }: { status: string }) {
-  const isApproved = status === "APROVADO" || status.includes("LIBERADA");
-  const isRejected = status === "REPROVADO" || status === "REPROVADA";
-  const isWarning = status.includes("RESTRIÇÃO") || status.includes("AJUSTE");
-  const bg = isApproved ? "rgba(52,199,89,0.12)" : isRejected ? "rgba(255,59,48,0.12)" : isWarning ? "rgba(255,204,0,0.15)" : C.fill;
-  const color = isApproved ? "#248a3d" : isRejected ? "#d70015" : isWarning ? "#856500" : C.secondary;
-  return <span style={{ fontSize: "8px", fontWeight: 700, padding: "2px 8px", borderRadius: "10px", background: bg, color, letterSpacing: "0.02em" }}>{status}</span>;
-}
-
 /* ── Shared styles ── */
-const lbl: React.CSSProperties = { fontSize: "8px", fontWeight: 500, color: C.secondary, textTransform: "uppercase", letterSpacing: "0.04em" };
-const th: React.CSSProperties = { padding: "5px 8px", textAlign: "left", fontSize: "7.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: C.secondary, borderBottom: `1px solid ${C.separator}` };
-const td: React.CSSProperties = { padding: "4px 8px", borderBottom: `0.5px solid ${C.separatorLight}`, fontSize: "9px", verticalAlign: "middle" };
-const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse", marginBottom: "8px" };
+const secTitle: React.CSSProperties = { fontSize: "10px", fontWeight: 800, color: navy, letterSpacing: "-0.01em", marginBottom: "6px", paddingBottom: "4px", borderBottom: `1.5px solid ${navy}` };
+const th: React.CSSProperties = { padding: "5px 8px", textAlign: "left", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: light, borderBottom: `1px solid ${lineDark}` };
+const td: React.CSSProperties = { padding: "4.5px 8px", borderBottom: `0.5px solid ${line}`, fontSize: "9px", verticalAlign: "middle", color: navy };
+const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" };
+const headRow: React.CSSProperties = { background: bg };
