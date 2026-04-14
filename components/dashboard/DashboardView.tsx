@@ -3,12 +3,15 @@ import { useState, useMemo } from "react";
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
-const STATUS_CFG: Record<string, { color: string; bg: string; label: string }> = {
-  "DESENVOLVIMENTO":      { color: "#c77c00", bg: "rgba(255,159,10,0.12)",  label: "Desenvolvimento" },
-  "MOSTRUÁRIO LIBERADO":  { color: "#248a3d", bg: "rgba(52,199,89,0.12)",   label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":    { color: "#0055d4", bg: "rgba(0,122,255,0.12)",   label: "Produção lib." },
-  "CANCELADO":            { color: "#d70015", bg: "rgba(255,59,48,0.12)",   label: "Cancelado" },
+const STATUS_CFG: Record<string, { color: string; label: string }> = {
+  "DESENVOLVIMENTO":     { color: "#B87000", label: "Desenvolvimento" },
+  "MOSTRUÁRIO LIBERADO": { color: "#248040", label: "Mostruário lib." },
+  "PRODUÇÃO LIBERADA":   { color: "#1A5FB4", label: "Produção lib." },
+  "CANCELADO":           { color: "#C42828", label: "Cancelado" },
 };
+
+/* Paleta Apple HIG — tons dessaturados para visualização de dados */
+const PALETTE = ["#4A84C0","#7A65A8","#3D9A8C","#B87840","#4A96BC","#3D9E6A","#8B6070","#7A8E4A"];
 
 const FILTERS = [
   { key: "colecao",    label: "Coleção" },
@@ -34,15 +37,9 @@ export default function DashboardView({ rows, variantes }: Props) {
   const sf = (k: string, v: string) => setFl(p => { const n = { ...p }; if (v) n[k] = v; else delete n[k]; return n; });
   const ac = Object.values(fl).filter(Boolean).length;
 
-  const total = filtered.length;
+  const total    = filtered.length;
   const totalVar = filtered.reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
   const sc = (s: string) => filtered.filter((r: any) => r.status === s).length;
-
-  const byStatus = useMemo(() => {
-    const c: Record<string, number> = {};
-    filtered.forEach((r: any) => { c[r.status] = (c[r.status] || 0) + 1; });
-    return Object.entries(c).sort((a, b) => b[1] - a[1]);
-  }, [filtered]);
 
   const byKey = (key: string, limit = 10) => {
     const c: Record<string, number> = {};
@@ -50,12 +47,25 @@ export default function DashboardView({ rows, variantes }: Props) {
     return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, limit);
   };
 
-  const byGrupo      = useMemo(() => byKey("grupo"),      [filtered]);
-  const byColecao    = useMemo(() => byKey("colecao"),     [filtered]);
-  const byEstilista  = useMemo(() => byKey("estilista"),   [filtered]);
-  const byFornecedor = useMemo(() => byKey("fornecedor"),  [filtered]);
-  const byTecido     = useMemo(() => byKey("tecido", 8),   [filtered]);
-  const byLinha      = useMemo(() => byKey("linha"),       [filtered]);
+  const byStatus     = useMemo(() => byKey("status"),          [filtered]);
+  const byGrupo      = useMemo(() => byKey("grupo"),           [filtered]);
+  const byColecao    = useMemo(() => byKey("colecao"),         [filtered]);
+  const byEstilista  = useMemo(() => byKey("estilista"),       [filtered]);
+  const byFornecedor = useMemo(() => byKey("fornecedor"),      [filtered]);
+  const byTecido     = useMemo(() => byKey("tecido", 8),       [filtered]);
+  const byLinha      = useMemo(() => byKey("linha"),           [filtered]);
+
+  /* Donut: status com cores semânticas */
+  const statusSegments = byStatus.map(([s, n]) => ({
+    label: STATUS_CFG[s]?.label || s,
+    value: n,
+    color: STATUS_CFG[s]?.color || "#888",
+  }));
+
+  /* Donut: linha com paleta genérica */
+  const linhaSegments = byLinha.map(([l, n], i) => ({
+    label: l, value: n, color: PALETTE[i % PALETTE.length],
+  }));
 
   return (
     <div className="space-y-5">
@@ -104,83 +114,61 @@ export default function DashboardView({ rows, variantes }: Props) {
 
       {/* ── Cards de resumo ── */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <StatCard label="Total SKUs"        value={total}                              color="var(--label-primary)" />
-        <StatCard label="Var. de cor"       value={totalVar}                           color="var(--system-blue)" />
-        <StatCard label="Desenvolvimento"   value={sc("DESENVOLVIMENTO")}              color="#c77c00" />
-        <StatCard label="Mostr. liberado"   value={sc("MOSTRUÁRIO LIBERADO")}          color="#248a3d" />
-        <StatCard label="Produção lib."     value={sc("PRODUÇÃO LIBERADA")}            color="#0055d4" />
-        <StatCard label="Cancelado"         value={sc("CANCELADO")}                    color="#d70015" />
+        <StatCard label="Total SKUs"       value={total}                         color="var(--label-primary)" />
+        <StatCard label="Var. de cor"      value={totalVar}                      color="#4A84C0" />
+        <StatCard label="Desenvolvimento"  value={sc("DESENVOLVIMENTO")}         color="#B87000" />
+        <StatCard label="Mostr. liberado"  value={sc("MOSTRUÁRIO LIBERADO")}     color="#248040" />
+        <StatCard label="Produção lib."    value={sc("PRODUÇÃO LIBERADA")}       color="#1A5FB4" />
+        <StatCard label="Cancelado"        value={sc("CANCELADO")}               color="#C42828" />
       </div>
 
       {/* ── Gráficos ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* Status */}
+        {/* Status — donut */}
         <ChartCard title="Por status">
-          {byStatus.length === 0
-            ? <Empty />
-            : <div className="space-y-3">
-                {byStatus.map(([status, count]) => {
-                  const cfg = STATUS_CFG[status];
-                  const pct = total > 0 ? (count / total) * 100 : 0;
-                  return (
-                    <div key={status} className="flex items-center gap-3">
-                      <span className="text-[12px] font-semibold w-36 shrink-0" style={{ color: cfg?.color || "var(--label-primary)" }}>
-                        {cfg?.label || status}
-                      </span>
-                      <div className="flex-1 bg-[var(--bg-secondary)] rounded-full h-2 overflow-hidden">
-                        <div className="h-2 rounded-full transition-all duration-700"
-                          style={{ width: `${pct}%`, background: cfg?.color || "var(--system-blue)" }} />
-                      </div>
-                      <span className="text-[13px] tabnum font-bold w-7 text-right">{count}</span>
-                      <span className="text-[11px] text-[var(--label-quaternary)] w-9 text-right tabnum">{pct.toFixed(0)}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-          }
+          <DonutChart segments={statusSegments} total={total} />
         </ChartCard>
 
-        {/* Grupo */}
+        {/* Grupo — barras */}
         <ChartCard title="Por grupo">
-          <BarList items={byGrupo} max={byGrupo[0]?.[1] || 1} color="var(--system-blue)" />
+          <BarList items={byGrupo} max={byGrupo[0]?.[1] || 1} color={PALETTE[0]} />
         </ChartCard>
 
-        {/* Coleção */}
+        {/* Coleção — barras */}
         <ChartCard title="Por coleção">
-          <BarList items={byColecao} max={byColecao[0]?.[1] || 1} color="var(--system-purple)" />
+          <BarList items={byColecao} max={byColecao[0]?.[1] || 1} color={PALETTE[1]} />
         </ChartCard>
 
-        {/* Estilista */}
+        {/* Estilista — barras */}
         <ChartCard title="Por estilista">
-          <BarList items={byEstilista} max={byEstilista[0]?.[1] || 1} color="var(--system-teal)" />
+          <BarList items={byEstilista} max={byEstilista[0]?.[1] || 1} color={PALETTE[2]} />
         </ChartCard>
 
-        {/* Fornecedor */}
+        {/* Fornecedor — barras */}
         <ChartCard title="Por fornecedor (confecção)">
-          <BarList items={byFornecedor} max={byFornecedor[0]?.[1] || 1} color="var(--system-orange)" />
+          <BarList items={byFornecedor} max={byFornecedor[0]?.[1] || 1} color={PALETTE[3]} />
         </ChartCard>
 
-        {/* Tecido */}
+        {/* Tecido — barras */}
         <ChartCard title="Tecidos mais usados">
-          <BarList items={byTecido} max={byTecido[0]?.[1] || 1} color="#5AC8FA" />
+          <BarList items={byTecido} max={byTecido[0]?.[1] || 1} color={PALETTE[4]} />
         </ChartCard>
 
-        {/* Linha */}
+        {/* Linha — donut */}
         <ChartCard title="Por linha">
-          <BarList items={byLinha} max={byLinha[0]?.[1] || 1} color="var(--system-green)" />
+          <DonutChart segments={linhaSegments} total={filtered.filter((r: any) => r.linha).length} />
         </ChartCard>
 
-        {/* Variantes por grupo */}
+        {/* Variantes por grupo — barras */}
         <ChartCard title="Variantes de cor por grupo">
           {(() => {
-            const byGrupoVar = byGrupo.map(([grupo]) => {
+            const items = byGrupo.map(([grupo]) => {
               const count = filtered.filter((r: any) => r.grupo === grupo)
                 .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
               return [grupo, count] as [string, number];
             }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
-            const maxV = byGrupoVar[0]?.[1] || 1;
-            return <BarList items={byGrupoVar} max={maxV} color="var(--system-purple)" />;
+            return <BarList items={items} max={items[0]?.[1] || 1} color={PALETTE[5]} />;
           })()}
         </ChartCard>
 
@@ -205,6 +193,46 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
     <div className="apple-card p-5">
       <div className="text-[13px] font-semibold text-[var(--label-primary)] mb-4 tracking-[-0.01em]">{title}</div>
       {children}
+    </div>
+  );
+}
+
+function DonutChart({ segments, total }: { segments: { label: string; value: number; color: string }[]; total: number }) {
+  if (!segments.length || total === 0) return <Empty />;
+
+  let deg = 0;
+  const gradient = segments.map(s => {
+    const from = deg;
+    deg += (s.value / total) * 360;
+    return `${s.color} ${from.toFixed(2)}deg ${deg.toFixed(2)}deg`;
+  }).join(", ");
+
+  return (
+    <div className="flex items-center gap-6">
+      {/* Donut */}
+      <div className="relative shrink-0" style={{ width: 108, height: 108 }}>
+        <div className="w-full h-full rounded-full" style={{ background: `conic-gradient(${gradient})` }} />
+        {/* Hole */}
+        <div className="absolute rounded-full bg-[var(--bg-primary)]"
+          style={{ inset: 28 }} />
+        {/* Center label */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[16px] font-bold tabnum tracking-[-0.03em] text-[var(--label-primary)]">{total}</span>
+        </div>
+      </div>
+      {/* Legend */}
+      <div className="flex-1 space-y-2.5">
+        {segments.map(s => (
+          <div key={s.label} className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+            <span className="text-[12px] text-[var(--label-primary)] flex-1 truncate">{s.label}</span>
+            <span className="text-[12px] font-bold tabnum">{s.value}</span>
+            <span className="text-[11px] text-[var(--label-quaternary)] w-8 text-right tabnum">
+              {((s.value / total) * 100).toFixed(0)}%
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
