@@ -3,22 +3,24 @@ import { useState, useMemo } from "react";
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
-const STATUS_CFG: Record<string, { color: string; bg: string; label: string }> = {
-  "DESENVOLVIMENTO":     { color: "#B87000", bg: "rgba(184,112,0,0.08)",  label: "Desenvolvimento" },
-  "MOSTRUÁRIO LIBERADO": { color: "#248040", bg: "rgba(36,128,64,0.08)",  label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":   { color: "#1A5FB4", bg: "rgba(26,95,180,0.08)",  label: "Produção lib." },
-  "CANCELADO":           { color: "#C42828", bg: "rgba(196,40,40,0.08)",  label: "Cancelado" },
+const STATUS_CFG: Record<string, { color: string; label: string }> = {
+  "DESENVOLVIMENTO":     { color: "#E8A838", label: "Desenvolvimento" },
+  "MOSTRUÁRIO LIBERADO": { color: "#22C55E", label: "Mostruário lib." },
+  "PRODUÇÃO LIBERADA":   { color: "#3B82F6", label: "Produção lib." },
+  "CANCELADO":           { color: "#EF4444", label: "Cancelado" },
 };
 
-const PALETTE = ["#6366F1","#8B5CF6","#06B6D4","#F59E0B","#10B981","#EC4899","#F97316","#14B8A6"];
+/* Paleta SnowUI — tons frios harmoniosos: azuis, lavandas, teais, verdes suaves */
+const PALETTE = ["#A78BFA","#818CF8","#67E8F9","#6EE7B7","#93C5FD","#C4B5FD","#5EEAD4","#FCA5A5"];
 
-const STAT_COLORS = [
-  { color: "#6366F1", bg: "rgba(99,102,241,0.06)",  border: "rgba(99,102,241,0.12)" },
-  { color: "#8B5CF6", bg: "rgba(139,92,246,0.06)",  border: "rgba(139,92,246,0.12)" },
-  { color: "#B87000", bg: "rgba(184,112,0,0.06)",   border: "rgba(184,112,0,0.12)" },
-  { color: "#248040", bg: "rgba(36,128,64,0.06)",   border: "rgba(36,128,64,0.12)" },
-  { color: "#1A5FB4", bg: "rgba(26,95,180,0.06)",   border: "rgba(26,95,180,0.12)" },
-  { color: "#C42828", bg: "rgba(196,40,40,0.06)",   border: "rgba(196,40,40,0.12)" },
+/* Stat cards — fundo sólido com texto branco, como SnowUI */
+const STAT_CARDS = [
+  { bg: "#4A6CF7", label: "Total SKUs" },       // azul
+  { bg: "#7C3AED", label: "Var. de cor" },       // roxo
+  { bg: "#E8A838", label: "Desenvolvimento" },   // âmbar
+  { bg: "#22C55E", label: "Mostr. liberado" },   // verde
+  { bg: "#3B82F6", label: "Produção lib." },     // azul claro
+  { bg: "#1E293B", label: "Cancelado" },         // navy escuro
 ];
 
 const FILTERS = [
@@ -74,12 +76,12 @@ export default function DashboardView({ rows, variantes }: Props) {
   }));
 
   const stats = [
-    { label: "Total SKUs",      value: total,                       ...STAT_COLORS[0] },
-    { label: "Var. de cor",     value: totalVar,                    ...STAT_COLORS[1] },
-    { label: "Desenvolvimento", value: sc("DESENVOLVIMENTO"),       ...STAT_COLORS[2] },
-    { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO"),   ...STAT_COLORS[3] },
-    { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA"),     ...STAT_COLORS[4] },
-    { label: "Cancelado",       value: sc("CANCELADO"),             ...STAT_COLORS[5] },
+    { label: "Total SKUs",      value: total,                       bg: STAT_CARDS[0].bg },
+    { label: "Var. de cor",     value: totalVar,                    bg: STAT_CARDS[1].bg },
+    { label: "Desenvolvimento", value: sc("DESENVOLVIMENTO"),       bg: STAT_CARDS[2].bg },
+    { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO"),   bg: STAT_CARDS[3].bg },
+    { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA"),     bg: STAT_CARDS[4].bg },
+    { label: "Cancelado",       value: sc("CANCELADO"),             bg: STAT_CARDS[5].bg },
   ];
 
   return (
@@ -135,7 +137,7 @@ export default function DashboardView({ rows, variantes }: Props) {
       {/* ── Cards de resumo ── */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {stats.map(s => (
-          <StatCard key={s.label} label={s.label} value={s.value} color={s.color} bg={s.bg} border={s.border} />
+          <StatCard key={s.label} label={s.label} value={s.value} bg={s.bg} />
         ))}
       </div>
 
@@ -147,23 +149,23 @@ export default function DashboardView({ rows, variantes }: Props) {
         </ChartCard>
 
         <ChartCard title="Por grupo">
-          <BarChart items={byGrupo} palette={PALETTE} />
+          <BarChart items={byGrupo} />
         </ChartCard>
 
         <ChartCard title="Por coleção">
-          <BarChart items={byColecao} palette={PALETTE} />
+          <BarChart items={byColecao} />
         </ChartCard>
 
         <ChartCard title="Por estilista">
-          <BarChart items={byEstilista} palette={PALETTE} />
+          <BarChart items={byEstilista} />
         </ChartCard>
 
         <ChartCard title="Por fornecedor (confecção)">
-          <BarChart items={byFornecedor} palette={PALETTE} />
+          <BarChart items={byFornecedor} />
         </ChartCard>
 
         <ChartCard title="Tecidos mais usados">
-          <BarChart items={byTecido} palette={PALETTE} />
+          <BarChart items={byTecido} />
         </ChartCard>
 
         <ChartCard title="Por linha">
@@ -177,7 +179,7 @@ export default function DashboardView({ rows, variantes }: Props) {
                 .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
               return [grupo, count] as [string, number];
             }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
-            return <BarChart items={items} palette={PALETTE} />;
+            return <BarChart items={items} />;
           })()}
         </ChartCard>
 
@@ -188,24 +190,21 @@ export default function DashboardView({ rows, variantes }: Props) {
 
 /* ── Sub-components ── */
 
-function StatCard({ label, value, color, bg, border }: { label: string; value: number; color: string; bg: string; border: string }) {
+function StatCard({ label, value, bg }: { label: string; value: number; bg: string }) {
   return (
-    <div className="dash-card px-4 py-4 transition-all duration-200 hover:scale-[1.02]" style={{ background: bg, borderColor: border }}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-[11px] font-medium text-[var(--label-secondary)] leading-tight">{label}</div>
-        <TrendIcon color={color} />
+    <div
+      className="rounded-2xl px-4 py-4 transition-all duration-200 hover:scale-[1.02] hover:brightness-110"
+      style={{ background: bg }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[11px] font-medium leading-tight" style={{ color: "rgba(255,255,255,0.75)" }}>{label}</div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+          <polyline points="17 6 23 6 23 12" />
+        </svg>
       </div>
-      <div className="text-[28px] font-bold tabnum tracking-[-0.04em] leading-none" style={{ color }}>{value.toLocaleString("pt-BR")}</div>
+      <div className="text-[28px] font-bold tabnum tracking-[-0.04em] leading-none text-white">{value.toLocaleString("pt-BR")}</div>
     </div>
-  );
-}
-
-function TrendIcon({ color }: { color: string }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity={0.5}>
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-      <polyline points="17 6 23 6 23 12" />
-    </svg>
   );
 }
 
@@ -280,14 +279,17 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
   );
 }
 
-function BarChart({ items, palette }: { items: [string, number][]; palette: string[] }) {
+/* Cores suaves para barras — estilo SnowUI (tons frios, lavanda, teal) */
+const BAR_COLORS = ["#818CF8","#A78BFA","#67E8F9","#6EE7B7","#93C5FD","#C4B5FD","#5EEAD4","#FCA5A5","#FDBA74","#86EFAC"];
+
+function BarChart({ items }: { items: [string, number][] }) {
   if (!items.length) return <Empty />;
   const max = items[0][1] || 1;
 
   return (
     <div className="space-y-3">
       {items.map(([label, count], i) => {
-        const color = palette[i % palette.length];
+        const color = BAR_COLORS[i % BAR_COLORS.length];
         const pct = (count / max) * 100;
         return (
           <div key={label} className="group">
@@ -295,9 +297,9 @@ function BarChart({ items, palette }: { items: [string, number][]; palette: stri
               <span className="text-[12px] text-[var(--label-secondary)] font-medium truncate max-w-[200px]" title={label}>{label}</span>
               <span className="text-[13px] tabnum font-bold text-[var(--label-primary)]">{count}</span>
             </div>
-            <div className="w-full bg-[var(--bg-secondary)] rounded-md h-[22px] overflow-hidden">
+            <div className="w-full bg-[var(--bg-secondary)] rounded-lg h-[20px] overflow-hidden">
               <div
-                className="h-full rounded-md transition-all duration-700 ease-out group-hover:opacity-80"
+                className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
                 style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }}
               />
             </div>
