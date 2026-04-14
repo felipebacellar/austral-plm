@@ -5,9 +5,11 @@ import VariantesTable from "@/components/dev/VariantesTable";
 import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
+import DashboardView from "@/components/dashboard/DashboardView";
 import { fetchProdutos, fetchAllVariantes } from "@/lib/db";
 
 const TABS = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "dev", label: "Desenvolvimento" },
   { id: "variantes", label: "Variantes" },
   { id: "cad", label: "Cadastros" },
@@ -16,7 +18,7 @@ const TABS = [
 type Tab = (typeof TABS)[number]["id"];
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("dev");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [rows, setRows] = useState<any[]>([]);
   const [variantes, setVariantes] = useState<Record<string, string[]>>({});
   const [fichaRow, setFichaRow] = useState<any>(null);
@@ -54,6 +56,7 @@ export default function Home() {
         </div>
       </div>
       {loading && <div className="text-center py-20 text-[var(--label-tertiary)]">Carregando...</div>}
+      {!loading && tab === "dashboard" && <DashboardView rows={rows} variantes={variantes} />}
       {!loading && tab === "dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} />}
       {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} />}
       {!loading && tab === "cad" && <CadView />}
