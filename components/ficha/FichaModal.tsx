@@ -15,6 +15,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [fichaId, setFichaId] = useState<number | null>(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [showExportDlg, setShowExportDlg] = useState(false);
+  const [exportSections, setExportSections] = useState<{ ficha: boolean; estamparia: boolean; liberacao: boolean }>({ ficha: true, estamparia: true, liberacao: true });
   const fr = useRef<HTMLInputElement>(null);
   const mrr = useRef<HTMLInputElement>(null);
   const estImgRef = useRef<HTMLInputElement>(null);
@@ -98,7 +100,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     setSaving(false);
   };
 
-  const exportPDF = () => { setShowPrint(true); setTimeout(() => { window.print(); setTimeout(() => setShowPrint(false), 500); }, 200); };
+  const exportPDF = () => { setShowExportDlg(true); };
+  const doExport = () => { setShowExportDlg(false); setShowPrint(true); setTimeout(() => { window.print(); setTimeout(() => setShowPrint(false), 500); }, 200); };
 
   const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
 
@@ -176,7 +179,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} />
       </div>
     );
   }
@@ -202,6 +205,33 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             </button>
           </div>
         </div>
+
+        {/* ═══ EXPORT DIALOG ═══ */}
+        {showExportDlg && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-[4px]" onClick={() => setShowExportDlg(false)}>
+            <div className="bg-[var(--bg-primary)] rounded-2xl w-[380px] shadow-[0_24px_80px_rgba(0,0,0,0.2)] overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="px-6 pt-5 pb-3 border-b border-[var(--separator)]">
+                <h3 className="text-[16px] font-bold">Exportar PDF</h3>
+                <p className="text-[12px] text-[var(--label-secondary)] mt-1">Selecione as seções para exportar:</p>
+              </div>
+              <div className="px-6 py-4 space-y-3">
+                {([["ficha", "Ficha Técnica", "Dados do produto, tecidos, aviamentos, pilotagem"], ["estamparia", "Estamparia", "Artes, técnicas, simulações e fotos"], ["liberacao", "Liberação", "Tabela de medidas, provas e graduação"]] as [string, string, string][]).map(([key, label, desc]) => (
+                  <label key={key} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(exportSections as any)[key] ? "border-[var(--system-blue)] bg-[rgba(0,122,255,0.04)]" : "border-[var(--separator-opaque)] hover:border-[var(--label-tertiary)]"}`}>
+                    <input type="checkbox" checked={(exportSections as any)[key]} onChange={e => setExportSections(prev => ({ ...prev, [key]: e.target.checked }))} className="mt-0.5 w-4 h-4 accent-[var(--system-blue)]" />
+                    <div>
+                      <div className="text-[13px] font-semibold">{label}</div>
+                      <div className="text-[11px] text-[var(--label-tertiary)]">{desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="px-6 pb-5 flex gap-2.5 justify-end">
+                <button onClick={() => setShowExportDlg(false)} className="apple-btn-secondary">Cancelar</button>
+                <button onClick={doExport} disabled={!exportSections.ficha && !exportSections.estamparia && !exportSections.liberacao} className="apple-btn-primary disabled:opacity-40">Exportar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ═══ FICHA TÉCNICA ═══ */}
         {tab === "ficha" && (<div className="px-6 py-6 space-y-5">
