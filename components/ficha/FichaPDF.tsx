@@ -1,8 +1,9 @@
 "use client";
 
-type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any; pantones?: Record<string,string>; obs?: string; statusLib?: string };
+type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any; pantones?: Record<string,string>; obs?: string; statusLib?: string; tecCad?: any[] };
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs, statusLib }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad }: Props) {
+  const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s,a) => s + (a.valor * a.qtd), 0);
   const tm = row.tab_medidas || "";
   const gd = (t:string,m:string) => { if(!m)return""; const a=parseFloat(t),b=parseFloat(m); if(isNaN(a)||isNaN(b))return""; const d=b-a; return d===0?"0":d>0?`+${d.toFixed(1)}`:d.toFixed(1); };
@@ -58,7 +59,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         {tec.length > 0 && (
           <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "8px", border: "0.5px solid #d2d2d7" }}>
             <thead><tr style={{ background: "#f5f5f7" }}>
-              <th style={th}>Artigo</th><th style={th}>Fornec.</th><th style={{...th, textAlign:"center"}}>Preço</th>
+              <th style={th}>Artigo</th><th style={th}>Fornec.</th><th style={th}>Composição</th><th style={{...th, textAlign:"center"}}>Preço</th>
               <th style={{...th, textAlign:"center"}}>Var 01</th><th style={{...th, textAlign:"center"}}>Var 02</th>
               <th style={{...th, textAlign:"center"}}>Var 03</th><th style={{...th, textAlign:"center"}}>Var 04</th>
             </tr></thead>
@@ -66,6 +67,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               <tr key={i}>
                 <td style={td}><span style={{color:"#86868b",fontSize:"8px",marginRight:"4px"}}>Tec.{String(i+1).padStart(2,"0")}</span><strong>{t.artigo}</strong></td>
                 <td style={td}>{t.forn}</td>
+                <td style={{...td,fontSize:"8px",color:"#86868b"}}>{compOf(t.artigo)||"—"}</td>
                 <td style={{...td,textAlign:"center"}}>{t.preco>0?t.preco.toFixed(2):"—"}</td>
                 {[0,1,2,3].map(j=><td key={j} style={{...td,textAlign:"center",fontWeight:cs[j]?600:400,color:cs[j]?"#1a1a1a":"#c7c7cc"}}>{cs[j]||"—"}</td>)}
               </tr>

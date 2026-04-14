@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos } from "@/lib/db";
+import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos } from "@/lib/db";
 import FichaPDF from "./FichaPDF";
 
 type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
@@ -25,6 +25,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [asq, setAsq] = useState("");
   const [corOpts, setCorOpts] = useState<string[]>([]);
   const [avCad, setAvCad] = useState<any[]>([]);
+  const [tecCad, setTecCad] = useState<any[]>([]);
   const [estamparia, setEstamparia] = useState<any>({ tecnicas: [] });
   const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string }>({ var01: "", var02: "", var03: "", var04: "" });
   const [statusLib, setStatusLib] = useState("");
@@ -36,9 +37,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   useEffect(() => {
     (async () => {
-      const [ficha, cadastros, aviCad] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos()]);
+      const [ficha, cadastros, aviCad, tecs] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(), fetchTecidos()]);
       setCorOpts(cadastros.cor || []);
       setAvCad(aviCad);
+      setTecCad(tecs);
       if (ficha) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
         setTec(ficha.tecidos || []); setAvi(ficha.aviamentos || []);
@@ -77,6 +79,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const exportPDF = () => { setShowPrint(true); setTimeout(() => { window.print(); setTimeout(() => setShowPrint(false), 500); }, 200); };
 
+  const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s: number, a: any) => s + (a.valor * a.qtd), 0);
   const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 4) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
   const ua = (i: number, k: string, v: any) => setAvi(p => p.map((a, j) => j === i ? { ...a, [k]: v } : a));
@@ -92,7 +95,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} grad={grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} grad={grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} />
       </div>
     );
   }
@@ -127,7 +130,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
           <div className="apple-card">
-            <div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tecido", row.tecido], ["Forn. tecido", row.forn_tecido], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Tab. medidas", row.tab_medidas]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
+            <div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tecido", row.tecido], ["Forn. tecido", row.forn_tecido], ["Composição", compOf(row.tecido)], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Tab. medidas", row.tab_medidas]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
             <div className="grid grid-cols-4">{([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
             <div className="border-t border-[var(--separator)]" />
             <div className="grid grid-cols-3">{([["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria], ["Subcategoria", row.subcategoria], ["Tipo", row.tipo]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}<div /></div>
@@ -138,7 +141,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           </div>
           <input ref={fr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_url", setImg)} />
 
-          <div className="apple-card overflow-x-auto"><table className="plm-table"><thead><tr><th className="px-4">Artigo</th><th className="w-24">Fornec.</th><th className="text-center w-16">Preço</th><th className="text-center w-[140px]">Var 01</th><th className="text-center w-[140px]">Var 02</th><th className="text-center w-[140px]">Var 03</th><th className="text-center w-[140px]">Var 04</th></tr></thead><tbody>{tec.map((t: any, ti: number) => { const cs = t.cores || ["", "", "", ""]; while (cs.length < 4) cs.push(""); return (<tr key={ti}><td className="px-4"><span className="text-[var(--label-tertiary)] text-[11px] mr-1.5">Tec.{String(ti + 1).padStart(2, "0")}</span><span className="font-semibold">{t.artigo}</span></td><td>{t.forn}</td><td className="text-center tabnum">{t.preco > 0 ? t.preco.toFixed(2) : "—"}</td>{cs.slice(0, 4).map((c: string, ci: number) => (<td key={ci} className="px-1.5 py-1.5"><select value={c} onChange={e => utc(ti, ci, e.target.value)} className={`w-full text-[12px] px-2 py-1.5 rounded-lg border outline-none cursor-pointer ${c ? "border-[var(--system-blue)] bg-[rgba(0,122,255,0.06)] text-[var(--system-blue)] font-medium" : "border-[var(--separator-opaque)] text-[var(--label-quaternary)]"}`}><option value="">Selecionar</option>{corOpts.map(x => <option key={x} value={x}>{x}</option>)}</select></td>))}</tr>); })}</tbody><tfoot><tr className="border-t border-[var(--separator-opaque)] bg-[var(--bg-secondary)]"><td colSpan={3} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] whitespace-nowrap">Pantone / Código</td>{(["var01","var02","var03","var04"] as const).map(k => (<td key={k} className="px-1.5 py-1.5"><input type="text" value={varCodigos[k]} onChange={e => setVarCodigos(prev => ({ ...prev, [k]: e.target.value }))} placeholder="P. 000 C" className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)] text-center font-mono tracking-wide" /></td>))}</tr></tfoot></table></div>
+          <div className="apple-card overflow-x-auto"><table className="plm-table"><thead><tr><th className="px-4">Artigo</th><th className="w-24">Fornec.</th><th className="w-36">Composição</th><th className="text-center w-16">Preço</th><th className="text-center w-[140px]">Var 01</th><th className="text-center w-[140px]">Var 02</th><th className="text-center w-[140px]">Var 03</th><th className="text-center w-[140px]">Var 04</th></tr></thead><tbody>{tec.map((t: any, ti: number) => { const cs = t.cores || ["", "", "", ""]; while (cs.length < 4) cs.push(""); return (<tr key={ti}><td className="px-4"><span className="text-[var(--label-tertiary)] text-[11px] mr-1.5">Tec.{String(ti + 1).padStart(2, "0")}</span><span className="font-semibold">{t.artigo}</span></td><td>{t.forn}</td><td className="text-[12px] text-[var(--label-secondary)] px-3">{compOf(t.artigo) || "—"}</td><td className="text-center tabnum">{t.preco > 0 ? t.preco.toFixed(2) : "—"}</td>{cs.slice(0, 4).map((c: string, ci: number) => (<td key={ci} className="px-1.5 py-1.5"><select value={c} onChange={e => utc(ti, ci, e.target.value)} className={`w-full text-[12px] px-2 py-1.5 rounded-lg border outline-none cursor-pointer ${c ? "border-[var(--system-blue)] bg-[rgba(0,122,255,0.06)] text-[var(--system-blue)] font-medium" : "border-[var(--separator-opaque)] text-[var(--label-quaternary)]"}`}><option value="">Selecionar</option>{corOpts.map(x => <option key={x} value={x}>{x}</option>)}</select></td>))}</tr>); })}</tbody><tfoot><tr className="border-t border-[var(--separator-opaque)] bg-[var(--bg-secondary)]"><td colSpan={3} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] whitespace-nowrap">Pantone / Código</td>{(["var01","var02","var03","var04"] as const).map(k => (<td key={k} className="px-1.5 py-1.5"><input type="text" value={varCodigos[k]} onChange={e => setVarCodigos(prev => ({ ...prev, [k]: e.target.value }))} placeholder="P. 000 C" className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)] text-center font-mono tracking-wide" /></td>))}</tr></tfoot></table></div>
 
           <div className="pt-5 border-t-2 border-[#1c3654]">
             <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
