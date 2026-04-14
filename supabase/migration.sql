@@ -149,3 +149,16 @@ INSERT INTO tecidos (nome, fornecedor, composicao) VALUES
   ('GAZE FLAMÊ K2','K2','100% CO'),
   ('MALHA 30/01','STICLE','100% CO')
 ON CONFLICT DO NOTHING;
+
+-- =============================================
+-- ALTERAÇÕES — executar separadamente se o schema já existe
+-- =============================================
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS imagem_url TEXT DEFAULT '';
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS imagem_modelo TEXT DEFAULT '';
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS obs_fechamento TEXT DEFAULT '';
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS ncm TEXT DEFAULT '';
+-- ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS pantones JSONB DEFAULT '{}';
+-- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var01 TEXT DEFAULT '';
+-- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var02 TEXT DEFAULT '';
+-- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var03 TEXT DEFAULT '';
+-- ALTER TABLE ficha_aviamentos ADD COLUMN IF NOT EXISTS var04 TEXT DEFAULT '';

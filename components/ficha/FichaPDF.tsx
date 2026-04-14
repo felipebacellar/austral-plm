@@ -1,8 +1,8 @@
 "use client";
 
-type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any };
+type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any; pantones?: Record<string,string>; obs?: string };
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs }: Props) {
   const avT = avi.reduce((s,a) => s + (a.valor * a.qtd), 0);
   const tm = row.tab_medidas || "";
   const gd = (t:string,m:string) => { if(!m)return""; const a=parseFloat(t),b=parseFloat(m); if(isNaN(a)||isNaN(b))return""; const d=b-a; return d===0?"0":d>0?`+${d.toFixed(1)}`:d.toFixed(1); };
@@ -70,6 +70,12 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 {[0,1,2,3].map(j=><td key={j} style={{...td,textAlign:"center",fontWeight:cs[j]?600:400,color:cs[j]?"#1a1a1a":"#c7c7cc"}}>{cs[j]||"—"}</td>)}
               </tr>
             )})}</tbody>
+            {pantones && (pantones.var01||pantones.var02||pantones.var03||pantones.var04) && (
+              <tfoot><tr style={{background:"#f5f5f7",borderTop:"1px solid #d2d2d7"}}>
+                <td colSpan={3} style={{...td,fontWeight:700,fontSize:"8px",color:"#86868b",textTransform:"uppercase",letterSpacing:"0.04em"}}>Pantone / Código</td>
+                {(["var01","var02","var03","var04"] as const).map(k=><td key={k} style={{...td,textAlign:"center",fontFamily:"monospace",fontWeight:pantones[k]?600:400,color:pantones[k]?"#1a1a1a":"#c7c7cc"}}>{pantones[k]||"—"}</td>)}
+              </tr></tfoot>
+            )}
           </table>
         )}
 
@@ -83,7 +89,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           </div>
           <div style={{ flex: "2", border: "0.5px solid #d2d2d7", borderRadius: "6px", padding: "6px 8px" }}>
             <div style={{ fontSize: "8px", fontWeight: 700, color: "#86868b", marginBottom: "2px" }}>OBSERVAÇÕES</div>
-            <div style={{ fontSize: "9px" }}>—</div>
+            <div style={{ fontSize: "9px", whiteSpace: "pre-wrap" }}>{obs || "—"}</div>
           </div>
         </div>
       </div>

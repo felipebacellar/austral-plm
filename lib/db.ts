@@ -105,6 +105,7 @@ export async function fetchFicha(ref: string) {
     id: fid, produto_ref: data.produto_ref,
     imagem_url: data.imagem_url || null, imagem_modelo: data.imagem_modelo || null,
     observacoes: data.observacoes || "", obsFechamento: data.obs_fechamento || "", ncm: data.ncm || "",
+    pantones: (data.pantones as Record<string,string>) || {},
     tecidos: (tec.data || []).map((t: any) => ({ artigo: t.artigo, forn: t.fornecedor, preco: Number(t.preco) || 0, cores: t.cores || [] })),
     aviamentos: (avi.data || []).map((a: any) => ({ item: a.item, cod: a.codigo, qtd: a.qtd, valor: Number(a.valor) || 0, local: a.localizacao || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })),
     pilotagem: (pil.data || []).map((p: any) => ({ num: p.num, lacre: p.lacre || "", envio: p.data_envio || "", receb: p.data_recebimento || "", prova: p.data_prova || "", status: p.status || "" })),
@@ -125,6 +126,7 @@ export async function upsertFicha(ref: string, f: any) {
     const { data, error } = await sb().from("fichas_tecnicas").insert({
       produto_ref: ref, observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
+      pantones: f.pantones || {},
     }).select().single();
     if (error) { console.error("upsertFicha:", error); return null; }
     fid = data.id;
@@ -132,6 +134,7 @@ export async function upsertFicha(ref: string, f: any) {
     await sb().from("fichas_tecnicas").update({
       observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
+      pantones: f.pantones || {},
     }).eq("id", fid);
   }
   // Tecidos
