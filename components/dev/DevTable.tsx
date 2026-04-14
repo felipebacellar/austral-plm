@@ -87,7 +87,7 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
       <div className="flex gap-2 mb-3 flex-wrap items-center">
         <div className="relative flex-1 min-w-[240px]">
           <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Buscar referência, descrição, tecido, fornecedor..." value={q} onChange={e=>setQ(e.target.value)} className="apple-input w-full pl-10 pr-3"/>
+          <input type="text" placeholder="Buscar referência, descrição, tecido, fornecedor..." value={q} onChange={e=>setQ(e.target.value)} className="apple-input w-full !pl-10 pr-3"/>
         </div>
         <button onClick={()=>setSf(!sf)} className={`apple-input flex items-center gap-2 cursor-pointer transition-all ${sf||ac>0?"!border-[var(--system-blue)] !bg-blue-50 text-[var(--system-blue)] font-semibold":""}`}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
