@@ -3,25 +3,29 @@ import { useState, useMemo } from "react";
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
+/* Cores de status — fiéis ao SnowUI (verde/azul/âmbar/vermelho) */
 const STATUS_CFG: Record<string, { color: string; label: string }> = {
-  "DESENVOLVIMENTO":     { color: "#E8A838", label: "Desenvolvimento" },
+  "DESENVOLVIMENTO":     { color: "#F59E0B", label: "Desenvolvimento" },
   "MOSTRUÁRIO LIBERADO": { color: "#22C55E", label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":   { color: "#3B82F6", label: "Produção lib." },
+  "PRODUÇÃO LIBERADA":   { color: "#4A6CF7", label: "Produção lib." },
   "CANCELADO":           { color: "#EF4444", label: "Cancelado" },
 };
 
-/* Paleta SnowUI — tons frios harmoniosos: azuis, lavandas, teais, verdes suaves */
-const PALETTE = ["#A78BFA","#818CF8","#67E8F9","#6EE7B7","#93C5FD","#C4B5FD","#5EEAD4","#FCA5A5"];
-
-/* Stat cards — fundo sólido com texto branco, como SnowUI */
+/* Stat cards — cores sólidas do SnowUI: azul, lavanda, verde, navy */
 const STAT_CARDS = [
-  { bg: "#4A6CF7", label: "Total SKUs" },       // azul
-  { bg: "#7C3AED", label: "Var. de cor" },       // roxo
-  { bg: "#E8A838", label: "Desenvolvimento" },   // âmbar
-  { bg: "#22C55E", label: "Mostr. liberado" },   // verde
-  { bg: "#3B82F6", label: "Produção lib." },     // azul claro
-  { bg: "#1E293B", label: "Cancelado" },         // navy escuro
+  { bg: "#4A6CF7" },  // azul (Views)
+  { bg: "#7B68EE" },  // lavanda/roxo (Visits)
+  { bg: "#F59E0B" },  // âmbar (Desenvolvimento)
+  { bg: "#22C55E" },  // verde (Mostruário)
+  { bg: "#3B82F6" },  // azul claro (Produção)
+  { bg: "#1E293B" },  // navy escuro (Cancelado)
 ];
+
+/* Paleta para donuts de linha — tons suaves SnowUI */
+const DONUT_PALETTE = ["#4A6CF7","#7B68EE","#22C55E","#1E293B","#3B82F6","#F59E0B","#06B6D4","#EF4444"];
+
+/* Cores dos títulos dos charts — SnowUI usa títulos coloridos */
+const TITLE_COLORS = ["#4A6CF7","#22C55E","#7B68EE","#EF4444","#06B6D4","#F59E0B","#3B82F6","#1E293B"];
 
 const FILTERS = [
   { key: "colecao",    label: "Coleção" },
@@ -68,11 +72,11 @@ export default function DashboardView({ rows, variantes }: Props) {
   const statusSegments = byStatus.map(([s, n]) => ({
     label: STATUS_CFG[s]?.label || s,
     value: n,
-    color: STATUS_CFG[s]?.color || "#888",
+    color: STATUS_CFG[s]?.color || "#94A3B8",
   }));
 
   const linhaSegments = byLinha.map(([l, n], i) => ({
-    label: l, value: n, color: PALETTE[i % PALETTE.length],
+    label: l, value: n, color: DONUT_PALETTE[i % DONUT_PALETTE.length],
   }));
 
   const stats = [
@@ -82,6 +86,24 @@ export default function DashboardView({ rows, variantes }: Props) {
     { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO"),   bg: STAT_CARDS[3].bg },
     { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA"),     bg: STAT_CARDS[4].bg },
     { label: "Cancelado",       value: sc("CANCELADO"),             bg: STAT_CARDS[5].bg },
+  ];
+
+  const charts = [
+    { title: "Por status",                 content: <DonutChart segments={statusSegments} total={total} /> },
+    { title: "Por grupo",                  content: <BarChart items={byGrupo} /> },
+    { title: "Por coleção",                content: <BarChart items={byColecao} /> },
+    { title: "Por estilista",              content: <BarChart items={byEstilista} /> },
+    { title: "Por fornecedor (confecção)", content: <BarChart items={byFornecedor} /> },
+    { title: "Tecidos mais usados",        content: <BarChart items={byTecido} /> },
+    { title: "Por linha",                  content: <DonutChart segments={linhaSegments} total={filtered.filter((r: any) => r.linha).length} /> },
+    { title: "Variantes de cor por grupo", content: (() => {
+      const items = byGrupo.map(([grupo]) => {
+        const count = filtered.filter((r: any) => r.grupo === grupo)
+          .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
+        return [grupo, count] as [string, number];
+      }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+      return <BarChart items={items} />;
+    })() },
   ];
 
   return (
@@ -143,46 +165,11 @@ export default function DashboardView({ rows, variantes }: Props) {
 
       {/* ── Gráficos ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        <ChartCard title="Por status">
-          <DonutChart segments={statusSegments} total={total} />
-        </ChartCard>
-
-        <ChartCard title="Por grupo">
-          <BarChart items={byGrupo} />
-        </ChartCard>
-
-        <ChartCard title="Por coleção">
-          <BarChart items={byColecao} />
-        </ChartCard>
-
-        <ChartCard title="Por estilista">
-          <BarChart items={byEstilista} />
-        </ChartCard>
-
-        <ChartCard title="Por fornecedor (confecção)">
-          <BarChart items={byFornecedor} />
-        </ChartCard>
-
-        <ChartCard title="Tecidos mais usados">
-          <BarChart items={byTecido} />
-        </ChartCard>
-
-        <ChartCard title="Por linha">
-          <DonutChart segments={linhaSegments} total={filtered.filter((r: any) => r.linha).length} />
-        </ChartCard>
-
-        <ChartCard title="Variantes de cor por grupo">
-          {(() => {
-            const items = byGrupo.map(([grupo]) => {
-              const count = filtered.filter((r: any) => r.grupo === grupo)
-                .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
-              return [grupo, count] as [string, number];
-            }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
-            return <BarChart items={items} />;
-          })()}
-        </ChartCard>
-
+        {charts.map((c, i) => (
+          <ChartCard key={c.title} title={c.title} titleColor={TITLE_COLORS[i % TITLE_COLORS.length]}>
+            {c.content}
+          </ChartCard>
+        ))}
       </div>
     </div>
   );
@@ -198,7 +185,7 @@ function StatCard({ label, value, bg }: { label: string; value: number; bg: stri
     >
       <div className="flex items-center justify-between mb-3">
         <div className="text-[11px] font-medium leading-tight" style={{ color: "rgba(255,255,255,0.75)" }}>{label}</div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
           <polyline points="17 6 23 6 23 12" />
         </svg>
@@ -208,10 +195,10 @@ function StatCard({ label, value, bg }: { label: string; value: number; bg: stri
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, titleColor, children }: { title: string; titleColor: string; children: React.ReactNode }) {
   return (
     <div className="dash-card p-5">
-      <div className="text-[14px] font-semibold text-[var(--label-primary)] mb-5 tracking-[-0.01em]">{title}</div>
+      <div className="text-[14px] font-semibold mb-5 tracking-[-0.01em]" style={{ color: titleColor }}>{title}</div>
       {children}
     </div>
   );
@@ -231,7 +218,6 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
 
   return (
     <div className="flex items-center gap-8">
-      {/* SVG Donut */}
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
           {segments.map((s, i) => {
@@ -262,7 +248,6 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
           <span className="text-[10px] text-[var(--label-tertiary)]">total</span>
         </div>
       </div>
-      {/* Legend */}
       <div className="flex-1 space-y-3">
         {segments.map(s => (
           <div key={s.label} className="flex items-center gap-2.5">
@@ -279,9 +264,7 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
   );
 }
 
-/* Cores suaves para barras — estilo SnowUI (tons frios, lavanda, teal) */
-const BAR_COLORS = ["#818CF8","#A78BFA","#67E8F9","#6EE7B7","#93C5FD","#C4B5FD","#5EEAD4","#FCA5A5","#FDBA74","#86EFAC"];
-
+/* Barras — SnowUI usa cinza-azulado suave (#CBD5E1) com a barra maior em azul destaque */
 function BarChart({ items }: { items: [string, number][] }) {
   if (!items.length) return <Empty />;
   const max = items[0][1] || 1;
@@ -289,7 +272,8 @@ function BarChart({ items }: { items: [string, number][] }) {
   return (
     <div className="space-y-3">
       {items.map(([label, count], i) => {
-        const color = BAR_COLORS[i % BAR_COLORS.length];
+        const isTop = i === 0;
+        const color = isTop ? "#4A6CF7" : "#CBD5E1";
         const pct = (count / max) * 100;
         return (
           <div key={label} className="group">
@@ -299,7 +283,7 @@ function BarChart({ items }: { items: [string, number][] }) {
             </div>
             <div className="w-full bg-[var(--bg-secondary)] rounded-lg h-[20px] overflow-hidden">
               <div
-                className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
+                className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-95"
                 style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }}
               />
             </div>
