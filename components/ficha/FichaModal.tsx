@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos } from "@/lib/db";
+import { classificarNCM } from "@/lib/ncm";
 import FichaPDF from "./FichaPDF";
 
 type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
@@ -35,6 +36,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
 
+  /* NCM */
+  const [ncm, setNcm] = useState("");
+  const [ncmJust, setNcmJust] = useState("");
+  const [ncmLoading, setNcmLoading] = useState(false);
+
   /* Tabela especial (por produto) */
   const [tEsp, setTEsp] = useState(false);
   const [ptsEsp, setPtsEsp] = useState<any[]>([]);
@@ -58,6 +64,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.estamparia) setEstamparia(ficha.estamparia);
         if (ficha.pantones) setVarCodigos({ var01: ficha.pantones.var01 || "", var02: ficha.pantones.var02 || "", var03: ficha.pantones.var03 || "", var04: ficha.pantones.var04 || "" });
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
+        if (ficha.ncm) setNcm(ficha.ncm);
         if (ficha.tabelaEspecialAtiva) { setTEsp(true); setPtsEsp(ficha.pontosEspeciais || []); setGradEsp(ficha.gradEspecial || []); }
       }
       /* Se não há ficha e o produto tem tecido, cria linha inicial */
@@ -82,7 +89,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib, ncm, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
@@ -92,6 +99,26 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const exportPDF = () => { setShowPrint(true); setTimeout(() => { window.print(); setTimeout(() => setShowPrint(false), 500); }, 200); };
 
   const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
+
+  const gerarNcm = () => {
+    setNcmLoading(true);
+    try {
+      const result = classificarNCM({
+        grupo: row.grupo || "",
+        subgrupo: row.subgrupo || "",
+        categoria: row.categoria || "",
+        tecido: row.tecido || "",
+        composicao: compOf(row.tecido),
+        descricao: row.desc || "",
+      });
+      setNcm(result.ncm);
+      setNcmJust(result.justificativa);
+    } catch {
+      setNcmJust("Erro ao classificar NCM.");
+    }
+    setNcmLoading(false);
+  };
+
   const avT = avi.reduce((s: number, a: any) => s + (a.valor * a.qtd), 0);
   const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 4) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
   const ua = (i: number, k: string, v: any) => setAvi(p => p.map((a, j) => j === i ? { ...a, [k]: v } : a));
@@ -175,6 +202,15 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div className="grid grid-cols-4">{([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
             <div className="border-t border-[var(--separator)]" />
             <div className="grid grid-cols-3">{([["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria], ["Subcategoria", row.subcategoria], ["Tipo", row.tipo]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}<div /></div>
+            <div className="border-t border-[var(--separator)]" />
+            <div className="px-4 py-3 flex items-center gap-3">
+              <span className="text-[11px] text-[var(--label-secondary)] font-medium whitespace-nowrap">NCM:</span>
+              <input type="text" value={ncm} onChange={e => { setNcm(e.target.value); setNcmJust(""); }} placeholder="0000.00.00" className="w-[140px] text-[13px] font-mono font-semibold tabnum border border-[var(--separator-opaque)] rounded-lg px-3 py-1.5 outline-none focus:border-[var(--system-blue)]" />
+              <button onClick={gerarNcm} disabled={ncmLoading} className="apple-btn-secondary text-[12px] !py-1.5 !px-3 flex items-center gap-1.5">
+                {ncmLoading ? <span className="animate-pulse">Gerando...</span> : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>Gerar NCM</>}
+              </button>
+              {ncmJust && <span className="text-[11px] text-[var(--label-tertiary)] truncate flex-1" title={ncmJust}>{ncmJust}</span>}
+            </div>
           </div>
           <div className="apple-card bg-[var(--bg-secondary)] cursor-pointer hover:border-[var(--system-blue)] relative" onClick={() => fr.current?.click()}>
             <div className="aspect-[16/9] max-h-[380px] flex items-center justify-center">{img ? <img src={img} alt="Desenho" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Desenho técnico</p></div>}</div>
