@@ -3,29 +3,29 @@ import { useState, useMemo } from "react";
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
-/* Cores de status — fiéis ao SnowUI (verde/azul/âmbar/vermelho) */
+/* ── Paleta monocromática: marinho → azul → cinza ── */
+const NAVY    = "#1B2A4A";
+const BLUE_D  = "#2B4570";
+const BLUE_M  = "#3B6098";
+const BLUE_L  = "#5A82B4";
+const STEEL   = "#7A9ABF";
+const SLATE   = "#94A8BE";
+const SILVER  = "#B0BEC5";
+const GRAY    = "#CFD8DC";
+
+/* Gradiente de 8 tons para donuts, barras, etc. */
+const SCALE = [NAVY, BLUE_D, BLUE_M, BLUE_L, STEEL, SLATE, SILVER, GRAY];
+
+/* Status usa 4 tons da escala */
 const STATUS_CFG: Record<string, { color: string; label: string }> = {
-  "DESENVOLVIMENTO":     { color: "#F59E0B", label: "Desenvolvimento" },
-  "MOSTRUÁRIO LIBERADO": { color: "#22C55E", label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":   { color: "#4A6CF7", label: "Produção lib." },
-  "CANCELADO":           { color: "#EF4444", label: "Cancelado" },
+  "DESENVOLVIMENTO":     { color: BLUE_L, label: "Desenvolvimento" },
+  "MOSTRUÁRIO LIBERADO": { color: BLUE_D, label: "Mostruário lib." },
+  "PRODUÇÃO LIBERADA":   { color: NAVY,   label: "Produção lib." },
+  "CANCELADO":           { color: SLATE,  label: "Cancelado" },
 };
 
-/* Stat cards — cores sólidas do SnowUI: azul, lavanda, verde, navy */
-const STAT_CARDS = [
-  { bg: "#4A6CF7" },  // azul (Views)
-  { bg: "#7B68EE" },  // lavanda/roxo (Visits)
-  { bg: "#F59E0B" },  // âmbar (Desenvolvimento)
-  { bg: "#22C55E" },  // verde (Mostruário)
-  { bg: "#3B82F6" },  // azul claro (Produção)
-  { bg: "#1E293B" },  // navy escuro (Cancelado)
-];
-
-/* Paleta para donuts de linha — tons suaves SnowUI */
-const DONUT_PALETTE = ["#4A6CF7","#7B68EE","#22C55E","#1E293B","#3B82F6","#F59E0B","#06B6D4","#EF4444"];
-
-/* Cores dos títulos dos charts — SnowUI usa títulos coloridos */
-const TITLE_COLORS = ["#4A6CF7","#22C55E","#7B68EE","#EF4444","#06B6D4","#F59E0B","#3B82F6","#1E293B"];
+/* Stat cards — gradiente do marinho ao cinza */
+const STAT_BG = [NAVY, BLUE_D, BLUE_M, BLUE_L, STEEL, SLATE];
 
 const FILTERS = [
   { key: "colecao",    label: "Coleção" },
@@ -68,42 +68,27 @@ export default function DashboardView({ rows, variantes }: Props) {
   const byFornecedor = useMemo(() => byKey("fornecedor"),      [filtered]);
   const byTecido     = useMemo(() => byKey("tecido", 8),       [filtered]);
   const byLinha      = useMemo(() => byKey("linha"),           [filtered]);
+  const byOperacao   = useMemo(() => byKey("operacao"),        [filtered]);
+
+  const toSegments = (items: [string, number][]) =>
+    items.map(([l, n], i) => ({ label: l, value: n, color: SCALE[i % SCALE.length] }));
 
   const statusSegments = byStatus.map(([s, n]) => ({
     label: STATUS_CFG[s]?.label || s,
     value: n,
-    color: STATUS_CFG[s]?.color || "#94A3B8",
+    color: STATUS_CFG[s]?.color || SILVER,
   }));
 
-  const linhaSegments = byLinha.map(([l, n], i) => ({
-    label: l, value: n, color: DONUT_PALETTE[i % DONUT_PALETTE.length],
-  }));
+  const operacaoSegments = toSegments(byOperacao);
+  const operacaoTotal = byOperacao.reduce((s, [, n]) => s + n, 0);
 
   const stats = [
-    { label: "Total SKUs",      value: total,                       bg: STAT_CARDS[0].bg },
-    { label: "Var. de cor",     value: totalVar,                    bg: STAT_CARDS[1].bg },
-    { label: "Desenvolvimento", value: sc("DESENVOLVIMENTO"),       bg: STAT_CARDS[2].bg },
-    { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO"),   bg: STAT_CARDS[3].bg },
-    { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA"),     bg: STAT_CARDS[4].bg },
-    { label: "Cancelado",       value: sc("CANCELADO"),             bg: STAT_CARDS[5].bg },
-  ];
-
-  const charts = [
-    { title: "Por status",                 content: <DonutChart segments={statusSegments} total={total} /> },
-    { title: "Por grupo",                  content: <BarChart items={byGrupo} /> },
-    { title: "Por coleção",                content: <BarChart items={byColecao} /> },
-    { title: "Por estilista",              content: <BarChart items={byEstilista} /> },
-    { title: "Por fornecedor (confecção)", content: <BarChart items={byFornecedor} /> },
-    { title: "Tecidos mais usados",        content: <BarChart items={byTecido} /> },
-    { title: "Por linha",                  content: <DonutChart segments={linhaSegments} total={filtered.filter((r: any) => r.linha).length} /> },
-    { title: "Variantes de cor por grupo", content: (() => {
-      const items = byGrupo.map(([grupo]) => {
-        const count = filtered.filter((r: any) => r.grupo === grupo)
-          .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
-        return [grupo, count] as [string, number];
-      }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
-      return <BarChart items={items} />;
-    })() },
+    { label: "Total SKUs",      value: total },
+    { label: "Var. de cor",     value: totalVar },
+    { label: "Desenvolvimento", value: sc("DESENVOLVIMENTO") },
+    { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO") },
+    { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA") },
+    { label: "Cancelado",       value: sc("CANCELADO") },
   ];
 
   return (
@@ -119,7 +104,7 @@ export default function DashboardView({ rows, variantes }: Props) {
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-secondary)]">Filtros</span>
           {ac > 0 && (
-            <button onClick={() => setFl({})} className="text-[12px] text-[var(--system-blue)] font-medium flex items-center gap-1 hover:opacity-70 transition-opacity">
+            <button onClick={() => setFl({})} className="text-[12px] font-medium flex items-center gap-1 hover:opacity-70 transition-opacity" style={{ color: BLUE_M }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Limpar filtros
             </button>
@@ -132,7 +117,8 @@ export default function DashboardView({ rows, variantes }: Props) {
               <select
                 value={fl[f.key] || ""}
                 onChange={e => sf(f.key, e.target.value)}
-                className={`apple-select w-full text-[12px] py-1.5 ${fl[f.key] ? "!border-[var(--system-blue)] !bg-blue-50/60 text-[var(--system-blue)] font-semibold" : ""}`}
+                className={`apple-select w-full text-[12px] py-1.5 ${fl[f.key] ? "font-semibold" : ""}`}
+                style={fl[f.key] ? { borderColor: BLUE_M, background: "rgba(59,96,152,0.06)", color: BLUE_D } : {}}
               >
                 <option value="">Todos</option>
                 {uv(f.key).map(v => <option key={v}>{v}</option>)}
@@ -146,9 +132,10 @@ export default function DashboardView({ rows, variantes }: Props) {
               if (!v) return null;
               const f = FILTERS.find(x => x.key === k);
               return (
-                <span key={k} className="inline-flex items-center gap-1.5 bg-blue-50 text-[var(--system-blue)] rounded-lg px-2.5 py-1 text-[12px] font-medium">
-                  <span className="text-blue-300 text-[11px]">{f?.label}:</span>{v}
-                  <button onClick={() => sf(k, "")} className="text-blue-300 hover:text-[var(--system-blue)] leading-none">×</button>
+                <span key={k} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-medium"
+                  style={{ background: "rgba(43,69,112,0.08)", color: BLUE_D }}>
+                  <span className="text-[11px]" style={{ color: STEEL }}>{f?.label}:</span>{v}
+                  <button onClick={() => sf(k, "")} className="hover:opacity-70 leading-none" style={{ color: STEEL }}>×</button>
                 </span>
               );
             })}
@@ -158,18 +145,57 @@ export default function DashboardView({ rows, variantes }: Props) {
 
       {/* ── Cards de resumo ── */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        {stats.map(s => (
-          <StatCard key={s.label} label={s.label} value={s.value} bg={s.bg} />
+        {stats.map((s, i) => (
+          <StatCard key={s.label} label={s.label} value={s.value} bg={STAT_BG[i]} />
         ))}
       </div>
 
       {/* ── Gráficos ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {charts.map((c, i) => (
-          <ChartCard key={c.title} title={c.title} titleColor={TITLE_COLORS[i % TITLE_COLORS.length]}>
-            {c.content}
-          </ChartCard>
-        ))}
+
+        <ChartCard title="Por status">
+          <DonutChart segments={statusSegments} total={total} />
+        </ChartCard>
+
+        <ChartCard title="Tipo de operação">
+          <DonutChart segments={operacaoSegments} total={operacaoTotal} />
+        </ChartCard>
+
+        <ChartCard title="Por grupo">
+          <BarChart items={byGrupo} />
+        </ChartCard>
+
+        <ChartCard title="Por coleção">
+          <BarChart items={byColecao} />
+        </ChartCard>
+
+        <ChartCard title="Por estilista">
+          <BarChart items={byEstilista} />
+        </ChartCard>
+
+        <ChartCard title="Por fornecedor (confecção)">
+          <BarChart items={byFornecedor} />
+        </ChartCard>
+
+        <ChartCard title="Tecidos mais usados">
+          <BarChart items={byTecido} />
+        </ChartCard>
+
+        <ChartCard title="Por linha">
+          <DonutChart segments={toSegments(byLinha)} total={filtered.filter((r: any) => r.linha).length} />
+        </ChartCard>
+
+        <ChartCard title="Variantes de cor por grupo">
+          {(() => {
+            const items = byGrupo.map(([grupo]) => {
+              const count = filtered.filter((r: any) => r.grupo === grupo)
+                .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
+              return [grupo, count] as [string, number];
+            }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+            return <BarChart items={items} />;
+          })()}
+        </ChartCard>
+
       </div>
     </div>
   );
@@ -184,8 +210,8 @@ function StatCard({ label, value, bg }: { label: string; value: number; bg: stri
       style={{ background: bg }}
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[11px] font-medium leading-tight" style={{ color: "rgba(255,255,255,0.75)" }}>{label}</div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="text-[11px] font-medium leading-tight" style={{ color: "rgba(255,255,255,0.7)" }}>{label}</div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
           <polyline points="17 6 23 6 23 12" />
         </svg>
@@ -195,10 +221,10 @@ function StatCard({ label, value, bg }: { label: string; value: number; bg: stri
   );
 }
 
-function ChartCard({ title, titleColor, children }: { title: string; titleColor: string; children: React.ReactNode }) {
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="dash-card p-5">
-      <div className="text-[14px] font-semibold mb-5 tracking-[-0.01em]" style={{ color: titleColor }}>{title}</div>
+      <div className="text-[14px] font-semibold mb-5 tracking-[-0.01em]" style={{ color: NAVY }}>{title}</div>
       {children}
     </div>
   );
@@ -244,7 +270,7 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[22px] font-bold tabnum tracking-[-0.03em] text-[var(--label-primary)]">{total}</span>
+          <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: NAVY }}>{total}</span>
           <span className="text-[10px] text-[var(--label-tertiary)]">total</span>
         </div>
       </div>
@@ -253,7 +279,7 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
           <div key={s.label} className="flex items-center gap-2.5">
             <div className="w-3 h-3 rounded shrink-0" style={{ background: s.color }} />
             <span className="text-[13px] text-[var(--label-primary)] flex-1 truncate">{s.label}</span>
-            <span className="text-[13px] font-bold tabnum text-[var(--label-primary)]">{s.value}</span>
+            <span className="text-[13px] font-bold tabnum" style={{ color: NAVY }}>{s.value}</span>
             <span className="text-[11px] text-[var(--label-tertiary)] w-10 text-right tabnum">
               {((s.value / total) * 100).toFixed(0)}%
             </span>
@@ -264,7 +290,6 @@ function DonutChart({ segments, total }: { segments: { label: string; value: num
   );
 }
 
-/* Barras — SnowUI usa cinza-azulado suave (#CBD5E1) com a barra maior em azul destaque */
 function BarChart({ items }: { items: [string, number][] }) {
   if (!items.length) return <Empty />;
   const max = items[0][1] || 1;
@@ -272,18 +297,17 @@ function BarChart({ items }: { items: [string, number][] }) {
   return (
     <div className="space-y-3">
       {items.map(([label, count], i) => {
-        const isTop = i === 0;
-        const color = isTop ? "#4A6CF7" : "#CBD5E1";
+        const color = SCALE[i % SCALE.length];
         const pct = (count / max) * 100;
         return (
           <div key={label} className="group">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[12px] text-[var(--label-secondary)] font-medium truncate max-w-[200px]" title={label}>{label}</span>
-              <span className="text-[13px] tabnum font-bold text-[var(--label-primary)]">{count}</span>
+              <span className="text-[13px] tabnum font-bold" style={{ color: NAVY }}>{count}</span>
             </div>
-            <div className="w-full bg-[var(--bg-secondary)] rounded-lg h-[20px] overflow-hidden">
+            <div className="w-full rounded-lg h-[20px] overflow-hidden" style={{ background: "rgba(176,190,197,0.2)" }}>
               <div
-                className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-95"
+                className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
                 style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }}
               />
             </div>
