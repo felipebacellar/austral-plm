@@ -7,7 +7,6 @@ export type ColDef = {
 };
 
 const COLUMNS: ColDef[] = [
-  { key: "base",           label: "Base",              width: 70,  type: "text" },
   { key: "ref",            label: "Referência",        width: 120, type: "text" },
   { key: "desc",           label: "Descrição",         width: 260, type: "text" },
   { key: "tecido",         label: "Tecido",            width: 200, type: "select", cad: "tecido" },
@@ -21,8 +20,6 @@ const COLUMNS: ColDef[] = [
   { key: "operacao",       label: "Operação",          width: 170, type: "select", cad: "operacao" },
   { key: "fornecedor",     label: "Fornecedor",        width: 140, type: "select", cad: "fornecedor" },
   { key: "grade",          label: "Grade",             width: 90,  type: "select", cad: "grade" },
-  { key: "cod_cor",        label: "Cód. cor",          width: 90,  type: "text" },
-  { key: "nome_cor",       label: "Nome cor",          width: 140, type: "select", cad: "cor" },
   { key: "categoria",      label: "Categoria",         width: 130, type: "select", cad: "categoria" },
   { key: "subcategoria",   label: "Subcategoria",      width: 130, type: "select", cad: "subcategoria" },
   { key: "lavagem",        label: "Lavagem",           width: 120, type: "text" },
