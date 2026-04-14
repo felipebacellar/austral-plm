@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { uploadImage } from "@/lib/storage";
-import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchCadastros, fetchAviamentos } from "@/lib/db";
+import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos } from "@/lib/db";
 import FichaPDF from "./FichaPDF";
 
 type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
@@ -28,6 +28,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [estamparia, setEstamparia] = useState<any>({ tecnicas: [] });
 
   const [pts, setPts] = useState<any[]>([]);
+  const [grad, setGrad] = useState<any[]>([]);
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
 
@@ -46,8 +47,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.estamparia) setEstamparia(ficha.estamparia);
       }
       if (row.tab_medidas) {
-        const p = await fetchPontosByTabelaNome(row.tab_medidas);
+        const [p, g] = await Promise.all([
+          fetchPontosByTabelaNome(row.tab_medidas),
+          fetchGraduacoesByTabelaNome(row.tab_medidas),
+        ]);
         setPts(p);
+        setGrad(g);
         if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
     })();
@@ -81,7 +86,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} grad={grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} />
       </div>
     );
   }
@@ -152,6 +157,38 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <tr><th colSpan={3} className="border-b-0" /><th colSpan={2} className="text-center !text-[var(--system-blue)] border-b border-blue-100 !bg-[rgba(0,122,255,0.04)] py-1.5">Prova 1</th><th colSpan={2} className="text-center border-b py-1.5">Prova 2</th><th colSpan={2} className="text-center border-b py-1.5">Prova 3</th><th className="border-b-0" /></tr>
               <tr><th className="text-center w-12">Cód</th><th>Descrição</th><th className="text-center w-16">Tabela</th><th className="text-center w-16 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Med.</th><th className="text-center w-14 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-24">Tol.</th></tr>
             </thead><tbody>{pts.map((p: any) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (<tr key={p.cod}><td className="text-center font-bold text-[var(--label-secondary)] px-3">{p.cod}</td><td className="font-medium px-3">{p.desc}</td><td className="text-center tabnum font-semibold px-2">{p.tabela}</td>{(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}<td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{p.tol}</td></tr>); })}</tbody></table></div>
+
+            {/* Graduação */}
+            {grad.length > 0 && (
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Graduação — {tm}</div>
+                <div className="apple-card overflow-hidden overflow-x-auto">
+                  <table className="plm-table">
+                    <thead><tr>
+                      <th>Descrição</th><th className="text-center w-16">PP</th><th className="text-center w-16">P</th>
+                      <th className="text-center w-16 !bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]">M</th>
+                      <th className="text-center w-16">G</th><th className="text-center w-16">GG</th>
+                      <th className="text-center w-14">Ampl. ←</th><th className="text-center w-14">Ampl. →</th>
+                      <th className="text-center w-24">Tolerância</th>
+                    </tr></thead>
+                    <tbody>{grad.map((g: any, i: number) => (
+                      <tr key={i}>
+                        <td className="font-medium px-3">{g.desc}</td>
+                        <td className="text-center tabnum px-2">{g.pp}</td>
+                        <td className="text-center tabnum px-2">{g.p}</td>
+                        <td className="text-center tabnum font-bold px-2 bg-[rgba(0,122,255,0.03)]">{g.m}</td>
+                        <td className="text-center tabnum px-2">{g.g}</td>
+                        <td className="text-center tabnum px-2">{g.gg}</td>
+                        <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-1 border-l border-[var(--separator)]">{g.a1}</td>
+                        <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-1">{g.a2}</td>
+                        <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{g.tol}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">Ampliação: diferença entre tamanhos (←M / M→)</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-5">
               <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
               <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden" onClick={() => mrr.current?.click()}>{imgModelo ? <img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}</div><input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} /></div>

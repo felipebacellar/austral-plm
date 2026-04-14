@@ -1,8 +1,8 @@
 "use client";
 
-type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any };
+type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any };
 
-export default function FichaPDF({ row, tec, avi, pil, pts, pv, an, img, imgModelo, hasEstamparia, estamparia }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia }: Props) {
   const avT = avi.reduce((s,a) => s + (a.valor * a.qtd), 0);
   const tm = row.tab_medidas || "";
   const gd = (t:string,m:string) => { if(!m)return""; const a=parseFloat(t),b=parseFloat(m); if(isNaN(a)||isNaN(b))return""; const d=b-a; return d===0?"0":d>0?`+${d.toFixed(1)}`:d.toFixed(1); };
@@ -202,6 +202,39 @@ export default function FichaPDF({ row, tec, avi, pil, pts, pv, an, img, imgMode
               </tr>
             )})}</tbody>
           </table>
+
+          {/* Graduação */}
+          {grad.length > 0 && (
+            <>
+              <div style={{ fontSize: "9px", fontWeight: 700, color: "#86868b", marginBottom: "4px", marginTop: "8px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Graduação — {tm}</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "8px", border: "0.5px solid #d2d2d7" }}>
+                <thead><tr style={{ background: "#f5f5f7" }}>
+                  <th style={th}>Descrição</th>
+                  <th style={{...th,textAlign:"center",width:"40px"}}>PP</th>
+                  <th style={{...th,textAlign:"center",width:"40px"}}>P</th>
+                  <th style={{...th,textAlign:"center",width:"40px",background:"rgba(0,122,255,0.06)",color:"#007AFF"}}>M</th>
+                  <th style={{...th,textAlign:"center",width:"40px"}}>G</th>
+                  <th style={{...th,textAlign:"center",width:"40px"}}>GG</th>
+                  <th style={{...th,textAlign:"center",width:"35px"}}>Ampl.←</th>
+                  <th style={{...th,textAlign:"center",width:"35px"}}>Ampl.→</th>
+                  <th style={{...th,textAlign:"center",width:"55px"}}>Tol.</th>
+                </tr></thead>
+                <tbody>{grad.map((g:any,i:number)=>(
+                  <tr key={i}>
+                    <td style={{...td,fontWeight:500}}>{g.desc}</td>
+                    <td style={{...td,textAlign:"center"}}>{g.pp}</td>
+                    <td style={{...td,textAlign:"center"}}>{g.p}</td>
+                    <td style={{...td,textAlign:"center",fontWeight:700,background:"rgba(0,122,255,0.02)"}}>{g.m}</td>
+                    <td style={{...td,textAlign:"center"}}>{g.g}</td>
+                    <td style={{...td,textAlign:"center"}}>{g.gg}</td>
+                    <td style={{...td,textAlign:"center",fontSize:"8px",color:"#86868b"}}>{g.a1}</td>
+                    <td style={{...td,textAlign:"center",fontSize:"8px",color:"#86868b"}}>{g.a2}</td>
+                    <td style={{...td,textAlign:"center",fontSize:"8px",color:"#86868b"}}>{g.tol}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </>
+          )}
 
           {/* Modelo */}
           {imgModelo && (

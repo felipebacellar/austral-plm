@@ -187,6 +187,13 @@ export async function fetchPontosByTabelaNome(nome: string) {
   return (data || []).map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia }));
 }
 
+export async function fetchGraduacoesByTabelaNome(nome: string) {
+  const { data: tab } = await sb().from("tabelas_medidas").select("id").eq("nome", nome).maybeSingle();
+  if (!tab) return [];
+  const { data } = await sb().from("graduacoes").select("*").eq("tabela_id", tab.id).order("ordem");
+  return (data || []).map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia }));
+}
+
 // Fetch only tables that have at least 1 point
 export async function fetchTabelasComPontos() {
   const { data, error } = await sb().rpc('get_tabelas_com_pontos').order('nome' as any);
