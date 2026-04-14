@@ -136,3 +136,94 @@ export async function saveFichaImagem(fichaId: number, field: string, url: strin
     .eq("id", fichaId);
   if (error) console.error("saveFichaImagem:", error);
 }
+
+// ── Tabelas de medidas ──
+
+export async function fetchTabelasMedidas() {
+  const sb = getSupabase();
+  const { data: tabelas, error } = await sb
+    .from("tabelas_medidas")
+    .select("id, nome")
+    .order("nome");
+  if (error) { console.error("fetchTabelasMedidas:", error); return []; }
+  return tabelas || [];
+}
+
+export async function fetchTabelaPontos(tabelaId: number) {
+  const { data, error } = await getSupabase()
+    .from("tabela_medida_pontos")
+    .select("*")
+    .eq("tabela_id", tabelaId)
+    .order("ordem");
+  if (error) console.error("fetchTabelaPontos:", error);
+  return data || [];
+}
+
+export async function fetchGraduacoes(tabelaId: number) {
+  const { data, error } = await getSupabase()
+    .from("graduacoes")
+    .select("*")
+    .eq("tabela_id", tabelaId)
+    .order("ordem");
+  if (error) console.error("fetchGraduacoes:", error);
+  return data || [];
+}
+
+export async function createTabelaMedidas(nome: string) {
+  const { data, error } = await getSupabase()
+    .from("tabelas_medidas")
+    .insert({ nome })
+    .select()
+    .single();
+  if (error) console.error("createTabelaMedidas:", error);
+  return data;
+}
+
+export async function deleteTabelaMedidas(id: number) {
+  const { error } = await getSupabase()
+    .from("tabelas_medidas")
+    .delete()
+    .eq("id", id);
+  if (error) console.error("deleteTabelaMedidas:", error);
+}
+
+export async function upsertPontos(tabelaId: number, pontos: any[]) {
+  const sb = getSupabase();
+  // Delete existing
+  await sb.from("tabela_medida_pontos").delete().eq("tabela_id", tabelaId);
+  // Insert all
+  if (pontos.length > 0) {
+    const rows = pontos.map((p, i) => ({
+      tabela_id: tabelaId,
+      cod: p.cod,
+      descricao: p.desc || p.descricao,
+      valor_base: p.tabela || p.valor_base || "",
+      tolerancia: p.tol || p.tolerancia || "1,0 + OU -",
+      ordem: i,
+    }));
+    const { error } = await sb.from("tabela_medida_pontos").insert(rows);
+    if (error) console.error("upsertPontos:", error);
+  }
+}
+
+export async function upsertGraduacoes(tabelaId: number, grads: any[]) {
+  const sb = getSupabase();
+  await sb.from("graduacoes").delete().eq("tabela_id", tabelaId);
+  if (grads.length > 0) {
+    const rows = grads.map((g, i) => ({
+      tabela_id: tabelaId,
+      descricao: g.desc || g.descricao,
+      pp: g.pp || "",
+      p: g.p || "",
+      m: g.m || "",
+      g: g.g || "",
+      gg: g.gg || "",
+      ampliacao_esq: g.a1 || g.ampliacao_esq || "",
+      ampliacao_dir: g.a2 || g.ampliacao_dir || "",
+      tolerancia: g.tol || g.tolerancia || "1,0 + OU -",
+      ordem: i,
+    }));
+    const { error } = await sb.from("graduacoes").insert(rows);
+    if (error) console.error("upsertGraduacoes:", error);
+  }
+}
