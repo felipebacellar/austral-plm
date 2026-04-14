@@ -2,15 +2,18 @@
 import { useState, useRef } from "react";
 import { uploadImage } from "@/lib/storage";
 import { saveFichaImagem } from "@/lib/db";
-import { SAMPLE_CAD, TABELA_PONTOS } from "@/lib/sample-data";
+import { SAMPLE_CAD } from "@/lib/sample-data";
+import { TABELA_PONTOS } from "@/lib/tabela-pontos";
 
 type Props={row:any;onClose:()=>void;onSave:(r:any)=>void};
 
 export default function FichaModal({row,onClose,onSave}:Props){
   const [tab,setTab]=useState<"ficha"|"estamparia"|"liberacao">("ficha");
   const [img,setImg]=useState<string|null>(row.ficha?.imagem_url||null);
+  const [imgModelo,setImgModelo]=useState<string|null>(row.ficha?.imagem_modelo||null);
   const [up,setUp]=useState(false);
   const fr=useRef<HTMLInputElement>(null);
+  const mrr=useRef<HTMLInputElement>(null);
 
   const f=row.ficha||{tecidos:[],aviamentos:[],pilotagem:[{num:"Piloto 1",lacre:"",envio:"",receb:"",prova:"",status:""},{num:"Piloto 2",lacre:"",envio:"",receb:"",prova:"",status:""},{num:"Piloto 3",lacre:"",envio:"",receb:"",prova:"",status:""}],estamparia:{tecnicas:[]}};
   const [tec,setTec]=useState<any[]>(f.tecidos||[]);
@@ -178,9 +181,22 @@ export default function FichaModal({row,onClose,onSave}:Props){
               </table>
             </div>
 
-            <div className="grid grid-cols-2 gap-5">{["Modo de medir","Modelo"].map(l=>(
-              <div key={l}><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">{l}</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p className="text-[12px] text-[var(--label-tertiary)]">{l}</p></div></div></div>
-            ))}</div>
+            <div className="grid grid-cols-2 gap-5">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div>
+                <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center">
+                  <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p className="text-[12px] text-[var(--label-tertiary)]">Modo de medir</p><p className="text-[10px] text-[var(--label-quaternary)] mt-0.5">Cadastrado na tabela de medidas</p></div>
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div>
+                <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] transition-colors overflow-hidden" onClick={()=>mrr.current?.click()}>
+                  {imgModelo?<img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1"/>:
+                  <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p className="text-[12px] text-[var(--label-tertiary)]">Modelo</p><p className="text-[10px] text-[var(--label-quaternary)] mt-0.5">Clique para enviar</p></div>}
+                </div>
+                <input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e=>hi(e,"imagem_modelo",setImgModelo)}/>
+              </div>
+            </div>
 
             <div className="space-y-3">{(["p1","p2","p3"] as const).map((pk,i)=>(
               <div key={pk} className="apple-card p-4"><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Anotações — Prova {i+1}</div>
