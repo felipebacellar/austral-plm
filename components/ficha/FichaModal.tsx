@@ -27,6 +27,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [avCad, setAvCad] = useState<any[]>([]);
   const [estamparia, setEstamparia] = useState<any>({ tecnicas: [] });
   const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string }>({ var01: "", var02: "", var03: "", var04: "" });
+  const [statusLib, setStatusLib] = useState("");
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
@@ -47,6 +48,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.anotacoes) setAn(prev => ({ ...prev, ...ficha.anotacoes }));
         if (ficha.estamparia) setEstamparia(ficha.estamparia);
         if (ficha.pantones) setVarCodigos({ var01: ficha.pantones.var01 || "", var02: ficha.pantones.var02 || "", var03: ficha.pantones.var03 || "", var04: ficha.pantones.var04 || "" });
+        if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
       }
       if (row.tab_medidas) {
         const [p, g] = await Promise.all([
@@ -66,7 +68,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
@@ -90,7 +92,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} grad={grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={pts} grad={grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} />
       </div>
     );
   }
@@ -162,6 +164,23 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {tab === "liberacao" && (<div className="px-6 py-6 space-y-5">
           <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
           <div className="apple-card"><div className="grid grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
+
+          <div className="apple-card px-5 py-3.5 flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Status da liberação</span>
+            <div className="flex gap-2">
+              {([
+                ["REPROVADO",              "Reprovado",           "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
+                ["APROVADO COM RESTRIÇÃO", "Aprov. c/ restrição", "bg-[rgba(255,204,0,0.18)] text-[#856500]  border-[rgba(255,204,0,0.35)]"],
+                ["APROVADO",              "Aprovado",            "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
+              ] as [string, string, string][]).map(([val, label, cls]) => (
+                <button key={val} onClick={() => setStatusLib(prev => prev === val ? "" : val)}
+                  className={`px-3.5 py-1 rounded-full text-[12px] font-semibold border transition-all ${statusLib === val ? cls : "border-[var(--separator-opaque)] text-[var(--label-quaternary)] bg-transparent hover:border-[var(--label-tertiary)]"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {!tm ? <div className="apple-card p-16 text-center"><p className="text-[16px] font-medium text-[var(--label-secondary)]">Nenhuma tabela selecionada</p></div> : (<>
             <div className="apple-card overflow-x-auto"><table className="plm-table"><thead>
               <tr><th colSpan={3} className="border-b-0" /><th colSpan={2} className="text-center !text-[var(--system-blue)] border-b border-blue-100 !bg-[rgba(0,122,255,0.04)] py-1.5">Prova 1</th><th colSpan={2} className="text-center border-b py-1.5">Prova 2</th><th colSpan={2} className="text-center border-b py-1.5">Prova 3</th><th className="border-b-0" /></tr>

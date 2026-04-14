@@ -1,8 +1,8 @@
 "use client";
 
-type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any; pantones?: Record<string,string>; obs?: string };
+type Props = { row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[]; pv: Record<string,{p1:string;p2:string;p3:string}>; an: Record<string,{texto:string;video:string}>; img: string|null; imgModelo: string|null; hasEstamparia: boolean; estamparia?: any; pantones?: Record<string,string>; obs?: string; statusLib?: string };
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs, statusLib }: Props) {
   const avT = avi.reduce((s,a) => s + (a.valor * a.qtd), 0);
   const tm = row.tab_medidas || "";
   const gd = (t:string,m:string) => { if(!m)return""; const a=parseFloat(t),b=parseFloat(m); if(isNaN(a)||isNaN(b))return""; const d=b-a; return d===0?"0":d>0?`+${d.toFixed(1)}`:d.toFixed(1); };
@@ -168,6 +168,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         <div className="print-page" style={{ pageBreakBefore: "always" }}>
           <div style={{ background: "#1c3654", color: "white", padding: "10px 16px", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
             <span style={{ fontSize: "12px", fontWeight: 700 }}>TABELA DE MEDIDAS — LIBERAÇÃO</span>
+            {statusLib && <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 10px", borderRadius: "20px", background: statusLib==="APROVADO"?"rgba(52,199,89,0.25)":statusLib==="REPROVADO"?"rgba(255,59,48,0.25)":"rgba(255,204,0,0.3)", color: statusLib==="APROVADO"?"#5dde85":statusLib==="REPROVADO"?"#ff7b74":"#ffe066" }}>{statusLib}</span>}
             <span style={{ fontSize: "9px" }}><span style={{ opacity: 0.6 }}>Coleção:</span> <strong>{row.colecao}</strong></span>
           </div>
 
