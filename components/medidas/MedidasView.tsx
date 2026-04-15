@@ -6,6 +6,7 @@ import {
   createTabelaMedidas, deleteTabelaMedidas,
   upsertPontos, upsertGraduacoes,
 } from "@/lib/db";
+import { subscribeRealtime } from "@/lib/realtime";
 
 type Tabela = { id: number; nome: string };
 type Ponto = { cod: string; desc: string; tabela: string; tol: string };
@@ -27,6 +28,62 @@ export default function MedidasView() {
   const saveTimer = useRef<any>(null);
 
   useEffect(() => { loadTabelas(); }, []);
+
+  /* Realtime: sincroniza tabelas entre usuários */
+  useEffect(() => {
+    const unsub = subscribeRealtime("medidas-sync", [
+      { table: "tabelas_medidas", onInsert: () => loadTabelas(), onDelete: () => loadTabelas() },
+      {
+        table: "tabela_medida_pontos",
+        onUpdate: (row) => {
+          if (sel && row.tabela_id === sel.id) {
+            fetchTabelaPontos(sel.id).then(pts =>
+              setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })))
+            );
+          }
+        },
+        onInsert: (row) => {
+          if (sel && row.tabela_id === sel.id) {
+            fetchTabelaPontos(sel.id).then(pts =>
+              setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })))
+            );
+          }
+        },
+        onDelete: () => {
+          if (sel) {
+            fetchTabelaPontos(sel.id).then(pts =>
+              setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })))
+            );
+          }
+        },
+      },
+      {
+        table: "graduacoes",
+        onUpdate: (row) => {
+          if (sel && row.tabela_id === sel.id) {
+            fetchGraduacoes(sel.id).then(grd =>
+              setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })))
+            );
+          }
+        },
+        onInsert: (row) => {
+          if (sel && row.tabela_id === sel.id) {
+            fetchGraduacoes(sel.id).then(grd =>
+              setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })))
+            );
+          }
+        },
+        onDelete: () => {
+          if (sel) {
+            fetchGraduacoes(sel.id).then(grd =>
+              setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })))
+            );
+          }
+        },
+      },
+    ]);
+    return unsub;
+  }, [sel]);
 
   const loadTabelas = async () => {
     setLoading(true);

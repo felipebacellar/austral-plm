@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { fetchCadastros, addCadastro, removeCadastro, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, removeAviamento } from "@/lib/db";
+import { subscribeRealtime } from "@/lib/realtime";
 
 const TABS=[{k:"grupo",l:"Grupo"},{k:"subgrupo",l:"Subgrupo"},{k:"categoria",l:"Categoria"},{k:"subcategoria",l:"Subcategoria"},{k:"linha",l:"Linha"},{k:"grade",l:"Grade"},{k:"operacao",l:"Operação"},{k:"tipo",l:"Tipo"},{k:"fornecedor",l:"Fornecedor"},{k:"drop",l:"Drop"},{k:"colecao",l:"Coleção"},{k:"status",l:"Status"},{k:"piloto_most",l:"Piloto / mostr."},{k:"estilista",l:"Estilista"},{k:"cor",l:"Cores"},{k:"aviamento",l:"Aviamentos"},{k:"tecido",l:"Tecidos"}];
 
@@ -12,6 +13,16 @@ export default function CadView(){
   const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [sr,setSr]=useState("");
 
   useEffect(()=>{loadAll();},[]);
+
+  /* Realtime: sincroniza cadastros entre usuários */
+  useEffect(() => {
+    const unsub = subscribeRealtime("cadastros-sync", [
+      { table: "cadastros", onInsert: () => fetchCadastros().then(setCad), onUpdate: () => fetchCadastros().then(setCad), onDelete: () => fetchCadastros().then(setCad) },
+      { table: "tecidos", onInsert: () => fetchTecidos().then(setTecidos), onUpdate: () => fetchTecidos().then(setTecidos), onDelete: () => fetchTecidos().then(setTecidos) },
+      { table: "aviamentos", onInsert: () => fetchAviamentos().then(setAviamentos), onUpdate: () => fetchAviamentos().then(setAviamentos), onDelete: () => fetchAviamentos().then(setAviamentos) },
+    ]);
+    return unsub;
+  }, []);
   const loadAll=async()=>{setLoading(true);const [c,t,a]=await Promise.all([fetchCadastros(),fetchTecidos(),fetchAviamentos()]);setCad(c);setTecidos(t);setAviamentos(a);setLoading(false);};
 
   const isSpecial=["tecido","cor","aviamento"].includes(m);const items=!isSpecial?(cad[m]||[]):[];const info=TABS.find(t=>t.k===m);

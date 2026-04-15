@@ -7,6 +7,7 @@ import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
 import DashboardView from "@/components/dashboard/DashboardView";
 import { fetchProdutos, fetchAllVariantes } from "@/lib/db";
+import { subscribeRealtime } from "@/lib/realtime";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
@@ -35,6 +36,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  /* ── Realtime: sincroniza produtos e variantes entre usuários ── */
+  useEffect(() => {
+    const unsub = subscribeRealtime("produtos-sync", [
+      {
+        table: "produtos",
+        onInsert: (row) => setRows(prev => {
+          if (prev.some(r => r.id === row.id)) return prev;
+          return [...prev, row];
+        }),
+        onUpdate: (row) => setRows(prev => prev.map(r => r.id === row.id ? { ...r, ...row } : r)),
+        onDelete: (old) => setRows(prev => prev.filter(r => r.id !== old.id)),
+      },
+      {
+        table: "ficha_tecidos",
+        onInsert: () => fetchAllVariantes().then(setVariantes),
+        onUpdate: () => fetchAllVariantes().then(setVariantes),
+        onDelete: () => fetchAllVariantes().then(setVariantes),
+      },
+    ]);
+    return unsub;
+  }, []);
 
   const handleFichaSave = async (updatedRow: any) => {
     setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
