@@ -10,7 +10,16 @@ type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>
 
 export default function VariantesTable({rows, variantes, onOpenFicha}:Props){
   const [q,setQ]=useState("");const [fl,setFl]=useState<Record<string,string>>({});const [sf,setSf]=useState(false);
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const ac=Object.values(fl).filter(Boolean).length;
+
+  const toggleSort = (k: string) => {
+    setSort(prev => {
+      if (!prev || prev.key !== k) return { key: k, dir: "asc" };
+      if (prev.dir === "asc") return { key: k, dir: "desc" };
+      return null;
+    });
+  };
 
   const vr=useMemo(()=>{
     const o:any[]=[];
@@ -22,7 +31,19 @@ export default function VariantesTable({rows, variantes, onOpenFicha}:Props){
     return o;
   },[rows, variantes]);
 
-  const filtered=useMemo(()=>{let r=vr;Object.entries(fl).forEach(([k,v])=>{if(v)r=r.filter(x=>x[k]===v);});if(q){const s=q.toLowerCase();r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.fornecedor).toLowerCase().includes(s));}return r;},[vr,fl,q]);
+  const filtered=useMemo(()=>{
+    let r=vr;
+    Object.entries(fl).forEach(([k,v])=>{if(v)r=r.filter(x=>x[k]===v);});
+    if(q){const s=q.toLowerCase();r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.fornecedor).toLowerCase().includes(s));}
+    if (sort) {
+      r = [...r].sort((a, b) => {
+        const av = a[sort.key] ?? "", bv = b[sort.key] ?? "";
+        const cmp = String(av).localeCompare(String(bv), "pt-BR", { numeric: true, sensitivity: "base" });
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+    }
+    return r;
+  },[vr,fl,q,sort]);
 
   const uv=(k:string):string[]=>[...new Set(vr.map(r=>r[k]).filter(Boolean))].sort();
   const sf2=(k:string,v:string)=>setFl(p=>{const n={...p};if(v)n[k]=v;else delete n[k];return n;});
@@ -38,7 +59,22 @@ export default function VariantesTable({rows, variantes, onOpenFicha}:Props){
 
       <div className="flex items-baseline gap-3 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">variante{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {vr.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto">Cores cadastradas na ficha técnica</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{VC.map(c=><th key={c.key} style={{width:c.w,minWidth:c.w}}>{c.label}</th>)}</tr></thead><tbody>
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{VC.map(c=>{
+        const sortable = c.key !== "_ficha";
+        const isActive = sort?.key === c.key;
+        return (
+          <th key={c.key} style={{width:c.w,minWidth:c.w}}>
+            {sortable ? (
+              <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
+                <span>{c.label}</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={isActive ? "opacity-100" : "opacity-30"}>
+                  {isActive && sort?.dir === "desc" ? <path d="M6 9l6 6 6-6"/> : <path d="M18 15l-6-6-6 6"/>}
+                </svg>
+              </button>
+            ) : c.label}
+          </th>
+        );
+      })}</tr></thead><tbody>
         {filtered.map((r:any)=>(<tr key={r._vid}>{VC.map(c=>(<td key={c.key} style={{width:c.w,minWidth:c.w}}>
           {c.key==="_ficha"?<button onClick={()=>onOpenFicha(r)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>
           :c.key==="status"&&SP[r.status]?<span className={`pill ${SP[r.status]}`}>{r.status}</span>

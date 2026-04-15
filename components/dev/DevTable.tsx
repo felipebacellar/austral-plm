@@ -13,7 +13,16 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
   const [fl, setFl] = useState<Record<string,string>>({});
   const [sf, setSf] = useState(false);
   const [dupAlert, setDupAlert] = useState<string|null>(null);
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const ac = Object.values(fl).filter(Boolean).length;
+
+  const toggleSort = (k: string) => {
+    setSort(prev => {
+      if (!prev || prev.key !== k) return { key: k, dir: "asc" };
+      if (prev.dir === "asc") return { key: k, dir: "desc" };
+      return null; // terceiro clique: remove ordenação
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -28,8 +37,21 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
     let r = rows;
     Object.entries(fl).forEach(([k,v]) => { if(v) r = r.filter((x:any) => x[k]===v); });
     if(q) { const s=q.toLowerCase(); r = r.filter((x:any) => (x.ref+x.desc+x.tecido+x.fornecedor+x.forn_tecido+x.estilista+x.tab_medidas).toLowerCase().includes(s)); }
+    if (sort) {
+      const col = COLUMNS.find(c => c.key === sort.key);
+      const isNum = col?.type === "number";
+      r = [...r].sort((a, b) => {
+        const av = a[sort.key] ?? "", bv = b[sort.key] ?? "";
+        if (isNum) {
+          const an = parseFloat(av) || 0, bn = parseFloat(bv) || 0;
+          return sort.dir === "asc" ? an - bn : bn - an;
+        }
+        const cmp = String(av).localeCompare(String(bv), "pt-BR", { numeric: true, sensitivity: "base" });
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+    }
     return r;
-  }, [rows, fl, q]);
+  }, [rows, fl, q, sort]);
 
   const upd = async (id:number, k:string, v:string|number) => {
     // Validate unique ref
@@ -102,7 +124,22 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.map(c=><th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left"}}>{c.label}</th>)}<th style={{width:36}}/></tr></thead><tbody>
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.map(c=>{
+        const sortable = c.type !== "action";
+        const isActive = sort?.key === c.key;
+        return (
+          <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left"}}>
+            {sortable ? (
+              <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
+                <span>{c.label}</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={isActive ? "opacity-100" : "opacity-30"}>
+                  {isActive && sort?.dir === "desc" ? <path d="M6 9l6 6 6-6"/> : <path d="M18 15l-6-6-6 6"/>}
+                </svg>
+              </button>
+            ) : c.label}
+          </th>
+        );
+      })}<th style={{width:36}}/></tr></thead><tbody>
         {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.map(c=><td key={c.key} style={{width:c.width,minWidth:c.width}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{row[c.key]||"—"}</span>:<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>}</td>)}<td className="text-center"><button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></div>
