@@ -68,10 +68,11 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
   letter-spacing: 0.01em;
 }
-.pill-green { background: rgba(52,199,89,0.14); color: #248a3d; }
-.pill-blue  { background: rgba(0,122,255,0.12); color: #0055d4; }
+.pill-green  { background: rgba(52,199,89,0.14); color: #248a3d; }
+.pill-blue   { background: rgba(0,122,255,0.12); color: #0055d4; }
 .pill-orange { background: rgba(255,159,10,0.14); color: #c77c00; }
-.pill-red   { background: rgba(255,59,48,0.12); color: #d70015; }
+.pill-yellow { background: rgba(255,214,10,0.18); color: #7A5C00; }
+.pill-red    { background: rgba(255,59,48,0.12); color: #d70015; }
 
 /* ═══ PLM Table — refined Apple aesthetic ═══ */
 .plm-table {
@@ -563,6 +564,13 @@ input:focus, select:focus, textarea:focus {
 /* ═══ Print — PDF Export ═══ */
 @media print {
   body { background: white !important; margin: 0 !important; padding: 0 !important; }
+
+  /* Force backgrounds and colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
   /* When body has .printing-pdf, hide everything and show only print content */
   body.printing-pdf * { visibility: hidden !important; }

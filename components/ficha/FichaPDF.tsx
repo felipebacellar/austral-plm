@@ -1,4 +1,5 @@
 "use client";
+import { COR_PALETTE } from "@/lib/cor-palette";
 
 type Props = {
   row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[];
@@ -33,19 +34,32 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
   const artes = estamparia?.artes || [];
   const tecnicas = estamparia?.tecnicas || [];
   const sims = estamparia?.simulacoes || {};
+
+  const _ps = (row.status || "").toUpperCase();
+  const fichaType =
+    _ps.includes('CANCELADO') ? 'cancelado' :
+    (_ps.includes('PRODUÇÃO') || _ps.includes('PRODUCAO')) ? 'producao' :
+    (_ps.includes('MOSTRUÁRIO') || _ps.includes('MOSTRUARIO')) ? 'mostruario' :
+    'desenvolvimento';
+  const headerBg = fichaType === 'cancelado' ? '#EA2F46' : fichaType === 'producao' ? '#2DB564' : fichaType === 'mostruario' ? '#EDCA35' : '#4464AF';
+  const headerLabel = fichaType === 'cancelado' ? 'CANCELADO' : fichaType === 'producao' ? 'PRODUÇÃO' : fichaType === 'mostruario' ? 'MOSTRUÁRIO' : 'DESENVOLVIMENTO';
+  const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
+  const numVars = Math.max(4, Math.min(6, estamparia?.numVariantes || tec[0]?.cores?.filter(Boolean).length || 4));
+
   let pageNum = 0;
   const pb = (): React.CSSProperties => { pageNum++; return pageNum > 1 ? { pageBreakBefore: "always" } : {}; };
 
-  const PageHead = ({ title, sub }: { title: string; sub?: string }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingBottom: "10px", borderBottom: `2px solid ${navy}`, marginBottom: "14px" }}>
+  const PageHead = ({ title, sub, bg: bgOverride }: { title: string; sub?: string; bg?: string }) => (
+    <div style={{ background: bgOverride || headerBg, color: white, borderRadius: "4px", padding: "8px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <div>
-        <div style={{ fontSize: "7px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "2px" }}>Austral®</div>
-        <div style={{ fontSize: "18px", fontWeight: 800, color: navy, letterSpacing: "-0.03em", lineHeight: 1.1 }}>{title}</div>
+        <div style={{ fontSize: "6.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6, marginBottom: "1px" }}>Austral®</div>
+        <div style={{ fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>{title}</div>
+        {sub && <div style={{ fontSize: "7.5px", opacity: 0.7, marginTop: "2px" }}>{sub}</div>}
       </div>
       <div style={{ textAlign: "right" }}>
-        <div style={{ fontSize: "8px", color: light, lineHeight: 1.5 }}>Coleção <strong style={{ color: navy }}>{row.colecao}</strong></div>
-        <div style={{ fontSize: "11px", fontWeight: 700, color: navy, letterSpacing: "-0.01em" }}>{row.ref}</div>
-        {sub && <div style={{ fontSize: "7.5px", color: muted }}>{sub}</div>}
+        <div style={{ fontSize: "8px", opacity: 0.7, lineHeight: 1.6 }}>Coleção <strong style={{ opacity: 1 }}>{row.colecao}</strong></div>
+        <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "-0.01em" }}>{row.ref}</div>
+        <div style={{ fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "3px", background: "rgba(255,255,255,0.18)", padding: "2px 8px", borderRadius: "3px", display: "inline-block" }}>{headerLabel}</div>
       </div>
     </div>
   );
@@ -66,78 +80,93 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
 
       {/* ══════════ FICHA TÉCNICA ══════════ */}
       {sec.ficha && (<>
+        {/* Página 1 — layout idêntico à modal */}
         <div className="print-page" style={pb()}>
-          <PageHead title="Ficha Técnica" />
 
-          {/* Grid de campos */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 20px", marginBottom: "14px" }}>
-            <Field label="Referência" value={row.ref} mono />
-            <Field label="Descrição" value={row.desc} />
-            <Field label="Coleção" value={row.colecao} />
-            <Field label="Tecido" value={row.tecido} />
-            <Field label="Fornecedor Tecido" value={row.forn_tecido} />
-            <Field label="Composição" value={compOf(row.tecido)} />
-            <Field label="Operação" value={row.operacao} />
-            <Field label="Fornecedor" value={row.fornecedor} />
-            <Field label="Estilista" value={row.estilista} />
-            <Field label="Tab. Medidas" value={row.tab_medidas} />
-            <Field label="NCM" value={ncm || ""} mono />
-            <Field label="Grade" value={row.grade} />
+          {/* Cabeçalho colorido — igual à modal */}
+          <div style={{ background: headerBg, color: white, borderRadius: "6px", padding: "8px 14px", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em" }}>FICHA TÉCNICA</span>
+            <span style={{ fontSize: "8px", fontWeight: 700, background: "rgba(255,255,255,0.18)", padding: "2px 10px", borderRadius: "20px" }}>{headerLabel}</span>
+            <span style={{ fontSize: "8px", opacity: 0.8 }}>Coleção <strong style={{ opacity: 1 }}>{row.colecao}</strong></span>
           </div>
 
-          {/* Tags */}
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
-            {([["Drop", row.drop], ["Tipo", row.tipo], ["Linha", row.linha], ["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria]] as [string, string][]).map(([l, v]) => v ? (
-              <span key={l} style={{ fontSize: "7.5px", fontWeight: 600, background: bg, border: `0.5px solid ${line}`, borderRadius: "3px", padding: "2px 7px", color: muted }}>
-                <span style={{ color: light, marginRight: "3px" }}>{l}</span>{v}
-              </span>
-            ) : null)}
+          {/* Campos — grid 2 colunas com borda, igual à modal */}
+          <div style={{ border: `1px solid ${line}`, borderRadius: "6px", overflow: "hidden", marginBottom: "7px" }}>
+            {/* Referência + Descrição em destaque */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: `1px solid ${line}` }}>
+              <div style={{ padding: "7px 10px", borderRight: `0.5px solid ${line}`, background: `${headerBg}80` }}>
+                <div style={{ fontSize: "6px", fontWeight: 600, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px", opacity: 0.6 }}>Referência</div>
+                <div style={{ fontSize: "16px", fontWeight: 800, color: navy, fontFamily: "monospace", letterSpacing: "0.02em" }}>{row.ref || "—"}</div>
+              </div>
+              <div style={{ padding: "7px 10px", background: `${headerBg}40` }}>
+                <div style={{ fontSize: "6px", fontWeight: 600, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px", opacity: 0.6 }}>Descrição</div>
+                <div style={{ fontSize: "11px", fontWeight: 500, color: navy }}>{row.desc || "—"}</div>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+              {([["Tecido", row.tecido, false], ["Forn. Tecido", row.forn_tecido, false], ["Composição", compOf(row.tecido), false], ["Operação", row.operacao, false], ["Fornecedor", row.fornecedor, false], ["Estilista", row.estilista, false], ["Tab. Medidas", row.tab_medidas, false], ["NCM", ncm || "", true]] as [string, string, boolean][]).map(([l, v, mono], i) => (
+                <div key={l} style={{ padding: "4px 10px", borderBottom: `0.5px solid ${line}`, borderRight: i % 2 === 0 ? `0.5px solid ${line}` : "none" }}>
+                  <div style={{ fontSize: "6px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em" }}>{l}</div>
+                  <div style={{ fontSize: "8.5px", fontWeight: 700, color: navy, ...(mono ? { fontFamily: "monospace" } : {}) }}>{v || "—"}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: "4px 10px", display: "flex", gap: "5px", flexWrap: "wrap", background: bg, borderTop: `0.5px solid ${line}` }}>
+              {([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha], ["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria]] as [string, string][]).map(([l, v]) => v ? (
+                <span key={l} style={{ fontSize: "7px", fontWeight: 600, background: white, border: `0.5px solid ${lineDark}`, borderRadius: "3px", padding: "1px 6px", color: muted }}>
+                  <span style={{ color: light, marginRight: "2px" }}>{l}</span>{v}
+                </span>
+              ) : null)}
+            </div>
           </div>
 
-          {/* Desenho */}
+          {/* Desenho — grande, na página 1 */}
           {img && (
-            <div style={{ background: bg, border: `0.5px solid ${line}`, borderRadius: "6px", padding: "10px", marginBottom: "14px", textAlign: "center" }}>
-              <img src={img} alt="Desenho técnico" style={{ maxHeight: "240px", maxWidth: "100%", objectFit: "contain" }} />
+            <div style={{ border: `1px solid ${line}`, borderRadius: "6px", overflow: "hidden", marginBottom: "7px", background: white, textAlign: "center" }}>
+              <div style={{ background: headerBg, color: white, padding: "4px 10px", fontSize: "6.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", textAlign: "left" }}>Desenho Técnico</div>
+              <div style={{ padding: "6px 10px" }}>
+                <img src={img} alt="Desenho técnico" style={{ maxHeight: "480px", width: "100%", objectFit: "contain" }} />
+              </div>
             </div>
           )}
 
-          {/* Tecidos */}
+          {/* Tecidos & Variantes */}
           {tec.length > 0 && (
-            <div style={{ marginBottom: "14px" }}>
-              <div style={secTitle}>Tecidos & Variantes</div>
-              <table style={tbl}>
-                <thead><tr style={headRow}>
-                  <th style={th}>Artigo</th><th style={{ ...th, width: "60px" }}>Forn.</th><th style={{ ...th, width: "80px" }}>Composição</th><th style={{ ...th, textAlign: "right", width: "42px" }}>Preço</th>
-                  {[0, 1, 2, 3].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "72px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
+            <div style={{ marginBottom: "7px" }}>
+              <div style={{ background: headerBg, color: white, padding: "4px 10px", borderRadius: "4px 4px 0 0", fontSize: "6.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Tecidos & Variantes</div>
+              <table style={{ ...tbl }}>
+                <thead><tr style={{ ...headRow, background: bg }}>
+                  <th style={th}>Artigo</th><th style={{ ...th, width: "55px" }}>Forn.</th><th style={{ ...th, width: "75px" }}>Composição</th><th style={{ ...th, textAlign: "right", width: "38px" }}>Preço</th>
+                  {Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} style={{ ...th, textAlign: "center", width: "55px" }}><div>Var {String(i + 1).padStart(2, "0")}</div>{cor && <div style={{ marginTop: "3px", display: "inline-block", padding: "1px 5px", borderRadius: "3px", fontSize: "7px", fontWeight: 700, background: pal?.bg || "#eee", color: pal?.text || "#333" }}>{cor}</div>}</th>); })}
                 </tr></thead>
                 <tbody>{tec.map((t, i) => { const cs = t.cores || []; return (
-                  <tr key={i}>
+                  <tr key={i} style={i % 2 ? { background: bg } : {}}>
                     <td style={{ ...td, fontWeight: 700 }}>{t.artigo}</td>
                     <td style={{ ...td, color: muted }}>{t.forn}</td>
-                    <td style={{ ...td, fontSize: "8px", color: muted }}>{compOf(t.artigo) || "—"}</td>
+                    <td style={{ ...td, fontSize: "7.5px", color: muted }}>{compOf(t.artigo) || "—"}</td>
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{t.preco > 0 ? `R$ ${t.preco.toFixed(2)}` : "—"}</td>
-                    {[0, 1, 2, 3].map(j => <td key={j} style={{ ...td, textAlign: "center", fontWeight: cs[j] ? 700 : 400, color: cs[j] ? navy : lineDark, fontSize: "8.5px" }}>{cs[j] || "—"}</td>)}
+                    {Array.from({length: numVars}, (_, j) => { const cor = cs[j]; const pal = cor ? COR_PALETTE[cor] : null; return (<td key={j} style={{ ...td, textAlign: "center", padding: "3px 4px" }}>{cor ? <span style={{ display: "inline-block", padding: "2px 5px", borderRadius: "3px", fontSize: "7.5px", fontWeight: 700, background: pal?.bg || "#eee", color: pal?.text || "#333", whiteSpace: "nowrap" }}>{cor}</span> : <span style={{ color: lineDark }}>—</span>}</td>); })}
                   </tr>
                 ); })}</tbody>
               </table>
               {pantones && (pantones.var01 || pantones.var02 || pantones.var03 || pantones.var04) && (
-                <div style={{ display: "flex", marginTop: "4px", background: bg, borderRadius: "4px", padding: "4px 0" }}>
-                  <div style={{ flex: "0 0 calc(100% - 288px)", padding: "0 8px", fontSize: "7px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "18px" }}>Pantone</div>
-                  {(["var01", "var02", "var03", "var04"] as const).map(k => <div key={k} style={{ width: "72px", textAlign: "center", fontFamily: "'SF Mono', monospace", fontSize: "8px", fontWeight: 700, color: navy, lineHeight: "18px" }}>{pantones[k] || "—"}</div>)}
+                <div style={{ display: "flex", background: bg, borderTop: `0.5px solid ${line}`, padding: "3px 0" }}>
+                  <div style={{ flex: `0 0 calc(100% - ${numVars * 55}px)`, padding: "0 8px", fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "18px" }}>Pantone</div>
+                  {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => <div key={k} style={{ width: "55px", textAlign: "center", fontFamily: "monospace", fontSize: "7.5px", fontWeight: 700, color: navy, lineHeight: "18px" }}>{(pantones as any)[k] || "—"}</div>)}
                 </div>
               )}
             </div>
           )}
 
-          {/* Footer: Custos + Obs */}
-          <div style={{ display: "flex", gap: "14px" }}>
-            <div style={{ width: "160px", background: navy, borderRadius: "6px", padding: "12px 14px", color: white }}>
-              <div style={{ fontSize: "7px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.6, marginBottom: "4px" }}>Total Aviamentos</div>
-              <div style={{ fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</div>
+          {/* Custos + Obs */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ width: "130px", background: headerBg, borderRadius: "6px", padding: "8px 12px", color: white }}>
+              <div style={{ fontSize: "6.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7, marginBottom: "3px" }}>Total Aviamentos</div>
+              <div style={{ fontSize: "14px", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</div>
             </div>
-            <div style={{ flex: 1, background: bg, borderRadius: "6px", padding: "10px 14px", border: `0.5px solid ${line}` }}>
-              <div style={{ fontSize: "7px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>Observações</div>
-              <div style={{ fontSize: "8.5px", color: obs ? navy : light, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{obs || "Nenhuma observação."}</div>
+            <div style={{ flex: 1, background: bg, borderRadius: "6px", padding: "8px 12px", border: `1px solid ${line}` }}>
+              <div style={{ fontSize: "6.5px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px" }}>Observações</div>
+              <div style={{ fontSize: "8px", color: obs ? navy : light, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{obs || "Nenhuma observação."}</div>
             </div>
           </div>
         </div>
@@ -150,7 +179,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               <thead><tr style={headRow}>
                 <th style={th}>Matéria prima</th><th style={{ ...th, width: "52px" }}>Código</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
                 <th style={{ ...th, textAlign: "right", width: "45px" }}>Valor</th><th style={th}>Localização</th>
-                {[1, 2, 3, 4].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "58px" }}>Var {String(i).padStart(2, "0")}</th>)}
+                {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...th, textAlign: "center", width: "50px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
               </tr></thead>
               <tbody>
                 {avi.map((a, i) => (
@@ -160,33 +189,17 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                     <td style={{ ...td, textAlign: "center" }}>{a.qtd}</td>
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                     <td style={{ ...td, fontSize: "8px", color: muted }}>{a.local || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var01 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var02 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var03 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a.var04 || "—"}</td>
+                    {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => <td key={k} style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a[k] || "—"}</td>)}
                   </tr>
                 ))}
               </tbody>
               <tfoot><tr>
-                <td colSpan={3} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${navy}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
-                <td style={{ ...td, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${navy}`, fontSize: "10px", fontVariantNumeric: "tabular-nums", paddingTop: "6px" }}>R$ {avT.toFixed(2)}</td>
-                <td colSpan={5} style={{ ...td, borderTop: `2px solid ${navy}` }} />
+                <td colSpan={3} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
+                <td style={{ ...td, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", fontVariantNumeric: "tabular-nums", paddingTop: "6px" }}>R$ {avT.toFixed(2)}</td>
+                <td colSpan={numVars + 1} style={{ ...td, borderTop: `2px solid ${headerBg}` }} />
               </tr></tfoot>
             </table>
 
-            {pil.length > 0 && (
-              <div style={{ marginTop: "18px" }}>
-                <div style={secTitle}>Pilotagem</div>
-                <table style={tbl}>
-                  <thead><tr style={headRow}><th style={th}>Piloto</th><th style={th}>Lacre</th><th style={th}>Envio</th><th style={th}>Recebimento</th><th style={th}>Prova</th><th style={th}>Status</th></tr></thead>
-                  <tbody>{pil.map((p, i) => (
-                    <tr key={i} style={i % 2 ? { background: bg } : {}}>
-                      <td style={{ ...td, fontWeight: 700 }}>{p.num}</td><td style={td}>{p.lacre || "—"}</td><td style={td}>{p.envio || "—"}</td><td style={td}>{p.receb || "—"}</td><td style={td}>{p.prova || "—"}</td><td style={td}>{p.status || "—"}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            )}
           </div>
         )}
       </>)}
@@ -196,37 +209,46 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         <div className="print-page" style={pb()}>
           <PageHead title="Estamparia" sub={`${row.operacao} · ${row.fornecedor} · ${row.estilista}`} />
 
-          {/* Artes */}
-          <div style={{ display: "flex", gap: "14px", marginBottom: "16px" }}>
+          {/* Artes FRENTE + COSTAS — 2 colunas compactas */}
+          <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
             {artes.filter((a: any) => a.posicao !== "TAGLESS").map((arte: any) => (
-              <div key={arte.posicao} style={{ flex: 1 }}>
-                <div style={{ background: navy, color: white, padding: "5px 10px", borderRadius: "4px 4px 0 0", fontSize: "8px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Arte {arte.posicao}</div>
-                <div style={{ border: `0.5px solid ${line}`, borderTop: "none", borderRadius: "0 0 6px 6px", overflow: "hidden" }}>
-                  {arte.largura && <div style={{ textAlign: "center", fontSize: "9px", fontWeight: 700, color: accent, padding: "4px 0", background: bg }}>{arte.largura}</div>}
-                  <div style={{ padding: "8px", textAlign: "center", minHeight: "160px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {arte.imagem ? <img src={arte.imagem} alt={arte.posicao} style={{ maxHeight: "180px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>Sem imagem</span>}
-                  </div>
-                  {arte.localizacao && <div style={{ background: bg, borderTop: `0.5px solid ${line}`, padding: "6px 10px" }}>
-                    <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px" }}>Localização</div>
-                    <div style={{ fontSize: "8px", color: muted, lineHeight: 1.5 }}>{arte.localizacao}</div>
-                  </div>}
+              <div key={arte.posicao} style={{ flex: 1, border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
+                {/* Arte header */}
+                <div style={{ background: headerBg, color: white, padding: "4px 8px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Arte {arte.posicao}</div>
+                {/* Arte image */}
+                <div style={{ padding: "6px", textAlign: "center", background: white, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80px" }}>
+                  {arte.imagem ? <img src={arte.imagem} alt={arte.posicao} style={{ maxHeight: "90px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "8px" }}>Sem imagem</span>}
                 </div>
+                {/* Largura */}
+                {arte.largura && <div style={{ textAlign: "center", fontSize: "8px", fontWeight: 700, color: accent, padding: "3px 0", background: bg, borderTop: `0.5px solid ${line}` }}>{arte.largura}</div>}
+                {/* Localização */}
+                {(arte.imagemLocal || arte.localizacao) && (
+                  <div style={{ background: bg, borderTop: `0.5px solid ${line}`, padding: "5px 8px" }}>
+                    <div style={{ fontSize: "6px", fontWeight: 700, color: white, background: headerBg, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center", borderRadius: "3px", padding: "2px 6px", marginBottom: "5px" }}>Localização Arte {arte.posicao}</div>
+                    {arte.imagemLocal && <div style={{ textAlign: "center", marginBottom: arte.localizacao ? "4px" : 0 }}><img src={arte.imagemLocal} alt={`Localização ${arte.posicao}`} style={{ maxHeight: "70px", maxWidth: "100%", objectFit: "contain" }} /></div>}
+                    {arte.localizacao && <div style={{ fontSize: "7.5px", color: muted, lineHeight: 1.4 }}>{arte.localizacao}</div>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Tagless */}
-          {(() => { const tg = artes.find((a: any) => a.posicao === "TAGLESS"); if (!tg || (!tg.imagem && !tg.localizacao)) return null; return (
-            <div style={{ display: "flex", gap: "14px", marginBottom: "16px", border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
-              <div style={{ flex: "0 0 35%", borderRight: `0.5px solid ${line}` }}>
-                <div style={{ background: navy, color: white, padding: "5px 10px", fontSize: "8px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Tagless</div>
-                <div style={{ padding: "8px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "70px" }}>
-                  {tg.imagem ? <img src={tg.imagem} alt="Tagless" style={{ maxHeight: "80px", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>Sem imagem</span>}
+          {/* Tagless — layout horizontal compacto */}
+          {(() => { const tg = artes.find((a: any) => a.posicao === "TAGLESS"); if (!tg || (!tg.imagem && !tg.localizacao && !tg.imagemLocal && !tg.largura)) return null; return (
+            <div style={{ display: "flex", gap: "0", marginBottom: "10px", border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
+              {/* Arte TAGLESS */}
+              <div style={{ flex: "0 0 28%", borderRight: `0.5px solid ${line}` }}>
+                <div style={{ background: headerBg, color: white, padding: "4px 8px", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Tagless</div>
+                <div style={{ padding: "6px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60px", background: white }}>
+                  {tg.imagem ? <img src={tg.imagem} alt="Tagless" style={{ maxHeight: "65px", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "8px" }}>Sem imagem</span>}
                 </div>
+                {tg.largura && <div style={{ textAlign: "center", fontSize: "8px", fontWeight: 700, color: accent, padding: "3px 0", background: bg, borderTop: `0.5px solid ${line}` }}>{tg.largura}</div>}
               </div>
-              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                {tg.largura && <div style={{ fontSize: "9px", fontWeight: 700, color: accent, marginBottom: "4px" }}>{tg.largura}</div>}
-                <div style={{ fontSize: "8.5px", color: muted, lineHeight: 1.5 }}>{tg.localizacao || "—"}</div>
+              {/* Localização TAGLESS */}
+              <div style={{ flex: 1, padding: "5px 8px", background: bg }}>
+                <div style={{ fontSize: "6px", fontWeight: 700, color: white, background: headerBg, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center", borderRadius: "3px", padding: "2px 6px", marginBottom: "5px" }}>Localização Arte Tagless</div>
+                {tg.imagemLocal && <div style={{ textAlign: "center", marginBottom: "4px" }}><img src={tg.imagemLocal} alt="Localização TAGLESS" style={{ maxHeight: "65px", maxWidth: "100%", objectFit: "contain" }} /></div>}
+                {tg.localizacao && <div style={{ fontSize: "7.5px", color: muted, lineHeight: 1.4 }}>{tg.localizacao}</div>}
               </div>
             </div>
           ); })()}
@@ -239,19 +261,13 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 <thead><tr style={headRow}>
                   <th style={{ ...th, textAlign: "center", width: "26px" }}>#</th>
                   <th style={th}>Técnica</th>
-                  {[0, 1, 2, 3].map(i => <th key={i} style={{ ...th, textAlign: "center", width: "82px" }}>
-                    <div>Var {String(i + 1).padStart(2, "0")}</div>
-                    {tec[0]?.cores?.[i] && <div style={{ fontWeight: 400, fontSize: "6.5px", color: light }}>{tec[0].cores[i]}</div>}
-                  </th>)}
+                  {Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} style={{ ...th, textAlign: "center", width: "70px" }}><div>Var {String(i + 1).padStart(2, "0")}</div>{cor && <div style={{ marginTop: "3px", display: "inline-block", padding: "1px 5px", borderRadius: "3px", fontSize: "7px", fontWeight: 700, background: pal?.bg || "#eee", color: pal?.text || "#333" }}>{cor}</div>}</th>); })}
                 </tr></thead>
                 <tbody>{tecnicas.map((t: any, i: number) => (
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
                     <td style={{ ...td, textAlign: "center", fontWeight: 800, fontSize: "12px", color: muted }}>{i + 1}</td>
                     <td style={{ ...td, fontWeight: 700 }}>{t.tecnica || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var01 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var02 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var03 || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t.var04 || "—"}</td>
+                    {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => <td key={k} style={{ ...td, textAlign: "center", fontSize: "8.5px" }}>{t[k] || "—"}</td>)}
                   </tr>
                 ))}</tbody>
               </table>
@@ -266,59 +282,56 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           )}
         </div>
 
-        {/* Simulações */}
-        {[["var01", "var02"], ["var03", "var04"]].map((pair, pageIdx) => {
-          const hasContent = pair.some(vk => sims[vk]?.imgSim || sims[vk]?.imgFoto);
-          if (!hasContent) return null;
-          return (
-            <div key={pageIdx} className="print-page" style={pb()}>
-              <PageHead title="Simulações" sub={`${row.operacao} · ${row.fornecedor}`} />
-              <div style={{ display: "flex", gap: "16px" }}>
-                {pair.map((vk, vi) => {
-                  const sim = sims[vk] || {};
-                  const corIdx = pageIdx * 2 + vi;
-                  const corName = tec[0]?.cores?.[corIdx] || "";
-                  const st = sim.status || "";
-                  const stColor = st.includes("LIBERADA") ? success : st === "REPROVADA" ? danger : st.includes("AJUSTE") ? warn : muted;
-                  return (
-                    <div key={vk} style={{ flex: 1 }}>
-                      {/* Variant header */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                        <div>
-                          <div style={{ fontSize: "13px", fontWeight: 800, color: navy }}>Variante {String(corIdx + 1).padStart(2, "0")}</div>
-                          {corName && <div style={{ fontSize: "8.5px", fontWeight: 600, color: accent }}>{corName}</div>}
-                        </div>
-                        {st && <Badge text={st} color={stColor} />}
-                      </div>
-
-                      {/* Simulação */}
-                      <div style={{ marginBottom: "10px" }}>
-                        <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Simulação</div>
-                        <div style={{ background: bg, borderRadius: "6px", border: `0.5px solid ${line}`, padding: "8px", textAlign: "center", minHeight: "210px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {sim.imgSim ? <img src={sim.imgSim} alt="Simulação" style={{ maxHeight: "250px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>—</span>}
-                        </div>
-                      </div>
-
-                      {/* Foto */}
+        {/* Simulações — 2 variantes por página */}
+        {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).reduce<string[][]>((acc, vk, i) => { if (i % 2 === 0) acc.push([vk]); else acc[acc.length - 1].push(vk); return acc; }, []).map((pair, pageIdx) => (
+          <div key={pageIdx} className="print-page" style={pb()}>
+            <PageHead title={`Simulações e Fotos — Variante${pair.length > 1 ? "s" : ""} ${pair.map((_, vi) => String(pageIdx * 2 + vi + 1).padStart(2, "0")).join(" e ")}`} sub={`${row.operacao} · ${row.fornecedor}`} />
+            <div style={{ display: "flex", gap: "14px", height: "calc(100% - 60px)" }}>
+              {pair.map((vk, vi) => {
+                const sim = sims[vk] || {};
+                const corIdx = pageIdx * 2 + vi;
+                const corName = tec[0]?.cores?.[corIdx] || "";
+                const st = sim.status || "";
+                const stColor = st.includes("LIBERADA") ? success : st === "REPROVADA" ? danger : st.includes("AJUSTE") ? warn : muted;
+                const pal = corName ? COR_PALETTE[corName] : null;
+                return (
+                  <div key={vk} style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {/* Variant header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: bg, borderRadius: "6px", border: `0.5px solid ${line}` }}>
                       <div>
-                        <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Foto</div>
-                        <div style={{ background: bg, borderRadius: "6px", border: `0.5px solid ${line}`, padding: "8px", textAlign: "center", minHeight: "170px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {sim.imgFoto ? <img src={sim.imgFoto} alt="Foto" style={{ maxHeight: "200px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>—</span>}
-                        </div>
+                        <div style={{ fontSize: "11px", fontWeight: 800, color: navy }}>Variante {String(corIdx + 1).padStart(2, "0")}</div>
+                        {corName && <div style={{ marginTop: "3px", display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "8px", fontWeight: 700, background: pal?.bg || "#eee", color: pal?.text || "#333" }}>{corName}</div>}
+                      </div>
+                      {st && <Badge text={st} color={stColor} />}
+                    </div>
+
+                    {/* Simulação */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Simulação</div>
+                      <div style={{ flex: 1, background: bg, borderRadius: "6px", border: `0.5px solid ${line}`, padding: "8px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "180px" }}>
+                        {sim.imgSim ? <img src={sim.imgSim} alt="Simulação" style={{ maxHeight: "220px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>Sem imagem</span>}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Foto */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Foto</div>
+                      <div style={{ flex: 1, background: bg, borderRadius: "6px", border: `0.5px solid ${line}`, padding: "8px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "150px" }}>
+                        {sim.imgFoto ? <img src={sim.imgFoto} alt="Foto" style={{ maxHeight: "190px", maxWidth: "100%", objectFit: "contain" }} /> : <span style={{ color: lineDark, fontSize: "9px" }}>Sem imagem</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </>)}
 
       {/* ══════════ LIBERAÇÃO ══════════ */}
       {sec.liberacao && tm && pts.length > 0 && (
         <div className="print-page" style={pb()}>
-          <PageHead title="Liberação" sub={statusLib ? undefined : "Pendente"} />
+          <PageHead title={`Liberação de ${fichaType === 'producao' ? 'Produção' : fichaType === 'mostruario' ? 'Mostruário' : 'Desenvolvimento'}`} sub={statusLib ? undefined : "Pendente"} bg={modelagemColor} />
 
           {/* Status */}
           {statusLib && (

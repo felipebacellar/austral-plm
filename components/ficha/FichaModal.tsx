@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
+import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
 
 type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
@@ -23,7 +24,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [estImgTarget, setEstImgTarget] = useState<{ type: string; key: string } | null>(null);
 
   const [tec, setTec] = useState<any[]>([]);
-  const [avi, setAvi] = useState<any[]>([]);
+  const DEFAULT_AVI = [{ item: "ADESIVO DE CÓDIGO DE BARRAS", cod: "AD0001", qtd: 1, valor: 0.10, local: "COLADO NO VERSO DO TAG", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }];
+  const [avi, setAvi] = useState<any[]>(DEFAULT_AVI);
   const [pil, setPil] = useState<any[]>([{ num: "Piloto 1", lacre: "", envio: "", receb: "", prova: "", status: "" }, { num: "Piloto 2", lacre: "", envio: "", receb: "", prova: "", status: "" }, { num: "Piloto 3", lacre: "", envio: "", receb: "", prova: "", status: "" }]);
   const [obs, setObs] = useState("");
   const [sap, setSap] = useState(false);
@@ -32,13 +34,17 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [avCad, setAvCad] = useState<any[]>([]);
   const [tecCad, setTecCad] = useState<any[]>([]);
   const [estamparia, setEstamparia] = useState<any>({ artes: [{ posicao: "FRENTE", imagem: "", largura: "", localizacao: "" }, { posicao: "COSTAS", imagem: "", largura: "", localizacao: "" }, { posicao: "TAGLESS", imagem: "", largura: "", localizacao: "" }], tecnicas: [], simulacoes: { var01: { nome: "", imgSim: "", imgFoto: "", status: "" }, var02: { nome: "", imgSim: "", imgFoto: "", status: "" }, var03: { nome: "", imgSim: "", imgFoto: "", status: "" }, var04: { nome: "", imgSim: "", imgFoto: "", status: "" } }, observacoes: "" });
-  const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string }>({ var01: "", var02: "", var03: "", var04: "" });
+  const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }>({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
+  const [varTingimento, setVarTingimento] = useState<{ var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }>({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
+  const [tingimentoOpts, setTingimentoOpts] = useState<string[]>([]);
   const [statusLib, setStatusLib] = useState("");
+  const [numVars, setNumVars] = useState(4);
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
+  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string }>>({ p1: { data: "", status: "" }, p2: { data: "", status: "" }, p3: { data: "", status: "" } });
 
   /* NCM */
   const [ncm, setNcm] = useState("");
@@ -54,20 +60,23 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     (async () => {
       const [ficha, cadastros, aviCad, tecs] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(), fetchTecidos()]);
       setCorOpts(cadastros.cor || []);
+      setTingimentoOpts(cadastros.tingimento || []);
       setAvCad(aviCad);
       setTecCad(tecs);
       if (ficha) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
         const ficTec = ficha.tecidos || [];
         setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
-        setAvi(ficha.aviamentos || []);
+        setAvi(ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI);
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
         if (ficha.anotacoes) setAn(prev => ({ ...prev, ...ficha.anotacoes }));
-        if (ficha.estamparia) setEstamparia(ficha.estamparia);
-        if (ficha.pantones) setVarCodigos({ var01: ficha.pantones.var01 || "", var02: ficha.pantones.var02 || "", var03: ficha.pantones.var03 || "", var04: ficha.pantones.var04 || "" });
+        if (ficha.estamparia) { setEstamparia(ficha.estamparia); if (ficha.estamparia.numVariantes) setNumVars(Math.max(4, ficha.estamparia.numVariantes)); }
+        if (ficha.pantones) setVarCodigos({ var01: ficha.pantones.var01 || "", var02: ficha.pantones.var02 || "", var03: ficha.pantones.var03 || "", var04: ficha.pantones.var04 || "", var05: ficha.pantones.var05 || "", var06: ficha.pantones.var06 || "" });
+        if (ficha.tingimento) setVarTingimento(prev => ({ ...prev, ...ficha.tingimento }));
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
+        if (ficha.provaInfo) setProvaInfo(prev => ({ ...prev, ...ficha.provaInfo }));
         if (ficha.ncm) setNcm(ficha.ncm);
         if (ficha.tabelaEspecialAtiva) { setTEsp(true); setPtsEsp(ficha.pontosEspeciais || []); setGradEsp(ficha.gradEspecial || []); }
       }
@@ -93,7 +102,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, statusLiberacao: statusLib, ncm, estamparia, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
@@ -125,25 +134,35 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   };
 
   const avT = avi.reduce((s: number, a: any) => s + (a.valor * a.qtd), 0);
-  const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 4) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
+  const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 6) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
   const ua = (i: number, k: string, v: any) => setAvi(p => p.map((a, j) => j === i ? { ...a, [k]: v } : a));
   const ra = (i: number) => setAvi(p => p.filter((_, j) => j !== i));
-  const aa = (a: any) => { setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: "", var01: "", var02: "", var03: "", var04: "" }]); setSap(false); setAsq(""); };
+  const aa = (a: any) => { setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }]); setSap(false); setAsq(""); };
   const fa = asq ? avCad.filter((a: any) => (a.cod + a.nome).toLowerCase().includes(asq.toLowerCase())) : avCad;
   const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
-  const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return Math.abs(d) > 1 ? "text-[var(--system-red)] font-semibold" : d === 0 ? "text-[var(--system-green)]" : "text-[var(--system-orange)]"; };
+  const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return d === 0 ? "text-[var(--system-green)]" : "font-bold text-red-600 bg-yellow-100"; };
   const tm = row.tab_medidas || "";
   const hasEstamparia = (estamparia?.tecnicas || []).length > 0 || (estamparia?.artes || []).some((a: any) => a.imagem || a.largura || a.localizacao);
 
   /* ── Estamparia helpers ── */
   const updArte = (posicao: string, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, artes: (prev.artes || []).map((a: any) => a.posicao === posicao ? { ...a, [field]: value } : a) }));
   const updTecnica = (i: number, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.map((t: any, j: number) => j === i ? { ...t, [field]: value } : t) }));
-  const addTecnica = () => setEstamparia((prev: any) => ({ ...prev, tecnicas: [...prev.tecnicas, { tecnica: "", var01: "", var02: "", var03: "", var04: "" }] }));
+  const addTecnica = () => setEstamparia((prev: any) => ({ ...prev, tecnicas: [...prev.tecnicas, { tecnica: "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }] }));
+  const _s = (row.status || "").toUpperCase();
+  const fichaColor = (_s.includes('CANCELADO')) ? '#EA2F46' : (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO')) ? '#2DB564' : (_s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO')) ? '#EDCA35' : '#4464AF';
+  const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
   const removeTecnica = (i: number) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.filter((_: any, j: number) => j !== i) }));
   const updSim = (vk: string, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, simulacoes: { ...prev.simulacoes, [vk]: { ...(prev.simulacoes?.[vk] || {}), [field]: value } } }));
-  const handleEstImg = async (e: any) => { const file = e.target.files?.[0]; if (!file || !estImgTarget) return; setUp(true); const url = await uploadImage(file, `${row.ref}/estamparia/${estImgTarget.key}`); if (url) { if (estImgTarget.type === "arte") updArte(estImgTarget.key, "imagem", url); else if (estImgTarget.type === "sim") updSim(estImgTarget.key, "imgSim", url); else if (estImgTarget.type === "foto") updSim(estImgTarget.key, "imgFoto", url); } setUp(false); setEstImgTarget(null); if (estImgRef.current) estImgRef.current.value = ""; };
+  const estImgPath = (type: string, key: string) => {
+    if (type === "arte")      return `${row.ref}/estamparia/arte_${key}`;
+    if (type === "arteLocal") return `${row.ref}/estamparia/local_${key}`;
+    if (type === "sim")       return `${row.ref}/estamparia/sim_${key}`;
+    if (type === "foto")      return `${row.ref}/estamparia/foto_${key}`;
+    return `${row.ref}/estamparia/${key}`;
+  };
+  const handleEstImg = async (e: any) => { const file = e.target.files?.[0]; if (!file || !estImgTarget) return; setUp(true); const url = await uploadImage(file, estImgPath(estImgTarget.type, estImgTarget.key)); if (url) { if (estImgTarget.type === "arte") updArte(estImgTarget.key, "imagem", url); else if (estImgTarget.type === "arteLocal") updArte(estImgTarget.key, "imagemLocal", url); else if (estImgTarget.type === "sim") updSim(estImgTarget.key, "imgSim", url); else if (estImgTarget.type === "foto") updSim(estImgTarget.key, "imgFoto", url); } setUp(false); setEstImgTarget(null); if (estImgRef.current) estImgRef.current.value = ""; };
   const triggerEstImg = (type: string, key: string) => { setEstImgTarget({ type, key }); setTimeout(() => estImgRef.current?.click(), 0); };
-  const deleteEstImg = async (type: string, key: string, url: string) => { if (url) await deleteImage(url); if (type === "arte") updArte(key, "imagem", ""); else if (type === "sim") updSim(key, "imgSim", ""); else if (type === "foto") updSim(key, "imgFoto", ""); };
+  const deleteEstImg = async (type: string, key: string, url: string) => { if (url) await deleteImage(url); if (type === "arte") updArte(key, "imagem", ""); else if (type === "arteLocal") updArte(key, "imagemLocal", ""); else if (type === "sim") updSim(key, "imgSim", ""); else if (type === "foto") updSim(key, "imgFoto", ""); };
   const TECNICAS_OPTS = ["SILK ZERO TOQUE", "SILK TRADICIONAL", "SILK HD", "SUBLIMAÇÃO", "TRANSFER", "DTF", "DTG", "BORDADO", "LASER", "HOT STAMPING"];
 
   /* ── Tabela Especial helpers ── */
@@ -235,9 +254,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
         {/* ═══ FICHA TÉCNICA ═══ */}
         {tab === "ficha" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
-          <div className="bg-[#1c3654] text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+          <div style={{ background: fichaColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TÉCNICA</span>
-            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{row.piloto_most || "MOSTRUÁRIO"}</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
           <div className="apple-card">
@@ -261,11 +280,49 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           </div>
           <input ref={fr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_url", setImg)} />
 
-          <div className="apple-card overflow-x-auto"><table className="plm-table"><thead><tr><th className="px-4">Artigo</th><th className="w-24">Fornec.</th><th className="w-36">Composição</th><th className="text-center w-16">Preço</th><th className="text-center w-[140px]">Var 01</th><th className="text-center w-[140px]">Var 02</th><th className="text-center w-[140px]">Var 03</th><th className="text-center w-[140px]">Var 04</th></tr></thead><tbody>{tec.map((t: any, ti: number) => { const cs = t.cores || ["", "", "", ""]; while (cs.length < 4) cs.push(""); return (<tr key={ti}><td className="px-4"><span className="text-[var(--label-tertiary)] text-[11px] mr-1.5">Tec.{String(ti + 1).padStart(2, "0")}</span><span className="font-semibold">{t.artigo}</span></td><td>{t.forn}</td><td className="text-[12px] text-[var(--label-secondary)] px-3">{compOf(t.artigo) || "—"}</td><td className="text-center tabnum">{t.preco > 0 ? t.preco.toFixed(2) : "—"}</td>{cs.slice(0, 4).map((c: string, ci: number) => (<td key={ci} className="px-1.5 py-1.5"><select value={c} onChange={e => utc(ti, ci, e.target.value)} className={`w-full text-[12px] px-2 py-1.5 rounded-lg border outline-none cursor-pointer ${c ? "border-[var(--system-blue)] bg-[rgba(0,122,255,0.06)] text-[var(--system-blue)] font-medium" : "border-[var(--separator-opaque)] text-[var(--label-quaternary)]"}`}><option value="">Selecionar</option>{corOpts.map(x => <option key={x} value={x}>{x}</option>)}</select></td>))}</tr>); })}</tbody><tfoot><tr className="border-t border-[var(--separator-opaque)] bg-[var(--bg-secondary)]"><td colSpan={3} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] whitespace-nowrap">Pantone / Código</td><td />{(["var01","var02","var03","var04"] as const).map(k => (<td key={k} className="px-1.5 py-1.5"><input type="text" value={varCodigos[k]} onChange={e => setVarCodigos(prev => ({ ...prev, [k]: e.target.value }))} placeholder="P. 000 C" className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)] text-center font-mono tracking-wide" /></td>))}</tr></tfoot></table></div>
+          <div className="apple-card overflow-x-auto"><table className="plm-table"><thead><tr><th className="px-4">Artigo</th><th className="w-24">Fornec.</th><th className="w-36">Composição</th><th className="text-center w-16">Preço</th>{Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-[120px]"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}</tr></thead><tbody>{tec.map((t: any, ti: number) => { const cs = t.cores || []; while (cs.length < numVars) cs.push(""); return (<tr key={ti}><td className="px-4"><span className="text-[var(--label-tertiary)] text-[11px] mr-1.5">Tec.{String(ti + 1).padStart(2, "0")}</span><span className="font-semibold">{t.artigo}</span></td><td>{t.forn}</td><td className="text-[12px] text-[var(--label-secondary)] px-3">{compOf(t.artigo) || "—"}</td><td className="text-center tabnum">{t.preco > 0 ? t.preco.toFixed(2) : "—"}</td>{cs.slice(0, numVars).map((c: string, ci: number) => { const pal = c ? COR_PALETTE[c] : null; return (<td key={ci} className="px-1.5 py-1.5"><select value={c} onChange={e => utc(ti, ci, e.target.value)} className="w-full text-[12px] px-2 py-1.5 rounded-lg border outline-none cursor-pointer font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">Selecionar</option>{corOpts.map(x => <option key={x} value={x}>{x}</option>)}</select></td>); })}</tr>); })}</tbody><tfoot>
+                <tr className="border-t border-[var(--separator-opaque)] bg-[var(--bg-secondary)]">
+                  <td colSpan={3} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] whitespace-nowrap">Pantone / Código</td>
+                  <td />
+                  {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => (
+                    <td key={k} className="px-1.5 py-1.5">
+                      <textarea
+                        value={varCodigos[k]}
+                        onChange={e => setVarCodigos(prev => ({ ...prev, [k]: e.target.value }))}
+                        placeholder="P. 000 C"
+                        rows={1}
+                        className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)] text-center font-mono tracking-wide resize-none overflow-hidden"
+                        style={{ minHeight: "32px" }}
+                        onInput={e => { const t = e.target as HTMLTextAreaElement; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-t border-[var(--separator-opaque)]">
+                  <td colSpan={3} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] whitespace-nowrap">Tipo de Tingimento</td>
+                  <td />
+                  {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => (
+                    <td key={k} className="px-1.5 py-1.5">
+                      <select
+                        value={varTingimento[k]}
+                        onChange={e => setVarTingimento(prev => ({ ...prev, [k]: e.target.value }))}
+                        className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)]"
+                      >
+                        <option value="">—</option>
+                        {[...new Set([...(tingimentoOpts.length ? tingimentoOpts : ["AMACIADO","CORASTONED","ESTONADO","FIO TINTO","MARMORIZADO LEVE","REATIVO","SOBRETINTO","SPRAY LOCALIZADO","TINTO A SECO","TINTO EM ROLO"])])].sort().map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                  ))}
+                </tr>
+              </tfoot></table></div>
+          <div className="flex gap-2 mt-2 mb-1">
+            {numVars > 1 && <button onClick={() => setNumVars(n => n - 1)} className="apple-btn-secondary text-[12px]">− Remover variante</button>}
+            {numVars < 6 && <button onClick={() => setNumVars(n => n + 1)} className="apple-btn-secondary text-[12px]">+ Adicionar variante</button>}
+          </div>
 
-          <div className="pt-5 border-t-2 border-[#1c3654]">
-            <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
-            <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr><th className="px-4">Matéria prima</th><th className="w-24">Código</th><th className="text-center w-12">Qtd</th><th className="text-right w-16">Valor</th><th className="min-w-[200px]">Localização</th><th className="text-center w-28">Var 01</th><th className="text-center w-28">Var 02</th><th className="text-center w-28">Var 03</th><th className="text-center w-28">Var 04</th><th className="w-8"></th></tr></thead><tbody>{avi.map((a: any, i: number) => (<tr key={i}><td className="font-medium px-4">{a.item}</td><td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td><td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td><td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td><td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>{["var01", "var02", "var03", "var04"].map(k => (<td key={k} className="px-1 py-1"><select value={a[k] || ""} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] border border-[var(--separator-opaque)] rounded-md px-1.5 py-1 outline-none"><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}<option value="BRANCO">BRANCO</option><option value="CRU">CRU</option><option value="PRETO">PRETO</option></select></td>))}<td className="text-center"><button onClick={() => ra(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)]">×</button></td></tr>))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={3} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={6} /></tr>}</tbody></table></div>
+          <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
+            <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
+            <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr><th className="px-4">Matéria prima</th><th className="w-24">Código</th><th className="text-center w-12">Qtd</th><th className="text-right w-16">Valor</th><th className="min-w-[200px]">Localização</th>{Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-24"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}<th className="w-8"></th></tr></thead><tbody>{avi.map((a: any, i: number) => (<tr key={i}><td className="font-medium px-4">{a.item}</td><td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td><td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td><td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td><td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>{(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}</select></td>); })}<td className="text-center"><button onClick={() => ra(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)]">×</button></td></tr>))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={3} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 2} /></tr>}</tbody></table></div>
             {!sap ? <button onClick={() => setSap(true)} className="apple-btn-secondary mb-4">+ Adicionar aviamento</button> : (
               <div className="apple-card p-3.5 mb-4 bg-[rgba(0,122,255,0.03)] border-[var(--system-blue)]"><div className="flex gap-2 mb-2"><input type="text" value={asq} onChange={e => setAsq(e.target.value)} placeholder="Buscar aviamento..." className="apple-input flex-1" autoFocus /><button onClick={() => { setSap(false); setAsq(""); }} className="text-[13px] text-[var(--label-secondary)] px-2">Cancelar</button></div><div className="max-h-[240px] overflow-y-auto overscroll-y-contain border border-[var(--separator-opaque)] rounded-xl bg-[var(--bg-primary)]">{fa.map((a: any) => (<button key={a.cod} onClick={() => aa(a)} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-[var(--bg-secondary)] border-b border-[var(--separator)] flex justify-between"><span><span className="font-mono text-[11px] text-[var(--label-tertiary)] mr-2">{a.cod}</span><span className="font-medium">{a.nome}</span></span><span className="tabnum text-[var(--label-secondary)]">{a.preco > 0 ? `R$ ${a.preco.toFixed(2)}` : "—"}</span></button>))}</div></div>
             )}
@@ -280,9 +337,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {/* ═══ ESTAMPARIA ═══ */}
         {tab === "estamparia" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
           {/* Header */}
-          <div className="bg-[#1c3654] text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+          <div style={{ background: fichaColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TECNICA DE ESTAMPARIA</span>
-            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{row.piloto_most || "MOSTRUÁRIO"}</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
 
@@ -295,13 +352,17 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {(estamparia.artes || []).filter((a: any) => a.posicao !== "TAGLESS").map((arte: any) => (
               <div key={arte.posicao} className="space-y-2.5">
-                <div className="bg-[#1c3654] text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">ARTE {arte.posicao}</span></div>
+                <div style={{ background: fichaColor }} className="text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">ARTE {arte.posicao}</span></div>
                 <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arte", arte.posicao)}>
                   {arte.imagem ? <img src={arte.imagem} alt={`Arte ${arte.posicao}`} className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
                   {arte.imagem && <button onClick={e => { e.stopPropagation(); deleteEstImg("arte", arte.posicao, arte.imagem); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
                 </div>
                 <input type="text" value={arte.largura} onChange={e => updArte(arte.posicao, "largura", e.target.value)} placeholder="Ex: 34CM LARG." className="apple-input w-full text-[12px]" />
-                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Localização</div>
+                <div style={{ background: fichaColor }} className="text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">LOCALIZAÇÃO ARTE {arte.posicao}</span></div>
+                <div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arteLocal", arte.posicao)}>
+                  {arte.imagemLocal ? <img src={arte.imagemLocal} alt={`Localização ${arte.posicao}`} className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
+                  {arte.imagemLocal && <button onClick={e => { e.stopPropagation(); deleteEstImg("arteLocal", arte.posicao, arte.imagemLocal); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                </div>
                 <textarea value={arte.localizacao} onChange={e => updArte(arte.posicao, "localizacao", e.target.value)} placeholder="Descreva a localização da estampa..." rows={3} className="apple-input w-full resize-none text-[12px]" />
               </div>
             ))}
@@ -310,7 +371,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           {/* TAGLESS */}
           {(() => { const tg = (estamparia.artes || []).find((a: any) => a.posicao === "TAGLESS"); if (!tg) return null; return (
             <div className="space-y-2.5">
-              <div className="bg-[#1c3654] text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">TAGLESS</span></div>
+              <div style={{ background: fichaColor }} className="text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">TAGLESS</span></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="apple-card bg-[var(--bg-secondary)] aspect-[3/2] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arte", "TAGLESS")}>
                   {tg.imagem ? <img src={tg.imagem} alt="Tagless" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
@@ -318,7 +379,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 </div>
                 <div className="space-y-2">
                   <input type="text" value={tg.largura} onChange={e => updArte("TAGLESS", "largura", e.target.value)} placeholder="Ex: 5,5CM" className="apple-input w-full text-[12px]" />
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Localização</div>
+                  <div style={{ background: fichaColor }} className="text-white rounded-lg px-4 py-2 text-center"><span className="text-[12px] font-bold tracking-wide">LOCALIZAÇÃO ARTE TAGLESS</span></div>
+                  <div className="apple-card bg-[var(--bg-secondary)] aspect-[3/2] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] relative overflow-hidden" onClick={() => triggerEstImg("arteLocal", "TAGLESS")}>
+                    {tg.imagemLocal ? <img src={tg.imagemLocal} alt="Localização TAGLESS" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}
+                    {tg.imagemLocal && <button onClick={e => { e.stopPropagation(); deleteEstImg("arteLocal", "TAGLESS", tg.imagemLocal); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                  </div>
                   <textarea value={tg.localizacao} onChange={e => updArte("TAGLESS", "localizacao", e.target.value)} placeholder="Ex: Tagless centralizado na parte interna das costas a 1,5cm do cobre gola" rows={3} className="apple-input w-full resize-none text-[12px]" />
                 </div>
               </div>
@@ -326,24 +391,21 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           ); })()}
 
           {/* Técnicas de Estamparia */}
-          <div className="pt-5 border-t-2 border-[#1c3654]">
-            <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">TÉCNICA DE ESTAMPARIA</span></div>
+          <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
+            <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">TÉCNICA DE ESTAMPARIA</span></div>
             <div className="apple-card overflow-x-auto">
               <table className="plm-table">
                 <thead><tr>
                   <th className="text-center w-10">#</th>
                   <th className="min-w-[180px]">Técnica de Estamparia</th>
-                  <th className="text-center w-[140px]">Variante 01{tec[0]?.cores?.[0] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[0]}</div> : null}</th>
-                  <th className="text-center w-[140px]">Variante 02{tec[0]?.cores?.[1] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[1]}</div> : null}</th>
-                  <th className="text-center w-[140px]">Variante 03{tec[0]?.cores?.[2] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[2]}</div> : null}</th>
-                  <th className="text-center w-[140px]">Variante 04{tec[0]?.cores?.[3] ? <div className="text-[10px] font-normal text-[var(--label-tertiary)]">{tec[0].cores[3]}</div> : null}</th>
+                  {Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-[110px]">Variante {String(i+1).padStart(2,"0")}{cor ? <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div> : null}</th>); })}
                   <th className="w-8"></th>
                 </tr></thead>
                 <tbody>{(estamparia.tecnicas || []).map((t: any, i: number) => (
                   <tr key={i}>
                     <td className="text-center font-bold text-[var(--label-secondary)]">{i + 1}</td>
                     <td className="px-1 py-1.5"><select value={t.tecnica} onChange={e => updTecnica(i, "tecnica", e.target.value)} className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)]"><option value="">Selecionar técnica</option>{TECNICAS_OPTS.map(o => <option key={o} value={o}>{o}</option>)}</select></td>
-                    {(["var01", "var02", "var03", "var04"] as const).map(k => (
+                    {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => (
                       <td key={k} className="px-1 py-1.5"><input type="text" value={t[k] || ""} onChange={e => updTecnica(i, k, e.target.value)} placeholder="Cor / Pantone" className="w-full text-[12px] text-center px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)]" /></td>
                     ))}
                     <td className="text-center"><button onClick={() => removeTecnica(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] text-[16px]">×</button></td>
@@ -355,10 +417,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           </div>
 
           {/* Simulações e Fotos por Variante */}
-          <div className="pt-5 border-t-2 border-[#1c3654]">
-            <div className="bg-[#1c3654] text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">SIMULAÇÕES E FOTOS</span></div>
+          <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
+            <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">SIMULAÇÕES E FOTOS</span></div>
             <div className="space-y-5">
-              {(["var01", "var02", "var03", "var04"] as const).map((vk, vi) => {
+              {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map((vk, vi) => {
                 const corName = tec[0]?.cores?.[vi] || "";
                 const sim = estamparia.simulacoes?.[vk] || { nome: "", imgSim: "", imgFoto: "", status: "" };
                 return (
@@ -366,7 +428,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
                         <span className="text-[14px] font-bold">Variante {String(vi + 1).padStart(2, "0")}</span>
-                        {corName && <span className="text-[12px] font-semibold px-3 py-0.5 rounded-full bg-[rgba(0,122,255,0.08)] text-[var(--system-blue)]">{corName}</span>}
+                        {corName && (() => { const pal = COR_PALETTE[corName]; return <span className="text-[12px] font-bold px-3 py-0.5 rounded-full" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-secondary)", color: "var(--label-secondary)" }}>{corName}</span>; })()}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {([
@@ -413,13 +475,14 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
         {/* ═══ LIBERAÇÃO ═══ */}
         {tab === "liberacao" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
-          <div className="bg-[#1c3654] text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
+          <div style={{ background: modelagemColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO DE {_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO') ? 'PRODUÇÃO' : _s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO') ? 'MOSTRUÁRIO' : 'DESENVOLVIMENTO'}</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
           <div className="apple-card"><div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
 
           <div className="apple-card px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Status da liberação</span>
             <div className="flex flex-wrap gap-2">
               {([
+                ["AGUARDANDO PROVA",       "Aguardando prova",    "bg-[rgba(68,100,175,0.12)] text-[#4464AF] border-[rgba(68,100,175,0.3)]"],
                 ["REPROVADO",              "Reprovado",           "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
                 ["APROVADO COM RESTRIÇÃO", "Aprov. c/ restrição", "bg-[rgba(255,204,0,0.18)] text-[#856500]  border-[rgba(255,204,0,0.35)]"],
                 ["APROVADO",              "Aprovado",            "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
@@ -447,8 +510,55 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
             {/* Tabela de medidas (pontos) */}
             <div className="apple-card overflow-x-auto"><table className="plm-table"><thead>
-              <tr><th colSpan={3} className="border-b-0" /><th colSpan={2} className="text-center !text-[var(--system-blue)] border-b border-blue-100 !bg-[rgba(0,122,255,0.04)] py-1.5">Prova 1</th><th colSpan={2} className="text-center border-b py-1.5">Prova 2</th><th colSpan={2} className="text-center border-b py-1.5">Prova 3</th><th className="border-b-0" /></tr>
-              <tr><th className="text-center w-12">Cód</th><th>Descrição</th><th className="text-center w-16">{tEsp ? <span className="text-[var(--system-orange)]">Tabela</span> : "Tabela"}</th><th className="text-center w-16 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Med.</th><th className="text-center w-14 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-16">Med.</th><th className="text-center w-14">Dif.</th><th className="text-center w-24">Tol.</th></tr>
+              {/* Linha 1: labels PROVA */}
+              <tr>
+                <th colSpan={3} className="border-b-0" />
+                {(["p1","p2","p3"] as const).map((pk, pi) => {
+                  const info = provaInfo[pk] || { data: "", status: "" };
+                  const st = info.status;
+                  const isBlue = pi === 0;
+                  const stBg = st === "REPROVADO" ? "rgba(234,47,70,0.10)" : st === "LIBERADO" ? "rgba(45,181,100,0.10)" : st === "LIBERADO C/ RESTRIÇÃO" ? "rgba(237,202,53,0.12)" : "rgba(68,100,175,0.08)";
+                  const stColor = st === "REPROVADO" ? "#EA2F46" : st === "LIBERADO" ? "#2DB564" : st === "LIBERADO C/ RESTRIÇÃO" ? "#7A5C00" : "#4464AF";
+                  const stBorder = st === "REPROVADO" ? "rgba(234,47,70,0.35)" : st === "LIBERADO" ? "rgba(45,181,100,0.35)" : st === "LIBERADO C/ RESTRIÇÃO" ? "rgba(237,202,53,0.5)" : "rgba(68,100,175,0.3)";
+                  return (
+                    <th key={pk} colSpan={2} className={`border-b border-l border-[var(--separator-opaque)] py-0 !font-semibold text-[11px] tracking-[0.06em] uppercase ${isBlue ? "!text-[var(--system-blue)] !bg-[rgba(0,122,255,0.04)] border-blue-100" : "text-[var(--label-secondary)]"}`}>
+                      <div className="flex flex-col items-center gap-1.5 px-3 py-2.5">
+                        <span className="text-[11px] font-bold tracking-[0.08em]">Prova {pi + 1}</span>
+                        <input
+                          type="date"
+                          value={info.data}
+                          onChange={e => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, data: e.target.value } }))}
+                          className="w-full text-[11px] tabnum border border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--system-blue)] text-center bg-[var(--bg-primary)] font-normal"
+                        />
+                        <select
+                          value={st}
+                          onChange={e => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, status: e.target.value } }))}
+                          style={{ background: stBg, color: stColor, borderColor: stBorder }}
+                          className="w-full text-[11px] font-semibold rounded-lg px-2 py-1.5 outline-none border cursor-pointer"
+                        >
+                          <option value="">Status...</option>
+                          <option value="AGUARDANDO PROVA">Aguardando prova</option>
+                          <option value="LIBERADO">Liberado</option>
+                          <option value="LIBERADO C/ RESTRIÇÃO">Liberado c/ restrição</option>
+                          <option value="REPROVADO">Reprovado</option>
+                        </select>
+                      </div>
+                    </th>
+                  );
+                })}
+                <th className="border-b-0" />
+              </tr>
+              {/* Linha 2: sub-cabeçalhos de coluna */}
+              <tr>
+                <th className="text-center w-12">Cód</th>
+                <th>Descrição</th>
+                <th className="text-center w-16">{tEsp ? <span className="text-[var(--system-orange)]">Tabela</span> : "Tabela"}</th>
+                <th className="text-center w-24 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)] border-l border-[var(--separator-opaque)]">Medida</th>
+                <th className="text-center w-24 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Diferença</th>
+                <th className="text-center w-24 border-l border-[var(--separator-opaque)]">Medida</th><th className="text-center w-24">Diferença</th>
+                <th className="text-center w-24 border-l border-[var(--separator-opaque)]">Medida</th><th className="text-center w-24">Diferença</th>
+                <th className="text-center w-28 border-l border-[var(--separator-opaque)]">Tolerância</th>
+              </tr>
             </thead><tbody>{ptsAtivo.map((p: any, pi: number) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (<tr key={p.cod}>
               <td className="text-center font-bold text-[var(--label-secondary)] px-3">{p.cod}</td>
               <td className="font-medium px-3">{p.desc}</td>
@@ -456,8 +566,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 ? <input type="text" value={p.tabela} onChange={e => updPtsEsp(pi, "tabela", e.target.value)} className="w-14 text-center text-[13px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
                 : p.tabela
               }</td>
-              {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}
-              <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{p.tol}</td>
+              {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 border-l border-[var(--separator-opaque)] ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${!cl && pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}
+              <td className="text-center text-[12px] text-[var(--label-secondary)] px-2 border-l border-[var(--separator-opaque)]">{p.tol}</td>
             </tr>); })}</tbody></table></div>
 
             {/* Graduação */}

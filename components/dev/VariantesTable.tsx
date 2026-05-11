@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
+import { COR_PALETTE } from "@/lib/cor-palette";
 
 const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
 const FK=["grupo","subgrupo","status","tecido","fornecedor","cor","estilista","linha"];
@@ -78,7 +79,7 @@ export default function VariantesTable({rows, variantes, onOpenFicha}:Props){
         {filtered.map((r:any)=>(<tr key={r._vid}>{VC.map(c=>(<td key={c.key} style={{width:c.w,minWidth:c.w}}>
           {c.key==="_ficha"?<button onClick={()=>onOpenFicha(r)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>
           :c.key==="status"&&SP[r.status]?<span className={`pill ${SP[r.status]}`}>{r.status}</span>
-          :c.key==="cor"&&r.cor!=="—"?<span className="inline-flex items-center bg-[var(--bg-secondary)] rounded-md px-2.5 py-1 text-[13px] font-medium">{r.cor}</span>
+          :c.key==="cor"&&r.cor!=="—"?(() => { const pal = COR_PALETTE[r.cor]; return <span className="inline-flex items-center rounded-md px-2.5 py-1 text-[12px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-secondary)" }}>{r.cor}</span>; })()
           :<span className={`text-[13px] px-2.5 py-1 block ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{r[c.key]||"—"}</span>}
         </td>))}</tr>))}
         {filtered.length===0&&<tr><td colSpan={VC.length} className="py-16 text-center text-[var(--label-tertiary)]">Nenhuma variante</td></tr>}

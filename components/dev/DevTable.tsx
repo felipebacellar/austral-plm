@@ -5,13 +5,14 @@ import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
 
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void };
-const FC = COLUMNS.filter(c => c.type === "select" && c.cad);
+const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 
 export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
   const [cad, setCad] = useState<Record<string, any>>({});
   const [q, setQ] = useState("");
   const [fl, setFl] = useState<Record<string,string>>({});
   const [sf, setSf] = useState(false);
+  const [colecaoAtiva, setColecaoAtiva] = useState<string | null>(null);
   const [dupAlert, setDupAlert] = useState<string|null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const ac = Object.values(fl).filter(Boolean).length;
@@ -33,8 +34,11 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
     })();
   }, []);
 
+  const colecoes = useMemo(() => [...new Set(rows.map((r: any) => r.colecao).filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a), "pt-BR", { numeric: true })), [rows]);
+
   const filtered = useMemo(() => {
     let r = rows;
+    if (colecaoAtiva) r = r.filter((x: any) => x.colecao === colecaoAtiva);
     Object.entries(fl).forEach(([k,v]) => { if(v) r = r.filter((x:any) => x[k]===v); });
     if(q) { const s=q.toLowerCase(); r = r.filter((x:any) => (x.ref+x.desc+x.tecido+x.fornecedor+x.forn_tecido+x.estilista+x.tab_medidas).toLowerCase().includes(s)); }
     if (sort) {
@@ -98,6 +102,28 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
 
   return (
     <div>
+      {/* Seletor de coleção */}
+      {colecoes.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--label-tertiary)] mr-1">Coleção</span>
+          <button
+            onClick={() => setColecaoAtiva(null)}
+            className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all border ${colecaoAtiva === null ? "bg-[var(--label-primary)] text-[var(--bg-primary)] border-[var(--label-primary)]" : "bg-transparent text-[var(--label-secondary)] border-[var(--separator)] hover:border-[var(--label-tertiary)]"}`}
+          >
+            Todas
+          </button>
+          {colecoes.map((col: string) => (
+            <button
+              key={col}
+              onClick={() => setColecaoAtiva(col === colecaoAtiva ? null : col)}
+              className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all border ${colecaoAtiva === col ? "bg-[var(--system-blue)] text-white border-[var(--system-blue)]" : "bg-transparent text-[var(--label-secondary)] border-[var(--separator)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)]"}`}
+            >
+              {col}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Duplicate ref alert */}
       {dupAlert && (
         <div className="mb-3 px-4 py-3 rounded-xl bg-[rgba(255,59,48,0.08)] border border-[rgba(255,59,48,0.2)] text-[var(--system-red)] text-[13px] font-medium flex items-center gap-2">

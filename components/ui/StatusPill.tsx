@@ -1,14 +1,9 @@
-const V: Record<string, string> = {
-  "MOSTRUÁRIO LIBERADO": "pill-green",
-  "PRODUÇÃO LIBERADA": "pill-blue",
-  "DESENVOLVIMENTO": "pill-orange",
-  "CANCELADO": "pill-red",
-  "Aguardando": "pill-orange",
-  "LIBERADO": "pill-green",
-  "LIBERADO COM RESTRIÇÃO": "pill-orange",
-  "AGUARDANDO PROVA": "pill-orange",
-};
-
 export default function StatusPill({ status }: { status: string }) {
-  return <span className={`pill ${V[status] || "pill-orange"}`}>{status}</span>;
+  const s = (status || "").toUpperCase();
+  const cls =
+    s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "pill-green" :
+    s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "pill-yellow" :
+    s === "CANCELADO" ? "pill-red" :
+    "pill-blue"; // DESENVOLVIMENTO e demais
+  return <span className={`pill ${cls}`}>{status}</span>;
 }
