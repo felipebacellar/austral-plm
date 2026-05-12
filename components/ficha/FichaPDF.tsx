@@ -177,6 +177,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <PageHead title="Aviamentação" />
             <table style={tbl}>
               <thead><tr style={headRow}>
+                <th style={{ ...th, textAlign: "center", width: "20px" }}>#</th>
+                <th style={{ ...th, width: "36px", textAlign: "center" }}>Img</th>
                 <th style={th}>Matéria prima</th><th style={{ ...th, width: "52px" }}>Código</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
                 <th style={{ ...th, textAlign: "right", width: "45px" }}>Valor</th><th style={th}>Localização</th>
                 {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...th, textAlign: "center", width: "50px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
@@ -184,6 +186,12 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               <tbody>
                 {avi.map((a, i) => (
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 700, color: muted }}>{String(i+1).padStart(2,"0")}</td>
+                    <td style={{ ...td, textAlign: "center", padding: "2px 4px" }}>
+                      {a.imagem
+                        ? <img src={a.imagem} alt={a.item} style={{ width: "28px", height: "28px", objectFit: "contain", borderRadius: "3px", border: `1px solid ${headerBg}33`, display: "inline-block" }}/>
+                        : <span style={{ display: "inline-block", width: "28px", height: "28px", borderRadius: "3px", border: `1px dashed ${headerBg}55`, lineHeight: "28px", textAlign: "center", fontSize: "8px", color: muted }}>—</span>}
+                    </td>
                     <td style={{ ...td, fontWeight: 700 }}>{a.item}</td>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "7.5px", color: muted }}>{a.cod}</td>
                     <td style={{ ...td, textAlign: "center" }}>{a.qtd}</td>
@@ -194,7 +202,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 ))}
               </tbody>
               <tfoot><tr>
-                <td colSpan={3} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
+                <td colSpan={4} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
                 <td style={{ ...td, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", fontVariantNumeric: "tabular-nums", paddingTop: "6px" }}>R$ {avT.toFixed(2)}</td>
                 <td colSpan={numVars + 1} style={{ ...td, borderTop: `2px solid ${headerBg}` }} />
               </tr></tfoot>

@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
-import { fetchCadastros, addCadastro, removeCadastro, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, removeAviamento } from "@/lib/db";
+import { useState, useEffect, useRef } from "react";
+import { fetchCadastros, addCadastro, removeCadastro, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, removeAviamento, updateAviamento } from "@/lib/db";
+import { uploadImage, deleteImage } from "@/lib/storage";
 import { subscribeRealtime } from "@/lib/realtime";
 
 const TABS=[{k:"grupo",l:"Grupo"},{k:"subgrupo",l:"Subgrupo"},{k:"categoria",l:"Categoria"},{k:"subcategoria",l:"Subcategoria"},{k:"linha",l:"Linha"},{k:"grade",l:"Grade"},{k:"operacao",l:"Operação"},{k:"tipo",l:"Tipo"},{k:"fornecedor",l:"Fornecedor"},{k:"drop",l:"Drop"},{k:"colecao",l:"Coleção"},{k:"status",l:"Status"},{k:"piloto_most",l:"Piloto / mostr."},{k:"estilista",l:"Estilista"},{k:"cor",l:"Cores"},{k:"tingimento",l:"Tipo de Tingimento"},{k:"aviamento",l:"Aviamentos"},{k:"tecido",l:"Tecidos"}];
@@ -10,7 +11,10 @@ export default function CadView(){
   const [m,setM]=useState("grupo");const [val,setVal]=useState("");const [loading,setLoading]=useState(true);
   const [tn,setTn]=useState("");const [tf,setTf]=useState("");const [tc,setTc]=useState("");const [tp,setTp]=useState("");
   const [cc,setCc]=useState("");const [cn,setCn]=useState("");
-  const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [sr,setSr]=useState("");
+  const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [al,setAl]=useState("");const [sr,setSr]=useState("");
+  const [avImgUploading,setAvImgUploading]=useState<string|null>(null);
+  const avImgRef=useRef<HTMLInputElement>(null);
+  const [avImgTarget,setAvImgTarget]=useState<string|null>(null);
 
   useEffect(()=>{loadAll();},[]);
 
@@ -33,8 +37,12 @@ export default function CadView(){
   const addT=async()=>{if(!tn.trim())return;const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp};await addTecido(t);setTecidos(p=>[...p,t]);setTn("");setTf("");setTc("");setTp("");};
   const remT=async(n:string)=>{await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
 
-  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0};await addAviamento(a);setAviamentos(p=>[...p,a]);setAc("");setAn("");setAp("");};
-  const remAv=async(cod:string)=>{await removeAviamento(cod);setAviamentos(p=>p.filter(a=>a.cod!==cod));};
+  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),imagem:""};await addAviamento(a);setAviamentos(p=>[...p,a]);setAc("");setAn("");setAp("");setAl("");};
+  const remAv=async(cod:string)=>{const av=aviamentos.find((a:any)=>a.cod===cod);if(av?.imagem)await deleteImage(av.imagem);await removeAviamento(cod);setAviamentos(p=>p.filter(a=>a.cod!==cod));};
+  const saveAvLocal=async(cod:string,val:string)=>{await updateAviamento(cod,{localizacao_padrao:val});setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,localizacao_padrao:val}:a));};
+  const triggerAvImg=(cod:string)=>{setAvImgTarget(cod);avImgRef.current?.click();};
+  const handleAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file||!avImgTarget)return;setAvImgUploading(avImgTarget);const url=await uploadImage(file,`aviamentos/${avImgTarget}`);if(url){await updateAviamento(avImgTarget,{imagem:url});setAviamentos(p=>p.map((a:any)=>a.cod===avImgTarget?{...a,imagem:url}:a));}setAvImgUploading(null);setAvImgTarget(null);if(avImgRef.current)avImgRef.current.value="";};
+  const remAvImg=async(cod:string,url:string)=>{await deleteImage(url);await updateAviamento(cod,{imagem:""});setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,imagem:""}:a));};
 
   const addCor=async()=>{if(!cc.trim()||!cn.trim())return;const nome=`${cc.trim().toUpperCase()} - ${cn.trim().toUpperCase()}`;await addCadastro("cor",nome);setCad(p=>({...p,cor:[...(p.cor||[]),nome]}));setCc("");setCn("");};
   const remCor=async(nome:string)=>{await removeCadastro("cor",nome);setCad(p=>({...p,cor:(p.cor||[]).filter((c:string)=>c!==nome)}));};
@@ -109,21 +117,34 @@ export default function CadView(){
 
             {/* Aviamentos */}
             {m==="aviamento"&&(<>
+              <input type="file" accept="image/*" ref={avImgRef} className="hidden" onChange={handleAvImg}/>
               <div className="flex flex-wrap gap-2 mb-3">
                 <input className={`${inp} w-28`} value={ac} onChange={e=>setAc(e.target.value)} placeholder="Código"/>
                 <input className={`${inp} flex-1 min-w-[120px]`} value={an} onChange={e=>setAn(e.target.value)} placeholder="Nome"/>
                 <input className={`${inp} w-24`} value={ap} onChange={e=>setAp(e.target.value)} placeholder="Preço"/>
+                <input className={`${inp} flex-1 min-w-[180px]`} value={al} onChange={e=>setAl(e.target.value)} placeholder="Localização padrão (ex: GOLA INTERNA)"/>
                 <button onClick={addAv} className={btn}>Adicionar</button>
               </div>
               <div className="mb-4">
                 <input type="text" value={sr} onChange={e=>setSr(e.target.value)} placeholder="Buscar aviamento..." className={`${inp} w-full`}/>
               </div>
               <div className="border border-[var(--separator)] rounded-xl overflow-hidden max-h-[480px] overflow-y-auto overscroll-y-contain">
-                <table className="plm-table"><thead><tr><th className="w-28 px-4">Código</th><th>Nome</th><th className="text-right w-20">Preço</th><th className="w-10"></th></tr></thead>
+                <table className="plm-table"><thead><tr><th className="w-12 px-4 text-center">Img</th><th className="w-28">Código</th><th>Nome</th><th className="min-w-[160px]">Localização padrão</th><th className="text-right w-20">Preço</th><th className="w-10"></th></tr></thead>
                 <tbody>{fa.map((a:any)=>(
                   <tr key={a.cod}>
-                    <td className="font-mono text-[12px] text-[var(--label-secondary)] px-4">{a.cod}</td>
+                    <td className="text-center px-2 py-1">
+                      {a.imagem
+                        ? <div className="relative inline-block group cursor-pointer" onClick={()=>triggerAvImg(a.cod)}>
+                            <img src={a.imagem} alt={a.nome} className="w-10 h-10 object-contain rounded border border-[var(--separator)]"/>
+                            <button onClick={e=>{e.stopPropagation();remAvImg(a.cod,a.imagem);}} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                          </div>
+                        : <button onClick={()=>triggerAvImg(a.cod)} className="w-10 h-10 border border-dashed border-[var(--separator-opaque)] rounded flex items-center justify-center text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors" title="Adicionar imagem">
+                            {avImgUploading===a.cod?<span className="text-[9px]">...</span>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>}
+                          </button>}
+                    </td>
+                    <td className="font-mono text-[12px] text-[var(--label-secondary)] px-3">{a.cod}</td>
                     <td className="font-medium px-3">{a.nome}</td>
+                    <td className="px-2 py-1"><input className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1 outline-none bg-transparent focus:border-[var(--system-blue)]" defaultValue={a.localizacao_padrao} onBlur={e=>{if(e.target.value!==a.localizacao_padrao)saveAvLocal(a.cod,e.target.value.toUpperCase());}} placeholder="—"/></td>
                     <td className="text-right tabnum px-3">{a.preco>0?`R$ ${a.preco.toFixed(2)}`:"—"}</td>
                     <td className="text-center"><button onClick={()=>remAv(a.cod)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] transition-colors">×</button></td>
                   </tr>

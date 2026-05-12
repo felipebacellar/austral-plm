@@ -67,7 +67,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
         const ficTec = ficha.tecidos || [];
         setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
-        setAvi(ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI);
+        const aviBase = ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI;
+        setAvi(aviBase.map((a: any) => { const cat = aviCad.find((c: any) => c.cod === a.cod); return { ...a, imagem: cat?.imagem || "" }; }));
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
@@ -137,7 +138,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 6) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
   const ua = (i: number, k: string, v: any) => setAvi(p => p.map((a, j) => j === i ? { ...a, [k]: v } : a));
   const ra = (i: number) => setAvi(p => p.filter((_, j) => j !== i));
-  const aa = (a: any) => { setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }]); setSap(false); setAsq(""); };
+  const aa = (a: any) => { setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }]); setSap(false); setAsq(""); };
   const fa = asq ? avCad.filter((a: any) => (a.cod + a.nome).toLowerCase().includes(asq.toLowerCase())) : avCad;
   const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
   const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return d === 0 ? "text-[var(--system-green)]" : "font-bold text-red-600 bg-yellow-100"; };
@@ -322,9 +323,44 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
           <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
             <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
-            <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr><th className="px-4">Matéria prima</th><th className="w-24">Código</th><th className="text-center w-12">Qtd</th><th className="text-right w-16">Valor</th><th className="min-w-[200px]">Localização</th>{Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-24"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}<th className="w-8"></th></tr></thead><tbody>{avi.map((a: any, i: number) => (<tr key={i}><td className="font-medium px-4">{a.item}</td><td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td><td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td><td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td><td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>{(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}</select></td>); })}<td className="text-center"><button onClick={() => ra(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)]">×</button></td></tr>))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={3} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 2} /></tr>}</tbody></table></div>
+            <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr>
+              <th className="text-center w-8 px-2">#</th>
+              <th className="text-center w-12">Img</th>
+              <th className="px-4">Matéria prima</th>
+              <th className="w-24">Código</th>
+              <th className="text-center w-12">Qtd</th>
+              <th className="text-right w-16">Valor</th>
+              <th className="min-w-[200px]">Localização</th>
+              {Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-24"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}
+              <th className="w-8"></th>
+            </tr></thead><tbody>{avi.map((a: any, i: number) => (
+              <tr key={i}>
+                <td className="text-center text-[11px] font-bold text-[var(--label-tertiary)] px-2">{String(i+1).padStart(2,"0")}</td>
+                <td className="text-center px-1 py-1">
+                  {a.imagem
+                    ? <img src={a.imagem} alt={a.item} className="w-9 h-9 object-contain rounded border border-[var(--separator)] mx-auto"/>
+                    : <div className="w-9 h-9 rounded border border-dashed border-[var(--separator-opaque)] mx-auto flex items-center justify-center text-[var(--label-quaternary)]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>}
+                </td>
+                <td className="font-medium px-4">{a.item}</td>
+                <td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td>
+                <td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td>
+                <td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
+                <td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>
+                {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}</select></td>); })}
+                <td className="text-center"><button onClick={() => ra(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)]">×</button></td>
+              </tr>
+            ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={5} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 2} /></tr>}</tbody></table></div>
             {!sap ? <button onClick={() => setSap(true)} className="apple-btn-secondary mb-4">+ Adicionar aviamento</button> : (
-              <div className="apple-card p-3.5 mb-4 bg-[rgba(0,122,255,0.03)] border-[var(--system-blue)]"><div className="flex gap-2 mb-2"><input type="text" value={asq} onChange={e => setAsq(e.target.value)} placeholder="Buscar aviamento..." className="apple-input flex-1" autoFocus /><button onClick={() => { setSap(false); setAsq(""); }} className="text-[13px] text-[var(--label-secondary)] px-2">Cancelar</button></div><div className="max-h-[240px] overflow-y-auto overscroll-y-contain border border-[var(--separator-opaque)] rounded-xl bg-[var(--bg-primary)]">{fa.map((a: any) => (<button key={a.cod} onClick={() => aa(a)} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-[var(--bg-secondary)] border-b border-[var(--separator)] flex justify-between"><span><span className="font-mono text-[11px] text-[var(--label-tertiary)] mr-2">{a.cod}</span><span className="font-medium">{a.nome}</span></span><span className="tabnum text-[var(--label-secondary)]">{a.preco > 0 ? `R$ ${a.preco.toFixed(2)}` : "—"}</span></button>))}</div></div>
+              <div className="apple-card p-3.5 mb-4 bg-[rgba(0,122,255,0.03)] border-[var(--system-blue)]"><div className="flex gap-2 mb-2"><input type="text" value={asq} onChange={e => setAsq(e.target.value)} placeholder="Buscar aviamento..." className="apple-input flex-1" autoFocus /><button onClick={() => { setSap(false); setAsq(""); }} className="text-[13px] text-[var(--label-secondary)] px-2">Cancelar</button></div><div className="max-h-[240px] overflow-y-auto overscroll-y-contain border border-[var(--separator-opaque)] rounded-xl bg-[var(--bg-primary)]">{fa.map((a: any) => (
+                <button key={a.cod} onClick={() => aa(a)} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-[var(--bg-secondary)] border-b border-[var(--separator)] flex items-center gap-3">
+                  {a.imagem ? <img src={a.imagem} alt={a.nome} className="w-8 h-8 object-contain rounded border border-[var(--separator)] flex-shrink-0"/> : <div className="w-8 h-8 rounded border border-dashed border-[var(--separator-opaque)] flex-shrink-0 flex items-center justify-center text-[var(--label-quaternary)]"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>}
+                  <div className="flex-1 min-w-0">
+                    <div><span className="font-mono text-[11px] text-[var(--label-tertiary)] mr-2">{a.cod}</span><span className="font-medium">{a.nome}</span></div>
+                    {a.localizacao_padrao && <div className="text-[11px] text-[var(--label-secondary)] truncate">{a.localizacao_padrao}</div>}
+                  </div>
+                  <span className="tabnum text-[var(--label-secondary)] flex-shrink-0">{a.preco > 0 ? `R$ ${a.preco.toFixed(2)}` : "—"}</span>
+                </button>
+              ))}</div></div>
             )}
           </div>
 
