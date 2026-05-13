@@ -67,7 +67,24 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
         const ficTec = ficha.tecidos || [];
         setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
-        const aviBase = ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI;
+        const mkAvi = (cod: string) => { const c = aviCad.find((x: any) => x.cod === cod); return c ? { item: c.nome, cod: c.cod, qtd: 1, valor: c.preco, local: c.localizacao_padrao || "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" } : null; };
+        const aviBase = (() => {
+          const l = (row.linha || "").toUpperCase().trim();
+          const g = (row.grade || "").toUpperCase().trim();
+          if (ficha.aviamentos?.length) {
+            const existing = ficha.aviamentos;
+            if (existing.some((a: any) => a.cod === "AD0001")) return existing;
+            return [mkAvi("AD0001") || DEFAULT_AVI[0], ...existing];
+          }
+          const tamCodes: string[] =
+            l === "CASUAL" && g === "PP-GG"  ? ["ET0052","ET0053","ET0054","ET0055","ET0056"] :
+            l === "CASUAL" && g === "XPP-GG" ? ["ET0051","ET0052","ET0053","ET0054","ET0055","ET0056"] :
+            l === "CASUAL" && g === "38-46"  ? ["ET0057","ET0058","ET0059","ET0060","ET0061"] :
+            l === "BLACK"  && g === "PP-GG"  ? ["ET0087","ET0088","ET0089","ET0090","ET0091"] :
+            l === "BLACK"  && g === "XPP-GG" ? ["ET0086","ET0087","ET0088","ET0089","ET0090","ET0091"] :
+            l === "BLACK"  && g === "38-46"  ? ["ET0092","ET0093","ET0094","ET0095","ET0096"] : [];
+          return [mkAvi("AD0001") || DEFAULT_AVI[0], ...tamCodes.map(mkAvi).filter(Boolean)];
+        })();
         setAvi(aviBase.map((a: any) => {
           const cat = aviCad.find((c: any) => c.cod === a.cod);
           const cores = cat?.cores_disponiveis || [];
