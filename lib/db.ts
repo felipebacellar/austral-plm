@@ -43,7 +43,7 @@ export async function addAviamento(a: { cod: string; nome: string; preco: number
   const { error } = await sb().from("aviamentos").insert({ codigo: a.cod, nome: a.nome, preco: a.preco, localizacao_padrao: a.localizacao_padrao || "" });
   if (error) console.error("addAviamento:", error);
 }
-export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string }) {
+export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
 }

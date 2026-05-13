@@ -39,10 +39,10 @@ export default function CadView(){
 
   const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),imagem:""};await addAviamento(a);setAviamentos(p=>[...p,a]);setAc("");setAn("");setAp("");setAl("");};
   const remAv=async(cod:string)=>{const av=aviamentos.find((a:any)=>a.cod===cod);if(av?.imagem)await deleteImage(av.imagem);await removeAviamento(cod);setAviamentos(p=>p.filter(a=>a.cod!==cod));};
-  const saveAvLocal=async(cod:string,val:string)=>{await updateAviamento(cod,{localizacao_padrao:val});setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,localizacao_padrao:val}:a));};
+  const saveAv=async(cod:string,data:Record<string,any>)=>{await updateAviamento(cod,data);setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,...data}:a));};
   const triggerAvImg=(cod:string)=>{setAvImgTarget(cod);avImgRef.current?.click();};
-  const handleAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file||!avImgTarget)return;setAvImgUploading(avImgTarget);const url=await uploadImage(file,`aviamentos/${avImgTarget}`);if(url){await updateAviamento(avImgTarget,{imagem:url});setAviamentos(p=>p.map((a:any)=>a.cod===avImgTarget?{...a,imagem:url}:a));}setAvImgUploading(null);setAvImgTarget(null);if(avImgRef.current)avImgRef.current.value="";};
-  const remAvImg=async(cod:string,url:string)=>{await deleteImage(url);await updateAviamento(cod,{imagem:""});setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,imagem:""}:a));};
+  const handleAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file||!avImgTarget)return;setAvImgUploading(avImgTarget);const url=await uploadImage(file,`aviamentos/${avImgTarget}`);if(url)await saveAv(avImgTarget,{imagem:url});setAvImgUploading(null);setAvImgTarget(null);if(avImgRef.current)avImgRef.current.value="";};
+  const remAvImg=async(cod:string,url:string)=>{await deleteImage(url);await saveAv(cod,{imagem:""});};
 
   const addCor=async()=>{if(!cc.trim()||!cn.trim())return;const nome=`${cc.trim().toUpperCase()} - ${cn.trim().toUpperCase()}`;await addCadastro("cor",nome);setCad(p=>({...p,cor:[...(p.cor||[]),nome]}));setCc("");setCn("");};
   const remCor=async(nome:string)=>{await removeCadastro("cor",nome);setCad(p=>({...p,cor:(p.cor||[]).filter((c:string)=>c!==nome)}));};
@@ -128,25 +128,51 @@ export default function CadView(){
               <div className="mb-4">
                 <input type="text" value={sr} onChange={e=>setSr(e.target.value)} placeholder="Buscar aviamento..." className={`${inp} w-full`}/>
               </div>
-              <div className="border border-[var(--separator)] rounded-xl overflow-hidden max-h-[480px] overflow-y-auto overscroll-y-contain">
-                <table className="plm-table"><thead><tr><th className="w-12 px-4 text-center">Img</th><th className="w-28">Código</th><th>Nome</th><th className="min-w-[160px]">Localização padrão</th><th className="text-right w-20">Preço</th><th className="w-10"></th></tr></thead>
+              <div className="border border-[var(--separator)] rounded-xl overflow-hidden max-h-[540px] overflow-y-auto overscroll-y-contain">
+                <table className="plm-table"><thead><tr>
+                  <th className="w-16 px-3 text-center">Foto</th>
+                  <th className="w-28">Código</th>
+                  <th>Nome</th>
+                  <th className="min-w-[180px]">Localização padrão</th>
+                  <th className="w-24 text-right">Preço (R$)</th>
+                  <th className="w-10"></th>
+                </tr></thead>
                 <tbody>{fa.map((a:any)=>(
                   <tr key={a.cod}>
-                    <td className="text-center px-2 py-1">
-                      {a.imagem
-                        ? <div className="relative inline-block group cursor-pointer" onClick={()=>triggerAvImg(a.cod)}>
-                            <img src={a.imagem} alt={a.nome} className="w-10 h-10 object-contain rounded border border-[var(--separator)]"/>
-                            <button onClick={e=>{e.stopPropagation();remAvImg(a.cod,a.imagem);}} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                          </div>
-                        : <button onClick={()=>triggerAvImg(a.cod)} className="w-10 h-10 border border-dashed border-[var(--separator-opaque)] rounded flex items-center justify-center text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors" title="Adicionar imagem">
-                            {avImgUploading===a.cod?<span className="text-[9px]">...</span>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>}
-                          </button>}
+                    {/* ── Foto ── */}
+                    <td className="text-center px-2 py-1.5">
+                      {avImgUploading===a.cod
+                        ? <div className="w-12 h-12 rounded border border-[var(--separator)] mx-auto flex items-center justify-center text-[10px] text-[var(--label-tertiary)]">...</div>
+                        : a.imagem
+                          ? <div className="relative inline-block group">
+                              <img src={a.imagem} alt={a.nome} onClick={()=>triggerAvImg(a.cod)} className="w-12 h-12 object-contain rounded border border-[var(--separator)] cursor-pointer hover:opacity-80 transition-opacity" title="Clique para trocar"/>
+                              <button onClick={e=>{e.stopPropagation();remAvImg(a.cod,a.imagem);}} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Remover foto">×</button>
+                            </div>
+                          : <button onClick={()=>triggerAvImg(a.cod)} className="w-12 h-12 border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors mx-auto" title="Adicionar foto">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                              <span className="text-[8px] font-medium leading-none">foto</span>
+                            </button>}
                     </td>
+                    {/* ── Código (readonly) ── */}
                     <td className="font-mono text-[12px] text-[var(--label-secondary)] px-3">{a.cod}</td>
-                    <td className="font-medium px-3">{a.nome}</td>
-                    <td className="px-2 py-1"><input className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1 outline-none bg-transparent focus:border-[var(--system-blue)]" defaultValue={a.localizacao_padrao} onBlur={e=>{if(e.target.value!==a.localizacao_padrao)saveAvLocal(a.cod,e.target.value.toUpperCase());}} placeholder="—"/></td>
-                    <td className="text-right tabnum px-3">{a.preco>0?`R$ ${a.preco.toFixed(2)}`:"—"}</td>
-                    <td className="text-center"><button onClick={()=>remAv(a.cod)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] transition-colors">×</button></td>
+                    {/* ── Nome (editável) ── */}
+                    <td className="px-2 py-1">
+                      <input className="w-full text-[13px] font-medium border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.nome} onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v&&v!==a.nome)saveAv(a.cod,{nome:v});}}/>
+                    </td>
+                    {/* ── Localização (editável) ── */}
+                    <td className="px-2 py-1">
+                      <input className="w-full text-[12px] border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.localizacao_padrao} placeholder="—" onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v!==a.localizacao_padrao)saveAv(a.cod,{localizacao_padrao:v});}}/>
+                    </td>
+                    {/* ── Preço (editável) ── */}
+                    <td className="px-2 py-1">
+                      <input type="number" step="0.01" className="w-full text-[13px] text-right tabnum border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.preco||""} placeholder="0,00" onBlur={e=>{const v=parseFloat(e.target.value)||0;if(v!==a.preco)saveAv(a.cod,{preco:v});}}/>
+                    </td>
+                    {/* ── Excluir ── */}
+                    <td className="text-center px-2">
+                      <button onClick={()=>remAv(a.cod)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--label-quaternary)] hover:bg-red-50 hover:text-red-500 transition-colors mx-auto" title="Excluir aviamento">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}</tbody></table>
               </div>
