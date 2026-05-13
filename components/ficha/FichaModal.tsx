@@ -326,8 +326,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr>
               <th className="w-8 px-1"></th>
               <th className="text-center w-8 px-2">#</th>
+              <th className="w-28">Código</th>
               <th className="px-4">Matéria prima</th>
-              <th className="w-24">Código</th>
               <th className="text-center w-12">Qtd</th>
               <th className="text-right w-16">Valor</th>
               <th className="min-w-[200px]">Localização</th>
@@ -340,8 +340,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                   </button>
                 </td>
                 <td className="text-center text-[11px] font-bold text-[var(--label-tertiary)] px-2">{String(i+1).padStart(2,"0")}</td>
+                <td className="font-mono text-[14px] font-bold px-4">{a.cod}</td>
                 <td className="font-medium px-4">{a.item}</td>
-                <td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td>
                 <td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td>
                 <td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                 <td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>
@@ -360,8 +360,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                         <span className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm" style={{ background: fichaColor }}>{String(i+1).padStart(2,"0")}</span>
                         <img src={a.imagem} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-1"/>
                       </div>
-                      <p className="text-[10px] text-[var(--label-secondary)] text-center leading-tight line-clamp-2 w-full">{a.item}</p>
-                      <p className="text-[9px] font-mono text-[var(--label-quaternary)]">{a.cod}</p>
+                      <p className="text-[13px] font-mono font-bold text-center leading-tight w-full">{a.cod}</p>
+                      <p className="text-[9px] text-[var(--label-tertiary)] text-center leading-tight line-clamp-2 w-full">{a.item}</p>
                     </div>
                   ))}
                 </div>

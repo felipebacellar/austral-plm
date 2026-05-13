@@ -178,7 +178,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <table style={tbl}>
               <thead><tr style={headRow}>
                 <th style={{ ...th, textAlign: "center", width: "20px" }}>#</th>
-                <th style={th}>Matéria prima</th><th style={{ ...th, width: "52px" }}>Código</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
+                <th style={{ ...th, width: "65px" }}>Código</th><th style={th}>Matéria prima</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
                 <th style={{ ...th, textAlign: "right", width: "45px" }}>Valor</th><th style={th}>Localização</th>
                 {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...th, textAlign: "center", width: "50px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
               </tr></thead>
@@ -186,8 +186,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 {avi.map((a, i) => (
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
                     <td style={{ ...td, textAlign: "center", fontWeight: 700, color: muted }}>{String(i+1).padStart(2,"0")}</td>
+                    <td style={{ ...td, fontFamily: "monospace", fontSize: "10px", fontWeight: 800, color: navy }}>{a.cod}</td>
                     <td style={{ ...td, fontWeight: 700 }}>{a.item}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "7.5px", color: muted }}>{a.cod}</td>
                     <td style={{ ...td, textAlign: "center" }}>{a.qtd}</td>
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                     <td style={{ ...td, fontSize: "8px", color: muted }}>{a.local || "—"}</td>
@@ -213,8 +213,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                         <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "18px", height: "18px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "8px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(i+1).padStart(2,"0")}</span>
                         <img src={a.imagem} alt={a.item} style={{ width: "88px", height: "88px", objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "4px" }}/>
                       </div>
-                      <p style={{ fontSize: "7px", color: "#1E293B", fontWeight: 600, marginTop: "3px", lineHeight: "1.3", wordBreak: "break-word" }}>{a.item}</p>
-                      <p style={{ fontSize: "6.5px", color: muted, fontFamily: "monospace", marginTop: "1px" }}>{a.cod}</p>
+                      <p style={{ fontSize: "9px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "3px", lineHeight: "1.3" }}>{a.cod}</p>
+                      <p style={{ fontSize: "6.5px", color: muted, marginTop: "1px", lineHeight: "1.3", wordBreak: "break-word" }}>{a.item}</p>
                     </div>
                   ))}
                 </div>
