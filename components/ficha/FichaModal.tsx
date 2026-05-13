@@ -325,7 +325,6 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
             <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr>
               <th className="text-center w-8 px-2">#</th>
-              <th className="text-center w-12">Img</th>
               <th className="px-4">Matéria prima</th>
               <th className="w-24">Código</th>
               <th className="text-center w-12">Qtd</th>
@@ -336,11 +335,6 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             </tr></thead><tbody>{avi.map((a: any, i: number) => (
               <tr key={i}>
                 <td className="text-center text-[11px] font-bold text-[var(--label-tertiary)] px-2">{String(i+1).padStart(2,"0")}</td>
-                <td className="text-center px-1 py-1">
-                  {a.imagem
-                    ? <img src={a.imagem} alt={a.item} className="w-9 h-9 object-contain rounded border border-[var(--separator)] mx-auto"/>
-                    : <div className="w-9 h-9 rounded border border-dashed border-[var(--separator-opaque)] mx-auto flex items-center justify-center text-[var(--label-quaternary)]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>}
-                </td>
                 <td className="font-medium px-4">{a.item}</td>
                 <td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td>
                 <td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td>
@@ -349,7 +343,26 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}</select></td>); })}
                 <td className="text-center"><button onClick={() => ra(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)]">×</button></td>
               </tr>
-            ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={5} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 2} /></tr>}</tbody></table></div>
+            ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={4} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 2} /></tr>}</tbody></table></div>
+
+            {/* ── Galeria de imagens dos aviamentos ── */}
+            {avi.some((a: any) => a.imagem) && (
+              <div className="apple-card p-4 mb-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--label-tertiary)] mb-3">Referência Visual</div>
+                <div className="flex flex-wrap gap-4">
+                  {avi.map((a: any, i: number) => !a.imagem ? null : (
+                    <div key={i} className="flex flex-col items-center gap-1.5" style={{ width: "110px" }}>
+                      <div className="relative w-full">
+                        <span className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm" style={{ background: fichaColor }}>{String(i+1).padStart(2,"0")}</span>
+                        <img src={a.imagem} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-1"/>
+                      </div>
+                      <p className="text-[10px] text-[var(--label-secondary)] text-center leading-tight line-clamp-2 w-full">{a.item}</p>
+                      <p className="text-[9px] font-mono text-[var(--label-quaternary)]">{a.cod}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {!sap ? <button onClick={() => setSap(true)} className="apple-btn-secondary mb-4">+ Adicionar aviamento</button> : (
               <div className="apple-card p-3.5 mb-4 bg-[rgba(0,122,255,0.03)] border-[var(--system-blue)]"><div className="flex gap-2 mb-2"><input type="text" value={asq} onChange={e => setAsq(e.target.value)} placeholder="Buscar aviamento..." className="apple-input flex-1" autoFocus /><button onClick={() => { setSap(false); setAsq(""); }} className="text-[13px] text-[var(--label-secondary)] px-2">Cancelar</button></div><div className="max-h-[240px] overflow-y-auto overscroll-y-contain border border-[var(--separator-opaque)] rounded-xl bg-[var(--bg-primary)]">{fa.map((a: any) => (
                 <button key={a.cod} onClick={() => aa(a)} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-[var(--bg-secondary)] border-b border-[var(--separator)] flex items-center gap-3">
