@@ -331,7 +331,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
           <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
             <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
-            <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr>
+            <div className="apple-card overflow-x-auto overflow-y-auto mb-3" style={{ maxHeight: "420px" }}><table className="plm-table"><thead className="sticky top-0 z-10 bg-[var(--bg-secondary)]"><tr>
               <th className="w-8 px-1"></th>
               <th className="text-center w-8 px-2">#</th>
               <th className="w-28">Código</th>
@@ -342,7 +342,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <th className="text-right w-16">Valor</th>
               <th className="min-w-[200px]">Localização</th>
               {Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-24"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}
-            </tr></thead><tbody>{avi.map((a: any, i: number) => (
+            </tr></thead><tbody className="overflow-y-auto">{avi.map((a: any, i: number) => (
               <tr key={i}>
                 <td className="px-1 py-1 text-center">
                   <button onClick={() => ra(i)} className="w-6 h-6 rounded-md flex items-center justify-center text-[var(--label-quaternary)] hover:bg-red-50 hover:text-red-500 transition-colors" title="Remover">
