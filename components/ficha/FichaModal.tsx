@@ -68,7 +68,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         const ficTec = ficha.tecidos || [];
         setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
         const aviBase = ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI;
-        setAvi(aviBase.map((a: any) => { const cat = aviCad.find((c: any) => c.cod === a.cod); return { ...a, imagem: cat?.imagem || "", cores_disponiveis: cat?.cores_disponiveis || [] }; }));
+        setAvi(aviBase.map((a: any) => { const cat = aviCad.find((c: any) => c.cod === a.cod); return { ...a, imagem: cat?.imagem || "", cores_disponiveis: cat?.cores_disponiveis || [], fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" }; }));
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
@@ -144,7 +144,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     const activeCount = tec[0]?.cores?.filter(Boolean).length || numVars;
     const vf: Record<string,string> = {};
     if (autoColor) (["var01","var02","var03","var04","var05","var06"] as const).slice(0, activeCount).forEach(k => vf[k] = autoColor);
-    setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: cores, var01: vf.var01||"", var02: vf.var02||"", var03: vf.var03||"", var04: vf.var04||"", var05: vf.var05||"", var06: vf.var06||"" }]);
+    setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: cores, fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", var01: vf.var01||"", var02: vf.var02||"", var03: vf.var03||"", var04: vf.var04||"", var05: vf.var05||"", var06: vf.var06||"" }]);
     setSap(false); setAsq("");
   };
   const fa = asq ? avCad.filter((a: any) => (a.cod + a.nome).toLowerCase().includes(asq.toLowerCase())) : avCad;
@@ -336,6 +336,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <th className="text-center w-8 px-2">#</th>
               <th className="w-28">Código</th>
               <th className="px-4">Matéria prima</th>
+              <th className="min-w-[120px]">Fornecedor</th>
+              <th className="w-32">Cód. forn.</th>
               <th className="text-center w-12">Qtd</th>
               <th className="text-right w-16">Valor</th>
               <th className="min-w-[200px]">Localização</th>
@@ -350,6 +352,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <td className="text-center text-[11px] font-bold text-[var(--label-tertiary)] px-2">{String(i+1).padStart(2,"0")}</td>
                 <td className="font-mono text-[14px] font-bold px-4">{a.cod}</td>
                 <td className="font-medium px-4">{a.item}</td>
+                <td className="text-[12px] text-[var(--label-secondary)] px-4">{a.fornecedor || "—"}</td>
+                <td className="font-mono text-[12px] text-[var(--label-tertiary)] px-4">{a.codigo_fornecedor || "—"}</td>
                 <td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td>
                 <td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                 <td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>

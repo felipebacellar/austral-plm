@@ -178,7 +178,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <table style={tbl}>
               <thead><tr style={headRow}>
                 <th style={{ ...th, textAlign: "center", width: "20px" }}>#</th>
-                <th style={{ ...th, width: "65px" }}>Código</th><th style={th}>Matéria prima</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
+                <th style={{ ...th, width: "65px" }}>Código</th><th style={th}>Matéria prima</th><th style={{ ...th, width: "70px" }}>Fornecedor</th><th style={{ ...th, width: "60px" }}>Cód. forn.</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
                 <th style={{ ...th, textAlign: "right", width: "45px" }}>Valor</th><th style={th}>Localização</th>
                 {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...th, textAlign: "center", width: "50px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
               </tr></thead>
@@ -188,6 +188,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                     <td style={{ ...td, textAlign: "center", fontWeight: 700, color: muted }}>{String(i+1).padStart(2,"0")}</td>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "10px", fontWeight: 800, color: navy }}>{a.cod}</td>
                     <td style={{ ...td, fontWeight: 700 }}>{a.item}</td>
+                    <td style={{ ...td, fontSize: "8px", color: muted }}>{a.fornecedor || "—"}</td>
+                    <td style={{ ...td, fontFamily: "monospace", fontSize: "8px", color: muted }}>{a.codigo_fornecedor || "—"}</td>
                     <td style={{ ...td, textAlign: "center" }}>{a.qtd}</td>
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                     <td style={{ ...td, fontSize: "8px", color: muted }}>{a.local || "—"}</td>
@@ -196,7 +198,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 ))}
               </tbody>
               <tfoot><tr>
-                <td colSpan={3} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
+                <td colSpan={5} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
                 <td style={{ ...td, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", fontVariantNumeric: "tabular-nums", paddingTop: "6px" }}>R$ {avT.toFixed(2)}</td>
                 <td colSpan={numVars + 1} style={{ ...td, borderTop: `2px solid ${headerBg}` }} />
               </tr></tfoot>
