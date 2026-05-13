@@ -54,17 +54,19 @@ for (const line of lines) {
   const nome = clean(cols[1]).toUpperCase().replace(/\t/g, "").trim();
   const preco = parsePreco(clean(cols[2]));
   const loc  = clean(cols[3]).toUpperCase();
-  const coresRaw = clean(cols[4] || "");
+  // cols[4] = ARQUIVO_IMAGEM (usado abaixo para upload)
+  const coresRaw = clean(cols[5] || "");
   const cores_disponiveis = coresRaw ? coresRaw.split("|").map(c => c.trim().toUpperCase()).filter(Boolean) : [];
-  const fornecedor = clean(cols[5] || "").toUpperCase();
-  const codigo_fornecedor = clean(cols[6] || "").toUpperCase();
+  const fornecedor = clean(cols[6] || "").toUpperCase();
+  const codigo_fornecedor = clean(cols[7] || "").toUpperCase();
 
   // Pula linhas inválidas
   if (!cod || cod === "SEM CÓDIGO" || cod === "SEM C DIGO" || cod === "FORN" || !nome || nome === "EM DESENVOLVIMENTO") continue;
   // Pula duplicatas no mesmo arquivo
   if (records.find(r => r.codigo === cod)) continue;
 
-  records.push({ codigo: cod, nome, preco, localizacao_padrao: loc, cores_disponiveis, fornecedor, codigo_fornecedor });
+  const arquivo_imagem = clean(cols[4] || "");
+  records.push({ codigo: cod, nome, preco, localizacao_padrao: loc, cores_disponiveis, fornecedor, codigo_fornecedor, _arquivo_imagem: arquivo_imagem });
 }
 
 console.log(`\n📊 ${records.length} aviamentos para importar\n`);
@@ -76,7 +78,8 @@ for (const rec of records) {
   let imagemUrl = "";
   if (fs.existsSync(IMAGES_DIR)) {
     const cod = rec.codigo;
-    const candidatos = [`${cod}.jpg`, `${cod}.jpeg`, `${cod}.png`, `${cod}.webp`, `${cod}.JPG`, `${cod}.PNG`];
+    const imgArq = rec._arquivo_imagem || "";
+    const candidatos = imgArq ? [imgArq] : [`${cod}.jpg`, `${cod}.jpeg`, `${cod}.png`, `${cod}.webp`, `${cod}.JPG`, `${cod}.PNG`];
     for (const fname of candidatos) {
       const fpath = path.join(IMAGES_DIR, fname);
       if (fs.existsSync(fpath)) {
@@ -94,8 +97,9 @@ for (const rec of records) {
     }
   }
   if (imagemUrl) rec.imagem = imagemUrl;
+  const { _arquivo_imagem: _drop, ...recDb } = rec;
 
-  let { error } = await sb.from("aviamentos").upsert(rec, { onConflict: "codigo" });
+  let { error } = await sb.from("aviamentos").upsert(recDb, { onConflict: "codigo" });
   if (error && (error.message.includes("localizacao_padrao") || error.message.includes("cores_disponiveis"))) {
     const { codigo, nome, preco } = rec;
     ({ error } = await sb.from("aviamentos").upsert({ codigo, nome, preco }, { onConflict: "codigo" }));

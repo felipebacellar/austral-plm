@@ -68,7 +68,14 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         const ficTec = ficha.tecidos || [];
         setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
         const aviBase = ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI;
-        setAvi(aviBase.map((a: any) => { const cat = aviCad.find((c: any) => c.cod === a.cod); return { ...a, imagem: cat?.imagem || "", cores_disponiveis: cat?.cores_disponiveis || [], fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" }; }));
+        setAvi(aviBase.map((a: any) => {
+          const cat = aviCad.find((c: any) => c.cod === a.cod);
+          const cores = cat?.cores_disponiveis || [];
+          const autoColor = cores.length === 1 ? cores[0] : "";
+          const varPatch: Record<string, string> = {};
+          if (autoColor) (["var01","var02","var03","var04","var05","var06"] as const).forEach(k => { if (!a[k]) varPatch[k] = autoColor; });
+          return { ...a, ...varPatch, imagem: cat?.imagem || "", cores_disponiveis: cores, fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" };
+        }));
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
