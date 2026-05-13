@@ -71,11 +71,6 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         const aviBase = (() => {
           const l = (row.linha || "").toUpperCase().trim();
           const g = (row.grade || "").toUpperCase().trim();
-          if (ficha.aviamentos?.length) {
-            const existing = ficha.aviamentos;
-            if (existing.some((a: any) => a.cod === "AD0001")) return existing;
-            return [mkAvi("AD0001") || DEFAULT_AVI[0], ...existing];
-          }
           const tamCodes: string[] =
             l === "CASUAL" && g === "PP-GG"  ? ["ET0052","ET0053","ET0054","ET0055","ET0056"] :
             l === "CASUAL" && g === "XPP-GG" ? ["ET0051","ET0052","ET0053","ET0054","ET0055","ET0056"] :
@@ -83,7 +78,14 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             l === "BLACK"  && g === "PP-GG"  ? ["ET0087","ET0088","ET0089","ET0090","ET0091"] :
             l === "BLACK"  && g === "XPP-GG" ? ["ET0086","ET0087","ET0088","ET0089","ET0090","ET0091"] :
             l === "BLACK"  && g === "38-46"  ? ["ET0092","ET0093","ET0094","ET0095","ET0096"] : [];
-          return [mkAvi("AD0001") || DEFAULT_AVI[0], ...tamCodes.map(mkAvi).filter(Boolean)];
+          let base: any[] = ficha.aviamentos?.length ? [...ficha.aviamentos] : [];
+          // Garante AD0001 como primeiro item
+          if (!base.some((a: any) => a.cod === "AD0001"))
+            base = [mkAvi("AD0001") || DEFAULT_AVI[0], ...base];
+          // Adiciona etiquetas de tamanho se nenhuma delas estiver presente
+          if (tamCodes.length && !base.some((a: any) => tamCodes.includes(a.cod)))
+            base = [...base, ...tamCodes.map(mkAvi).filter(Boolean)];
+          return base.length ? base : [mkAvi("AD0001") || DEFAULT_AVI[0]];
         })();
         setAvi(aviBase.map((a: any) => {
           const cat = aviCad.find((c: any) => c.cod === a.cod);
