@@ -68,7 +68,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         const ficTec = ficha.tecidos || [];
         setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
         const aviBase = ficha.aviamentos?.length ? ficha.aviamentos : DEFAULT_AVI;
-        setAvi(aviBase.map((a: any) => { const cat = aviCad.find((c: any) => c.cod === a.cod); return { ...a, imagem: cat?.imagem || "" }; }));
+        setAvi(aviBase.map((a: any) => { const cat = aviCad.find((c: any) => c.cod === a.cod); return { ...a, imagem: cat?.imagem || "", cores_disponiveis: cat?.cores_disponiveis || [] }; }));
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
@@ -138,7 +138,15 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 6) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
   const ua = (i: number, k: string, v: any) => setAvi(p => p.map((a, j) => j === i ? { ...a, [k]: v } : a));
   const ra = (i: number) => setAvi(p => p.filter((_, j) => j !== i));
-  const aa = (a: any) => { setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }]); setSap(false); setAsq(""); };
+  const aa = (a: any) => {
+    const cores = a.cores_disponiveis || [];
+    const autoColor = cores.length === 1 ? cores[0] : "";
+    const activeCount = tec[0]?.cores?.filter(Boolean).length || numVars;
+    const vf: Record<string,string> = {};
+    if (autoColor) (["var01","var02","var03","var04","var05","var06"] as const).slice(0, activeCount).forEach(k => vf[k] = autoColor);
+    setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: cores, var01: vf.var01||"", var02: vf.var02||"", var03: vf.var03||"", var04: vf.var04||"", var05: vf.var05||"", var06: vf.var06||"" }]);
+    setSap(false); setAsq("");
+  };
   const fa = asq ? avCad.filter((a: any) => (a.cod + a.nome).toLowerCase().includes(asq.toLowerCase())) : avCad;
   const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
   const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return d === 0 ? "text-[var(--system-green)]" : "font-bold text-red-600 bg-yellow-100"; };
@@ -345,7 +353,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <td className="text-center px-1"><input type="number" value={a.qtd} onChange={e => ua(i, "qtd", parseInt(e.target.value) || 1)} className="w-11 text-center text-[13px] border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none" /></td>
                 <td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                 <td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>
-                {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}</select></td>); })}
+                {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{(a.cores_disponiveis?.length ? a.cores_disponiveis : corOpts).map((c:string) => <option key={c} value={c}>{c}</option>)}</select></td>); })}
               </tr>
             ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td /><td colSpan={4} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 1} /></tr>}</tbody></table></div>
 

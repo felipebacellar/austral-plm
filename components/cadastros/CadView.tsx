@@ -15,6 +15,7 @@ export default function CadView(){
   const [avImgUploading,setAvImgUploading]=useState<string|null>(null);
   const avImgRef=useRef<HTMLInputElement>(null);
   const [avImgTarget,setAvImgTarget]=useState<string|null>(null);
+  const [avCoresOpen,setAvCoresOpen]=useState<string|null>(null);
 
   useEffect(()=>{loadAll();},[]);
 
@@ -129,10 +130,12 @@ export default function CadView(){
                 <input type="text" value={sr} onChange={e=>setSr(e.target.value)} placeholder="Buscar aviamento..." className={`${inp} w-full`}/>
               </div>
               <div className="border border-[var(--separator)] rounded-xl overflow-hidden max-h-[540px] overflow-y-auto overscroll-y-contain">
+                {avCoresOpen && <div className="fixed inset-0 z-40" onClick={() => setAvCoresOpen(null)} />}
                 <table className="plm-table"><thead><tr>
                   <th className="w-16 px-3 text-center">Foto</th>
                   <th className="w-28">Código</th>
                   <th>Nome</th>
+                  <th className="min-w-[200px]">Cores disponíveis</th>
                   <th className="min-w-[180px]">Localização padrão</th>
                   <th className="w-24 text-right">Preço (R$)</th>
                   <th className="w-10"></th>
@@ -158,6 +161,31 @@ export default function CadView(){
                     {/* ── Nome (editável) ── */}
                     <td className="px-2 py-1">
                       <input className="w-full text-[13px] font-medium border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.nome} onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v&&v!==a.nome)saveAv(a.cod,{nome:v});}}/>
+                    </td>
+                    {/* ── Cores disponíveis ── */}
+                    <td className="px-2 py-1.5">
+                      <div className="relative z-50">
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {(a.cores_disponiveis||[]).map((c:string)=>(
+                            <span key={c} className="inline-flex items-center gap-1 text-[10px] font-medium bg-[var(--bg-tertiary)] border border-[var(--separator)] rounded-md px-1.5 py-0.5 leading-none">
+                              {c}
+                              <button onClick={()=>{const next=(a.cores_disponiveis||[]).filter((x:string)=>x!==c);saveAv(a.cod,{cores_disponiveis:next});}} className="text-[var(--label-quaternary)] hover:text-red-500 leading-none">×</button>
+                            </span>
+                          ))}
+                          <button onClick={()=>setAvCoresOpen(avCoresOpen===a.cod?null:a.cod)} className="text-[11px] text-[var(--system-blue)] border border-dashed border-[var(--system-blue)] rounded-md px-1.5 py-0.5 hover:opacity-70 leading-none">+</button>
+                        </div>
+                        {avCoresOpen===a.cod&&(
+                          <div className="absolute z-50 top-full left-0 mt-1 bg-[var(--bg-primary)] border border-[var(--separator-opaque)] rounded-xl shadow-lg p-2 min-w-[200px] max-h-[220px] overflow-y-auto">
+                            {(cad.cor||[]).map((c:string)=>{const checked=(a.cores_disponiveis||[]).includes(c);return(
+                              <label key={c} className="flex items-center gap-2 px-2 py-1.5 hover:bg-[var(--bg-secondary)] rounded-lg cursor-pointer">
+                                <input type="checkbox" checked={checked} onChange={()=>{const next=checked?(a.cores_disponiveis||[]).filter((x:string)=>x!==c):[...(a.cores_disponiveis||[]),c];saveAv(a.cod,{cores_disponiveis:next});}} className="rounded"/>
+                                <span className="text-[12px]">{c}</span>
+                              </label>
+                            );})}
+                            {!(cad.cor||[]).length&&<p className="text-[11px] text-[var(--label-tertiary)] px-2 py-2">Nenhuma cor cadastrada</p>}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     {/* ── Localização (editável) ── */}
                     <td className="px-2 py-1">
