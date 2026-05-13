@@ -208,10 +208,10 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 <div style={{ background: headerBg, color: "white", fontSize: "8px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 8px", borderRadius: "4px", marginBottom: "10px" }}>Referência Visual</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
                   {avi.map((a, i) => !a.imagem ? null : (
-                    <div key={i} style={{ width: "140px", textAlign: "center", position: "relative" }}>
+                    <div key={i} style={{ width: "160px", textAlign: "center", position: "relative" }}>
                       <div style={{ position: "relative" }}>
                         <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "18px", height: "18px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "8px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(i+1).padStart(2,"0")}</span>
-                        <img src={a.imagem} alt={a.item} style={{ width: "140px", height: "140px", objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "4px" }}/>
+                        <img src={a.imagem} alt={a.item} style={{ width: "160px", height: "160px", objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "4px" }}/>
                       </div>
                       <p style={{ fontSize: "9px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "3px", lineHeight: "1.3" }}>{a.cod}</p>
                       <p style={{ fontSize: "6.5px", color: muted, marginTop: "1px", lineHeight: "1.3", wordBreak: "break-word" }}>{a.item}</p>

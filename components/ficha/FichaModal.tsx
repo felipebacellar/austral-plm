@@ -355,7 +355,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--label-tertiary)] mb-3">Referência Visual</div>
                 <div className="flex flex-wrap gap-4">
                   {avi.map((a: any, i: number) => !a.imagem ? null : (
-                    <div key={i} className="flex flex-col items-center gap-1.5" style={{ width: "180px" }}>
+                    <div key={i} className="flex flex-col items-center gap-1.5" style={{ width: "280px" }}>
                       <div className="relative w-full">
                         <span className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm" style={{ background: fichaColor }}>{String(i+1).padStart(2,"0")}</span>
                         <img src={a.imagem} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-1"/>
