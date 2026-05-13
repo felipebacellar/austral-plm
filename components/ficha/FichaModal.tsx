@@ -324,6 +324,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
             <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
             <div className="apple-card overflow-x-auto mb-3"><table className="plm-table"><thead><tr>
+              <th className="w-8 px-1"></th>
               <th className="text-center w-8 px-2">#</th>
               <th className="px-4">Matéria prima</th>
               <th className="w-24">Código</th>
@@ -331,9 +332,13 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <th className="text-right w-16">Valor</th>
               <th className="min-w-[200px]">Localização</th>
               {Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-24"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}
-              <th className="w-8"></th>
             </tr></thead><tbody>{avi.map((a: any, i: number) => (
               <tr key={i}>
+                <td className="px-1 py-1 text-center">
+                  <button onClick={() => ra(i)} className="w-6 h-6 rounded-md flex items-center justify-center text-[var(--label-quaternary)] hover:bg-red-50 hover:text-red-500 transition-colors" title="Remover">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </td>
                 <td className="text-center text-[11px] font-bold text-[var(--label-tertiary)] px-2">{String(i+1).padStart(2,"0")}</td>
                 <td className="font-medium px-4">{a.item}</td>
                 <td className="font-mono text-[11px] text-[var(--label-secondary)]">{a.cod}</td>
@@ -341,9 +346,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <td className="text-right tabnum">{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
                 <td className="px-1 py-1"><textarea value={a.local} onChange={e => ua(i, "local", e.target.value)} rows={2} className="w-full text-[12px] border border-[var(--separator-opaque)] rounded-lg px-2.5 py-1.5 outline-none resize-none leading-tight" placeholder="Localização..." /></td>
                 {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => { const av = a[k] || ""; const pal = av ? COR_PALETTE[av] : null; return (<td key={k} className="px-1 py-1"><select value={av} onChange={e => ua(i, k, e.target.value)} className="w-full text-[11px] rounded-md px-1.5 py-1 outline-none border font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">—</option>{corOpts.map(c => <option key={c} value={c}>{c}</option>)}</select></td>); })}
-                <td className="text-center"><button onClick={() => ra(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)]">×</button></td>
               </tr>
-            ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td colSpan={4} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 2} /></tr>}</tbody></table></div>
+            ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td /><td colSpan={4} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 1} /></tr>}</tbody></table></div>
 
             {/* ── Galeria de imagens dos aviamentos ── */}
             {avi.some((a: any) => a.imagem) && (
