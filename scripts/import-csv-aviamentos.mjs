@@ -56,13 +56,15 @@ for (const line of lines) {
   const loc  = clean(cols[3]).toUpperCase();
   const coresRaw = clean(cols[4] || "");
   const cores_disponiveis = coresRaw ? coresRaw.split("|").map(c => c.trim().toUpperCase()).filter(Boolean) : [];
+  const fornecedor = clean(cols[5] || "").toUpperCase();
+  const codigo_fornecedor = clean(cols[6] || "").toUpperCase();
 
   // Pula linhas inválidas
   if (!cod || cod === "SEM CÓDIGO" || cod === "SEM C DIGO" || cod === "FORN" || !nome || nome === "EM DESENVOLVIMENTO") continue;
   // Pula duplicatas no mesmo arquivo
   if (records.find(r => r.codigo === cod)) continue;
 
-  records.push({ codigo: cod, nome, preco, localizacao_padrao: loc, cores_disponiveis });
+  records.push({ codigo: cod, nome, preco, localizacao_padrao: loc, cores_disponiveis, fornecedor, codigo_fornecedor });
 }
 
 console.log(`\n📊 ${records.length} aviamentos para importar\n`);

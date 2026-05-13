@@ -11,7 +11,7 @@ export default function CadView(){
   const [m,setM]=useState("grupo");const [val,setVal]=useState("");const [loading,setLoading]=useState(true);
   const [tn,setTn]=useState("");const [tf,setTf]=useState("");const [tc,setTc]=useState("");const [tp,setTp]=useState("");
   const [cc,setCc]=useState("");const [cn,setCn]=useState("");
-  const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [al,setAl]=useState("");const [sr,setSr]=useState("");
+  const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [al,setAl]=useState("");const [af,setAf]=useState("");const [acf,setAcf]=useState("");const [sr,setSr]=useState("");
   const [avImgUploading,setAvImgUploading]=useState<string|null>(null);
   const avImgRef=useRef<HTMLInputElement>(null);
   const [avImgTarget,setAvImgTarget]=useState<string|null>(null);
@@ -38,7 +38,7 @@ export default function CadView(){
   const addT=async()=>{if(!tn.trim())return;const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp};await addTecido(t);setTecidos(p=>[...p,t]);setTn("");setTf("");setTc("");setTp("");};
   const remT=async(n:string)=>{await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
 
-  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),imagem:""};await addAviamento(a);setAviamentos(p=>[...p,a]);setAc("");setAn("");setAp("");setAl("");};
+  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:""};await addAviamento(a);setAviamentos(p=>[...p,a]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");};
   const remAv=async(cod:string)=>{const av=aviamentos.find((a:any)=>a.cod===cod);if(av?.imagem)await deleteImage(av.imagem);await removeAviamento(cod);setAviamentos(p=>p.filter(a=>a.cod!==cod));};
   const saveAv=async(cod:string,data:Record<string,any>)=>{await updateAviamento(cod,data);setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,...data}:a));};
   const triggerAvImg=(cod:string)=>{setAvImgTarget(cod);avImgRef.current?.click();};
@@ -120,10 +120,12 @@ export default function CadView(){
             {m==="aviamento"&&(<>
               <input type="file" accept="image/*" ref={avImgRef} className="hidden" onChange={handleAvImg}/>
               <div className="flex flex-wrap gap-2 mb-3">
-                <input className={`${inp} w-28`} value={ac} onChange={e=>setAc(e.target.value)} placeholder="Código"/>
+                <input className={`${inp} w-28`} value={ac} onChange={e=>setAc(e.target.value)} placeholder="Nosso código"/>
                 <input className={`${inp} flex-1 min-w-[120px]`} value={an} onChange={e=>setAn(e.target.value)} placeholder="Nome"/>
                 <input className={`${inp} w-24`} value={ap} onChange={e=>setAp(e.target.value)} placeholder="Preço"/>
-                <input className={`${inp} flex-1 min-w-[180px]`} value={al} onChange={e=>setAl(e.target.value)} placeholder="Localização padrão (ex: GOLA INTERNA)"/>
+                <input className={`${inp} flex-1 min-w-[150px]`} value={al} onChange={e=>setAl(e.target.value)} placeholder="Localização padrão"/>
+                <input className={`${inp} flex-1 min-w-[120px]`} value={af} onChange={e=>setAf(e.target.value)} placeholder="Fornecedor"/>
+                <input className={`${inp} w-32`} value={acf} onChange={e=>setAcf(e.target.value)} placeholder="Cód. fornecedor"/>
                 <button onClick={addAv} className={btn}>Adicionar</button>
               </div>
               <div className="mb-4">
@@ -133,8 +135,10 @@ export default function CadView(){
                 {avCoresOpen && <div className="fixed inset-0 z-40" onClick={() => setAvCoresOpen(null)} />}
                 <table className="plm-table"><thead><tr>
                   <th className="w-16 px-3 text-center">Foto</th>
-                  <th className="w-28">Código</th>
+                  <th className="w-28">Nosso cód.</th>
                   <th>Nome</th>
+                  <th className="min-w-[120px]">Fornecedor</th>
+                  <th className="w-32">Cód. fornecedor</th>
                   <th className="min-w-[200px]">Cores disponíveis</th>
                   <th className="min-w-[180px]">Localização padrão</th>
                   <th className="w-24 text-right">Preço (R$)</th>
@@ -161,6 +165,14 @@ export default function CadView(){
                     {/* ── Nome (editável) ── */}
                     <td className="px-2 py-1">
                       <input className="w-full text-[13px] font-medium border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.nome} onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v&&v!==a.nome)saveAv(a.cod,{nome:v});}}/>
+                    </td>
+                    {/* ── Fornecedor (editável) ── */}
+                    <td className="px-2 py-1">
+                      <input className="w-full text-[12px] border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.fornecedor} placeholder="—" onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v!==a.fornecedor)saveAv(a.cod,{fornecedor:v});}}/>
+                    </td>
+                    {/* ── Cód. Fornecedor (editável) ── */}
+                    <td className="px-2 py-1">
+                      <input className="w-full text-[12px] font-mono border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.codigo_fornecedor} placeholder="—" onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v!==a.codigo_fornecedor)saveAv(a.cod,{codigo_fornecedor:v});}}/>
                     </td>
                     {/* ── Cores disponíveis ── */}
                     <td className="px-2 py-1.5">

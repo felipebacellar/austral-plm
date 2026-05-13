@@ -37,13 +37,13 @@ export async function removeTecido(nome: string) {
 export async function fetchAviamentos() {
   const { data, error } = await sb().from("aviamentos").select("*").order("nome");
   if (error) console.error("fetchAviamentos:", error);
-  return (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [] }));
+  return (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "" }));
 }
 export async function addAviamento(a: { cod: string; nome: string; preco: number; localizacao_padrao?: string }) {
   const { error } = await sb().from("aviamentos").insert({ codigo: a.cod, nome: a.nome, preco: a.preco, localizacao_padrao: a.localizacao_padrao || "" });
   if (error) console.error("addAviamento:", error);
 }
-export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[] }) {
+export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
 }
