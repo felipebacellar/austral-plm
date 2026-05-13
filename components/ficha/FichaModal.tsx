@@ -331,7 +331,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
           <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
             <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
-            <div className="apple-card overflow-x-auto overflow-y-auto mb-3" style={{ maxHeight: "420px" }}><table className="plm-table"><thead className="sticky top-0 z-10 bg-[var(--bg-secondary)]"><tr>
+            <div className="apple-card mb-3" style={{ maxHeight: "420px", overflowX: "auto", overflowY: "auto" }}><table className="plm-table" style={{ minWidth: "max-content", width: "100%" }}><thead className="sticky top-0 z-10 bg-[var(--bg-secondary)]"><tr>
               <th className="w-8 px-1"></th>
               <th className="text-center w-8 px-2">#</th>
               <th className="w-28">Código</th>
