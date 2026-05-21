@@ -210,16 +210,14 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
                       <td style={{ padding: "12px 10px", fontSize: 12, color: "var(--label-tertiary)", whiteSpace: "nowrap" }}>{fmt(u.last_sign_in_at)}</td>
                       <td style={{ padding: "12px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
                         <button onClick={() => openEdit(u)} style={{ fontSize: 12, color: "var(--system-blue)", background: "none", border: "none", cursor: "pointer", marginRight: 8, fontWeight: 500 }}>Editar</button>
+                        <button
+                          onClick={() => openPerms(u)}
+                          style={{ fontSize: 12, color: permUser?.id === u.id ? "var(--system-blue)" : "var(--label-secondary)", background: permUser?.id === u.id ? "rgba(0,122,255,0.08)" : "none", border: "none", cursor: "pointer", marginRight: 8, fontWeight: 500, borderRadius: 6, padding: "3px 7px" }}
+                        >
+                          ⚙️ Permissões
+                        </button>
                         {u.id !== me?.id && (
-                          <>
-                            <button
-                              onClick={() => openPerms(u)}
-                              style={{ fontSize: 12, color: permUser?.id === u.id ? "var(--system-blue)" : "var(--label-secondary)", background: permUser?.id === u.id ? "rgba(0,122,255,0.08)" : "none", border: "none", cursor: "pointer", marginRight: 8, fontWeight: 500, borderRadius: 6, padding: "3px 7px" }}
-                            >
-                              ⚙️ Permissões
-                            </button>
-                            <button onClick={() => del(u)} style={{ fontSize: 12, color: "var(--system-red)", background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}>Excluir</button>
-                          </>
+                          <button onClick={() => del(u)} style={{ fontSize: 12, color: "var(--system-red)", background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}>Excluir</button>
                         )}
                       </td>
                     </tr>
