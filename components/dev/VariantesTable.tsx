@@ -7,9 +7,9 @@ const FK=["grupo","subgrupo","status","tecido","fornecedor","cor","estilista","l
 const FL:Record<string,string>={grupo:"Grupo",subgrupo:"Subgrupo",status:"Status",tecido:"Tecido",fornecedor:"Fornecedor",cor:"Cor",estilista:"Estilista",linha:"Linha"};
 const SP:Record<string,string>={"MOSTRUÁRIO LIBERADO":"pill-green","PRODUÇÃO LIBERADA":"pill-blue","DESENVOLVIMENTO":"pill-orange","CANCELADO":"pill-red"};
 
-type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void};
+type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void; readOnly?:boolean};
 
-export default function VariantesTable({rows, variantes, onOpenFicha}:Props){
+export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false}:Props){
   const [q,setQ]=useState("");const [fl,setFl]=useState<Record<string,string>>({});const [sf,setSf]=useState(false);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const ac=Object.values(fl).filter(Boolean).length;
