@@ -104,7 +104,16 @@ export default function Home() {
 
         <nav className="plm-nav">
           <div className="plm-nav-label">{!sidebarCollapsed && "Menu"}</div>
-          {TABS.map(t => (
+          {/* Dashboard */}
+          {TABS.filter(t => t.id === "dashboard").map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setMobileOpen(false); }} className={`plm-nav-item ${tab === t.id ? "active" : ""}`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={t.icon} /></svg>
+              {!sidebarCollapsed && <span>{t.label}</span>}
+            </button>
+          ))}
+          {/* Grupo Estilo */}
+          <div className="plm-nav-label" style={{ marginTop: 8 }}>{!sidebarCollapsed && "Estilo"}</div>
+          {TABS.filter(t => t.id !== "dashboard").map(t => (
             <button key={t.id} onClick={() => { setTab(t.id); setMobileOpen(false); }} className={`plm-nav-item ${tab === t.id ? "active" : ""}`}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={t.icon} /></svg>
               {!sidebarCollapsed && <span>{t.label}</span>}
