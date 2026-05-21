@@ -3,11 +3,19 @@ import { useState, useMemo, useEffect } from "react";
 import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
+import { useAuth } from "@/lib/auth-context";
 
-type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void };
+type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 
-export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
+export default function DevTable({ rows, setRows, onOpenFicha, userEmail }: Props) {
+  const { user } = useAuth();
+  const isAdmin = user?.user_metadata?.role === "admin";
+  const perms: Record<string, boolean> = user?.user_metadata?.permissions || {};
+  const canEdit   = (key: string) => isAdmin || perms[key] === true;
+  const canAdd    = isAdmin || perms["can_add"] === true;
+  const canDelete = isAdmin || perms["can_delete"] === true;
+
   const [cad, setCad] = useState<Record<string, any>>({});
   const [q, setQ] = useState("");
   const [fl, setFl] = useState<Record<string,string>>({});
@@ -141,7 +149,8 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
           Filtros{ac>0&&<span className="bg-[var(--system-blue)] text-white text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">{ac}</span>}
         </button>
-        <button onClick={add} className="apple-btn-primary">+ Novo SKU</button>
+        {canAdd && <button onClick={add} className="apple-btn-primary">+ Novo SKU</button>}
+        {!isAdmin && <span style={{ fontSize: 11, color: "var(--label-tertiary)" }}>Apenas campos com permissão podem ser editados</span>}
       </div>
 
       {sf&&(<div className="apple-card p-4 mb-4 bg-[var(--bg-secondary)]"><div className="flex items-center justify-between mb-3"><span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Filtrar por</span>{ac>0&&<button onClick={()=>{setFl({});setQ("");}} className="text-[12px] text-[var(--system-blue)] font-medium">Limpar todos</button>}</div><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">{FC.map(c=>(<div key={c.key}><label className="text-[11px] text-[var(--label-secondary)] mb-1 block font-medium">{c.label}</label><select value={fl[c.key]||""} onChange={e=>sf2(c.key,e.target.value)} className={`apple-select w-full text-[12px] py-1.5 ${fl[c.key]?"!border-[var(--system-blue)] !bg-blue-50/60 text-[var(--system-blue)] font-semibold":""}`}><option value="">Todos</option>{uv(c.key).map(v=><option key={v}>{v}</option>)}</select></div>))}</div></div>)}
@@ -166,7 +175,7 @@ export default function DevTable({ rows, setRows, onOpenFicha }: Props) {
           </th>
         );
       })}<th style={{width:36}}/></tr></thead><tbody>
-        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.map(c=><td key={c.key} style={{width:c.width,minWidth:c.width}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{row[c.key]||"—"}</span>:<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>}</td>)}<td className="text-center"><button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td></tr>))}
+        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.map(c=><td key={c.key} style={{width:c.width,minWidth:c.width}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>)}<td className="text-center">{canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></div>
     </div>
