@@ -96,7 +96,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
       });
     }
     return r;
-  }, [rows, fl, q, sort]);
+  }, [rows, fl, q, sort, colecaoAtiva]);
 
   const upd = async (id:number, k:string, v:string|number) => {
     // Validate unique ref
