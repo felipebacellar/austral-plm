@@ -9,9 +9,10 @@ type Props = {
   options?: string[];
   isStatus?: boolean;
   onChange: (val: string | number) => void;
+  displayFn?: (v: number) => string;
 };
 
-export default function InlineCell({ value, type, options, isStatus, onChange }: Props) {
+export default function InlineCell({ value, type, options, isStatus, onChange, displayFn }: Props) {
   const [editing, setEditing] = useState(false);
   const [tmp, setTmp] = useState(value);
   const ref = useRef<HTMLInputElement | HTMLSelectElement>(null);
@@ -49,7 +50,10 @@ export default function InlineCell({ value, type, options, isStatus, onChange }:
   }
 
   const isNum = type === "number";
-  const display = isNum ? (Number(value) > 0 ? `R$ ${Number(value).toFixed(2)}` : "—") : (value || "—");
+  const numVal = Number(value);
+  const display = isNum
+    ? (numVal > 0 ? (displayFn ? displayFn(numVal) : `R$ ${numVal.toFixed(2)}`) : "—")
+    : (value || "—");
 
   return (
     <div onDoubleClick={() => setEditing(true)} title={String(value || "")}

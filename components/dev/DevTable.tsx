@@ -297,9 +297,12 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           }
           const rawVal = row[c.key];
           const canEditPrice = isAdmin || perms["compras_precos"] === true;
+          const dispFn = isMult
+            ? (v: number) => v.toFixed(2).replace(".", ",") + "×"
+            : (v: number) => "R$ " + v.toFixed(2).replace(".", ",");
           return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}>
             {canEditPrice
-              ? <InlineCell value={rawVal ?? ""} type="number" onChange={v => upd(row.id, c.key, v)} />
+              ? <InlineCell value={rawVal ?? ""} type="number" displayFn={dispFn} onChange={v => upd(row.id, c.key, v)} />
               : <span className="text-[13px] px-2.5 py-1.5 block tabnum">{fmtBRL(rawVal != null && rawVal !== "" ? Number(rawVal) : null, isMult)}</span>
             }
           </td>;
