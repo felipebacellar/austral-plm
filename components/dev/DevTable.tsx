@@ -5,10 +5,10 @@ import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
 
-type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string };
+type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string; hiddenColumns?: string[] };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 
-export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "" }: Props) {
+export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "", hiddenColumns = [] }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.role === "admin";
   const perms: Record<string, boolean> = user?.user_metadata?.permissions || {};
@@ -168,7 +168,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.map(c=>{
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.filter(c=>!hiddenColumns.includes(c.key)).map(c=>{
         const sortable = c.type !== "action";
         const isActive = sort?.key === c.key;
         return (
@@ -184,7 +184,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           </th>
         );
       })}<th style={{width:36}}/></tr></thead><tbody>
-        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.map(c=><td key={c.key} style={{width:c.width,minWidth:c.width}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>)}<td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
+        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>!hiddenColumns.includes(c.key)).map(c=><td key={c.key} style={{width:c.width,minWidth:c.width}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>)}<td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></div>
     </div>
