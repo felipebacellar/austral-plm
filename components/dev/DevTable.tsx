@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string; hiddenColumns?: string[] };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
+const ALWAYS_VISIBLE = ["ref"];
 
 export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "", hiddenColumns = [] }: Props) {
   const { user } = useAuth();
@@ -16,6 +17,8 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const canAdd    = isAdmin || perms[permPrefix + "can_add"] === true;
   const canDelete = isAdmin || perms[permPrefix + "can_delete"] === true;
 
+  const colsStorageKey = `plm_cols_${permPrefix || "estilo"}`;
+
   const [cad, setCad] = useState<Record<string, any>>({});
   const [q, setQ] = useState("");
   const [fl, setFl] = useState<Record<string,string>>({});
@@ -23,7 +26,24 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const [colecaoAtiva, setColecaoAtiva] = useState<string | null>(null);
   const [dupAlert, setDupAlert] = useState<string|null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(`plm_cols_${permPrefix || "estilo"}`) || "{}"); }
+    catch { return {}; }
+  });
+  const [showColMenu, setShowColMenu] = useState(false);
+  const colMenuRef = useRef<HTMLDivElement>(null);
   const ac = Object.values(fl).filter(Boolean).length;
+
+  // Column visibility helpers
+  const isColVisible = (key: string) => {
+    if (ALWAYS_VISIBLE.includes(key)) return true;
+    if (hiddenColumns.includes(key)) return false;
+    return visibleCols[key] !== false;
+  };
+  const toggleCol = (key: string) => setVisibleCols(p => ({ ...p, [key]: !isColVisible(key) }));
+  const toggleableCols = COLUMNS.filter(c => !ALWAYS_VISIBLE.includes(c.key) && !hiddenColumns.includes(c.key));
+  const hiddenCount = toggleableCols.filter(c => !isColVisible(c.key)).length;
 
   const toggleSort = (k: string) => {
     setSort(prev => {
@@ -41,6 +61,19 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
       setCad({ ...cadastros, tecido: tecidos.map((t: any) => t.nome), tab_medidas: tabNomes, _tecidoData: tecidos });
     })();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(colsStorageKey, JSON.stringify(visibleCols));
+  }, [visibleCols, colsStorageKey]);
+
+  useEffect(() => {
+    if (!showColMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setShowColMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showColMenu]);
 
   const colecoes = useMemo(() => [...new Set(rows.map((r: any) => r.colecao).filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a), "pt-BR", { numeric: true })), [rows]);
 
@@ -158,6 +191,38 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
           Filtros{ac>0&&<span className="bg-[var(--system-blue)] text-white text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">{ac}</span>}
         </button>
+        {/* Column visibility toggle */}
+        <div className="relative" ref={colMenuRef}>
+          <button onClick={()=>setShowColMenu(v=>!v)} className={`apple-input flex items-center gap-2 cursor-pointer transition-all ${showColMenu||hiddenCount>0?"!border-[var(--system-blue)] !bg-blue-50 text-[var(--system-blue)] font-semibold":""}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Colunas{hiddenCount>0&&<span className="bg-[var(--system-blue)] text-white text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">{hiddenCount}</span>}
+          </button>
+          {showColMenu&&(
+            <div className="absolute top-full left-0 mt-1 z-50 apple-card p-3 shadow-xl" style={{minWidth:260,maxHeight:380,overflowY:"auto"}}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Mostrar colunas</span>
+                <div className="flex gap-2">
+                  <button onClick={()=>setVisibleCols(Object.fromEntries(toggleableCols.map(c=>[c.key,true])))} className="text-[11px] text-[var(--system-blue)] font-medium">Todas</button>
+                  <span className="text-[var(--separator)]">·</span>
+                  <button onClick={()=>setVisibleCols(Object.fromEntries(toggleableCols.map(c=>[c.key,false])))} className="text-[11px] text-[var(--label-tertiary)] font-medium">Nenhuma</button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[var(--bg-secondary)] cursor-not-allowed opacity-60 select-none">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  <span className="text-[12px] text-[var(--label-secondary)]">Referência</span>
+                  <span className="ml-auto text-[10px] text-[var(--label-quaternary)]">sempre visível</span>
+                </label>
+                {toggleableCols.map(c=>(
+                  <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--bg-secondary)] cursor-pointer select-none">
+                    <input type="checkbox" checked={isColVisible(c.key)} onChange={()=>toggleCol(c.key)} className="w-3.5 h-3.5 accent-[var(--system-blue)]"/>
+                    <span className="text-[12px] text-[var(--label-primary)]">{c.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         {!readOnly && canAdd && <button onClick={add} className="apple-btn-primary">+ Novo SKU</button>}
         {!readOnly && !isAdmin && <span style={{ fontSize: 11, color: "var(--label-tertiary)" }}>Apenas campos com permissão podem ser editados</span>}
       </div>
@@ -168,11 +233,12 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.filter(c=>!hiddenColumns.includes(c.key)).map(c=>{
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.filter(c=>isColVisible(c.key)).map(c=>{
         const sortable = c.type !== "action";
         const isActive = sort?.key === c.key;
+        const isSticky = c.key === "ref";
         return (
-          <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left"}}>
+          <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left",...(isSticky?{position:"sticky",left:0,zIndex:3,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.06)"}:{})}}>
             {sortable ? (
               <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
                 <span>{c.label}</span>
@@ -184,7 +250,10 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           </th>
         );
       })}<th style={{width:36}}/></tr></thead><tbody>
-        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>!hiddenColumns.includes(c.key)).map(c=><td key={c.key} style={{width:c.width,minWidth:c.width}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>)}<td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
+        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>isColVisible(c.key)).map(c=>{
+          const isSticky = c.key === "ref";
+          return <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
+        })}<td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></div>
     </div>
