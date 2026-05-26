@@ -29,6 +29,9 @@ type Tab = (typeof TABS)[number]["id"] | "compras_dev" | "compras_variantes";
 
 export default function Home() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const isAdmin = user?.user_metadata?.role === "admin";
+  const perms: Record<string, boolean> = user?.user_metadata?.permissions || {};
+  const canSection = (key: string) => isAdmin || perms[key] === true;
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rows, setRows] = useState<any[]>([]);
   const [variantes, setVariantes] = useState<Record<string, string[]>>({});
@@ -119,7 +122,11 @@ export default function Home() {
           ))}
           {/* Grupo Estilo */}
           <div className="plm-nav-label" style={{ marginTop: 8 }}>{!sidebarCollapsed && "Estilo"}</div>
-          {TABS.filter(t => t.id !== "dashboard").map(t => (
+          {TABS.filter(t => t.id !== "dashboard").filter(t => {
+            if (t.id === "cad")     return canSection("can_cadastros");
+            if (t.id === "medidas") return canSection("can_medidas");
+            return true;
+          }).map(t => (
             <button key={t.id} onClick={() => { setTab(t.id); setMobileOpen(false); }} className={`plm-nav-item ${tab === t.id ? "active" : ""}`}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={t.icon} /></svg>
               {!sidebarCollapsed && <span>{t.label}</span>}
@@ -208,8 +215,8 @@ export default function Home() {
           {!loading && tab === "dashboard" && <DashboardView rows={rows} variantes={variantes} />}
           {!loading && tab === "dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} />}
           {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} />}
-          {!loading && tab === "cad" && <CadView />}
-          {!loading && tab === "medidas" && <MedidasView />}
+          {!loading && tab === "cad" && canSection("can_cadastros") && <CadView />}
+          {!loading && tab === "medidas" && canSection("can_medidas") && <MedidasView />}
           {!loading && tab === "compras_dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" />}
           {!loading && tab === "compras_variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} readOnly />}
         </div>
