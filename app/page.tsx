@@ -210,7 +210,7 @@ export default function Home() {
           {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} />}
           {!loading && tab === "cad" && <CadView />}
           {!loading && tab === "medidas" && <MedidasView />}
-          {!loading && tab === "compras_dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} readOnly />}
+          {!loading && tab === "compras_dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" />}
           {!loading && tab === "compras_variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} readOnly />}
         </div>
       </main>

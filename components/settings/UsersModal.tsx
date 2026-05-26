@@ -8,7 +8,9 @@ type UserRow = {
   role?: string; permissions?: Record<string, boolean>;
 };
 
-const PERM_GROUPS: { label: string; fields: { key: string; label: string }[] }[] = [
+type PermGroup = { label: string; fields: { key: string; label: string }[] };
+
+const BASE_GROUPS: PermGroup[] = [
   { label: "Geral",         fields: [{ key: "ref", label: "Referência" }, { key: "desc", label: "Descrição" }] },
   { label: "Status",        fields: [{ key: "status", label: "Status" }, { key: "piloto_most", label: "Piloto/Mostr." }] },
   { label: "Coleção",       fields: [{ key: "colecao", label: "Coleção" }, { key: "drop", label: "Drop" }] },
@@ -18,7 +20,15 @@ const PERM_GROUPS: { label: string; fields: { key: string; label: string }[] }[]
   { label: "Ações",         fields: [{ key: "can_add", label: "Criar SKU" }, { key: "can_delete", label: "Excluir SKU" }] },
 ];
 
-const ALL_PERM_KEYS = PERM_GROUPS.flatMap(g => g.fields.map(f => f.key));
+// Permissões ESTILO usam chaves diretas; COMPRAS usam prefixo "compras_"
+const ESTILO_GROUPS: PermGroup[] = BASE_GROUPS;
+const COMPRAS_GROUPS: PermGroup[] = BASE_GROUPS.map(g => ({
+  ...g,
+  fields: g.fields.map(f => ({ key: `compras_${f.key}`, label: f.label })),
+}));
+
+const ALL_ESTILO_KEYS  = ESTILO_GROUPS.flatMap(g => g.fields.map(f => f.key));
+const ALL_COMPRAS_KEYS = COMPRAS_GROUPS.flatMap(g => g.fields.map(f => f.key));
 
 export default function UsersModal({ onClose }: { onClose: () => void }) {
   const { user: me } = useAuth();
@@ -39,6 +49,7 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
   const [editPerms, setEditPerms]     = useState<Record<string, boolean>>({});
   const [editRole, setEditRole]       = useState<"admin" | "user">("user");
   const [savingPerms, setSavingPerms] = useState(false);
+  const [permTab, setPermTab]         = useState<"estilo" | "compras">("estilo");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +97,7 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
     setPermUser(u);
     setEditRole((u.role as any) || "user");
     setEditPerms(u.permissions || {});
+    setPermTab("estilo");
   };
 
   const savePerms = async () => {
@@ -103,9 +115,16 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
     load();
   };
 
-  const togglePerm = (key: string) => setEditPerms(p => ({ ...p, [key]: !p[key] }));
-  const selectAll  = () => setEditPerms(Object.fromEntries(ALL_PERM_KEYS.map(k => [k, true])));
-  const clearAll   = () => setEditPerms({});
+  const togglePerm  = (key: string) => setEditPerms(p => ({ ...p, [key]: !p[key] }));
+  const selectAll   = () => {
+    const keys = permTab === "estilo" ? ALL_ESTILO_KEYS : ALL_COMPRAS_KEYS;
+    setEditPerms(p => ({ ...p, ...Object.fromEntries(keys.map(k => [k, true])) }));
+  };
+  const clearAll    = () => {
+    const keys = permTab === "estilo" ? ALL_ESTILO_KEYS : ALL_COMPRAS_KEYS;
+    setEditPerms(p => { const n = { ...p }; keys.forEach(k => delete n[k]); return n; });
+  };
+  const activeGroups = permTab === "estilo" ? ESTILO_GROUPS : COMPRAS_GROUPS;
 
   const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
@@ -248,13 +267,22 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
                             {/* Field-level permissions (only shown when not admin) */}
                             {editRole !== "admin" && (
                               <>
+                                {/* Abas Estilo / Compras */}
+                                <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "var(--bg-primary)", borderRadius: 10, padding: 4, border: "1px solid var(--separator)" }}>
+                                  {(["estilo", "compras"] as const).map(sec => (
+                                    <button key={sec} onClick={() => setPermTab(sec)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all .15s", background: permTab === sec ? "var(--system-blue)" : "transparent", color: permTab === sec ? "white" : "var(--label-secondary)" }}>
+                                      {sec === "estilo" ? "Estilo" : "Compras"}
+                                    </button>
+                                  ))}
+                                </div>
+
                                 <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                                   <button onClick={selectAll} className="apple-btn-secondary" style={{ fontSize: 12, padding: "4px 10px" }}>Selecionar todos</button>
                                   <button onClick={clearAll}  className="apple-btn-secondary" style={{ fontSize: 12, padding: "4px 10px" }}>Desmarcar todos</button>
                                 </div>
 
                                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-                                  {PERM_GROUPS.map(group => (
+                                  {activeGroups.map(group => (
                                     <div key={group.label} style={{ background: "var(--bg-primary)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--separator)" }}>
                                       <div style={{ fontSize: 10, fontWeight: 700, color: "var(--label-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{group.label}</div>
                                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

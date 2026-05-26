@@ -5,16 +5,16 @@ import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
 
-type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean };
+type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 
-export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false }: Props) {
+export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "" }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.role === "admin";
   const perms: Record<string, boolean> = user?.user_metadata?.permissions || {};
-  const canEdit   = (key: string) => isAdmin || perms[key] === true;
-  const canAdd    = isAdmin || perms["can_add"] === true;
-  const canDelete = isAdmin || perms["can_delete"] === true;
+  const canEdit   = (key: string) => isAdmin || perms[permPrefix + key] === true;
+  const canAdd    = isAdmin || perms[permPrefix + "can_add"] === true;
+  const canDelete = isAdmin || perms[permPrefix + "can_delete"] === true;
 
   const [cad, setCad] = useState<Record<string, any>>({});
   const [q, setQ] = useState("");
@@ -110,11 +110,13 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
   return (
     <div>
-      {/* Banner modo visualização */}
-      {readOnly && (
+      {/* Banner modo visualização ou compras */}
+      {(readOnly || permPrefix) && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(0,122,255,0.06)", border: "1px solid rgba(0,122,255,0.18)", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "var(--system-blue)", fontWeight: 500 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          Modo visualização — edição disponível apenas em <strong style={{ marginLeft: 4 }}>Estilo › Desenvolvimento</strong>
+          {readOnly
+            ? <>Modo visualização — edição disponível apenas em <strong style={{ marginLeft: 4 }}>Estilo › Desenvolvimento</strong></>
+            : <>Seção Compras — campos editáveis conforme permissões atribuídas</>}
         </div>
       )}
       {/* Seletor de coleção */}
