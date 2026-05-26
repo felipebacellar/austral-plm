@@ -9,6 +9,32 @@ type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) 
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 const ALWAYS_VISIBLE = ["ref"];
 
+// ── Colunas financeiras exclusivas de Compras ──────────────────────────────
+const PRICE_COLS = [
+  { key: "custo_inicial",   label: "Custo inicial",    width: 115, computed: false },
+  { key: "markup_inicial",  label: "Markup inicial",   width: 115, computed: false },
+  { key: "_varejo_ini",     label: "$ Varejo inicial", width: 125, computed: true  },
+  { key: "preco_target",    label: "$ Target",         width: 105, computed: false },
+  { key: "_markup_target",  label: "Markup target",    width: 115, computed: true  },
+  { key: "custo_final",     label: "Custo final",      width: 105, computed: false },
+  { key: "_markup_final",   label: "Markup final",     width: 110, computed: true  },
+  { key: "varejo_final",    label: "$ Varejo final",   width: 120, computed: false },
+];
+const MULT_KEYS = new Set(["markup_inicial", "_markup_target", "_markup_final"]);
+
+function getPriceVal(key: string, row: any): number | null {
+  const n = (k: string) => { const v = parseFloat(row[k]); return isNaN(v) || row[k] == null ? null : v; };
+  if (key === "_varejo_ini")    { const c = n("custo_inicial"),  m = n("markup_inicial"); return c !== null && m !== null ? c * m : null; }
+  if (key === "_markup_target") { const t = n("preco_target"),   c = n("custo_inicial");  return t !== null && c !== null && c > 0 ? t / c : null; }
+  if (key === "_markup_final")  { const v = n("varejo_final"),   c = n("custo_final");    return v !== null && c !== null && c > 0 ? v / c : null; }
+  return n(key);
+}
+function fmtBRL(v: number | null, isMult = false): string {
+  if (v === null) return "—";
+  const s = v.toFixed(2).replace(".", ",");
+  return isMult ? s + "×" : "R$ " + s;
+}
+
 export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "", hiddenColumns = [] }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.role === "admin";
@@ -42,7 +68,10 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     return visibleCols[key] !== false;
   };
   const toggleCol = (key: string) => setVisibleCols(p => ({ ...p, [key]: !isColVisible(key) }));
-  const toggleableCols = COLUMNS.filter(c => !ALWAYS_VISIBLE.includes(c.key) && !hiddenColumns.includes(c.key));
+  const toggleableCols = [
+    ...COLUMNS.filter(c => !ALWAYS_VISIBLE.includes(c.key) && !hiddenColumns.includes(c.key)),
+    ...(permPrefix === "compras_" ? PRICE_COLS : []),
+  ];
   const hiddenCount = toggleableCols.filter(c => !isColVisible(c.key)).length;
 
   const toggleSort = (k: string) => {
@@ -249,11 +278,33 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
             ) : c.label}
           </th>
         );
-      })}<th style={{width:36}}/></tr></thead><tbody>
+      })}
+      {permPrefix === "compras_" && PRICE_COLS.filter(c => isColVisible(c.key)).map(c => (
+        <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}>
+          <span className={c.computed ? "text-[var(--label-tertiary)] italic" : ""}>{c.label}</span>
+        </th>
+      ))}
+      <th style={{width:36}}/></tr></thead><tbody>
         {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>isColVisible(c.key)).map(c=>{
           const isSticky = c.key === "ref";
           return <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
-        })}<td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
+        })}
+        {permPrefix === "compras_" && PRICE_COLS.filter(c => isColVisible(c.key)).map(c => {
+          const isMult = MULT_KEYS.has(c.key);
+          if (c.computed) {
+            const val = getPriceVal(c.key, row);
+            return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}><span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-tertiary)] italic tabnum">{fmtBRL(val,isMult)}</span></td>;
+          }
+          const rawVal = row[c.key];
+          const canEditPrice = isAdmin || perms["compras_precos"] === true;
+          return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}>
+            {canEditPrice
+              ? <InlineCell value={rawVal ?? ""} type="number" onChange={v => upd(row.id, c.key, v)} />
+              : <span className="text-[13px] px-2.5 py-1.5 block tabnum">{fmtBRL(rawVal != null && rawVal !== "" ? Number(rawVal) : null, isMult)}</span>
+            }
+          </td>;
+        })}
+        <td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></div>
     </div>

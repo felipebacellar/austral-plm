@@ -23,12 +23,16 @@ const BASE_GROUPS: PermGroup[] = [
 
 // Permissões ESTILO usam chaves diretas; COMPRAS usam prefixo "compras_"
 const ESTILO_GROUPS: PermGroup[] = BASE_GROUPS;
-const COMPRAS_GROUPS: PermGroup[] = BASE_GROUPS.map(g => ({
+const COMPRAS_BASE = BASE_GROUPS.map(g => ({
   ...g,
   fields: g.fields.map(f => ({ key: `compras_${f.key}`, label: f.label })),
 }));
+const COMPRAS_GROUPS: PermGroup[] = [
+  ...COMPRAS_BASE,
+  { label: "Preços", fields: [{ key: "compras_precos", label: "Editar preços (custo / markup / target / varejo)" }] },
+];
 
-const ALL_ESTILO_KEYS  = ESTILO_GROUPS.flatMap(g => g.fields.map(f => f.key));
+const ALL_ESTILO_KEYS  = ESTILO_GROUPS.flatMap(g  => g.fields.map(f => f.key));
 const ALL_COMPRAS_KEYS = COMPRAS_GROUPS.flatMap(g => g.fields.map(f => f.key));
 
 export default function UsersModal({ onClose }: { onClose: () => void }) {
