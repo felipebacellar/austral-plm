@@ -48,25 +48,40 @@ export default function ExplosaoView({ comprasRows }: Props) {
     return m;
   }, [data, refSet]);
 
+  // ref → product fornecedor map (from filteredProd)
+  const refFornMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    filteredProd.forEach(p => { m[p.ref] = p.fornecedor || ""; });
+    return m;
+  }, [filteredProd]);
+
   // aggregate aviamentos
   const aggregated = useMemo(() => {
     if (!data) return [];
-    const byCode: Record<string, { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string; qtd: number; valorUnit: number; refs: Set<string> }> = {};
+    const byCode: Record<string, { codigo: string; nome: string; fornAvi: string; preco: number; imagem: string; qtd: number; valorUnit: number; refs: Set<string>; fornsProd: Set<string> }> = {};
     data.avFichas.forEach(av => {
       const ref = fichaRefMap.get(av.ficha_id);
       if (!ref) return;
       const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", preco: 0, imagem: "" };
       if (!byCode[av.codigo]) {
-        byCode[av.codigo] = { codigo: av.codigo, nome: lib.nome, fornecedor: lib.fornecedor, preco: lib.preco, imagem: lib.imagem || "", qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0, refs: new Set() };
+        byCode[av.codigo] = { codigo: av.codigo, nome: lib.nome, fornAvi: lib.fornecedor, preco: lib.preco, imagem: lib.imagem || "", qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0, refs: new Set(), fornsProd: new Set() };
       }
       byCode[av.codigo].qtd += Number(av.qtd) || 0;
       byCode[av.codigo].refs.add(ref);
+      const forn = refFornMap[ref];
+      if (forn) byCode[av.codigo].fornsProd.add(forn);
     });
-    let rows = Object.values(byCode).map(r => ({ ...r, refs: Array.from(r.refs).sort().join(", "), valorTotal: r.qtd * r.valorUnit, imagem: r.imagem }));
+    let rows = Object.values(byCode).map(r => ({
+      ...r,
+      fornecedor: r.fornAvi,
+      fornProd: Array.from(r.fornsProd).sort().join(", "),
+      refs: Array.from(r.refs).sort().join(", "),
+      valorTotal: r.qtd * r.valorUnit,
+    }));
     // filter by fornecedor aviamento
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
-  }, [data, fichaRefMap, avLibMap, flFornAvi]);
+  }, [data, fichaRefMap, avLibMap, refFornMap, flFornAvi]);
 
   const sorted = useMemo(() => {
     if (!sort) return aggregated;
@@ -90,8 +105,8 @@ export default function ExplosaoView({ comprasRows }: Props) {
   const uvFornAvi = useMemo(() => Array.from(new Set(Object.values(avLibMap).map(a => a.fornecedor).filter(Boolean))).sort(), [avLibMap]);
 
   const handleExport = () => {
-    const headers = ["Código", "Nome", "Forn. Aviamento", "Qtd Total", "Vlr. Unit (R$)", "Vlr. Total (R$)", "Referências"];
-    const dataRows = sorted.map(r => [r.codigo, r.nome, r.fornecedor, r.qtd, r.valorUnit, r.valorTotal, r.refs]);
+    const headers = ["Código", "Nome", "Forn. Aviamento", "Fornecedor", "Qtd Total", "Vlr. Unit (R$)", "Vlr. Total (R$)", "Referências"];
+    const dataRows = sorted.map(r => [r.codigo, r.nome, r.fornecedor, r.fornProd, r.qtd, r.valorUnit, r.valorTotal, r.refs]);
     const date = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
     exportToExcel(`explosao_aviamentos_${date}`, headers, dataRows);
   };
@@ -101,6 +116,7 @@ export default function ExplosaoView({ comprasRows }: Props) {
     { key: "codigo",    label: "Código",          w: 110 },
     { key: "nome",      label: "Nome",            w: 260 },
     { key: "fornecedor",label: "Forn. Aviamento", w: 160 },
+    { key: "fornProd",  label: "Fornecedor",      w: 160 },
     { key: "qtd",       label: "Qtd Total",       w: 100, num: true },
     { key: "valorUnit", label: "Vlr. Unit",        w: 110, num: true, fmt: fmtBRL },
     { key: "valorTotal",label: "Vlr. Total",       w: 120, num: true, fmt: fmtBRL },
