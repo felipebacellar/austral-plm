@@ -223,7 +223,7 @@ export default function Home() {
           {!loading && tab === "medidas" && canSection("can_medidas") && <MedidasView />}
           {!loading && tab === "compras_dev" && <DevTable rows={comprasRows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
           {!loading && tab === "compras_variantes" && <VariantesTable rows={comprasRows} variantes={variantes} onOpenFicha={setFichaRow} readOnly compras setRows={setRows} canEditOrders={isAdmin || perms["compras_pedidos"] === true} />}
-          {!loading && tab === "compras_explosao" && <ExplosaoView comprasRows={comprasRows} />}
+          {!loading && tab === "compras_explosao" && <ExplosaoView comprasRows={comprasRows} variantes={variantes} />}
         </div>
       </main>
 

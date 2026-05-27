@@ -3,13 +3,13 @@ import { useState, useEffect, useMemo } from "react";
 import { fetchExplosaoData } from "@/lib/db";
 import { exportToExcel } from "@/lib/export-excel";
 
-type Props = { comprasRows: any[] };
+type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export default function ExplosaoView({ comprasRows }: Props) {
+export default function ExplosaoView({ comprasRows, variantes }: Props) {
   const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [flFornProd, setFlFornProd] = useState("");
@@ -23,65 +23,89 @@ export default function ExplosaoView({ comprasRows }: Props) {
   }, []);
 
   const avLibMap = useMemo(() => {
-    if (!data) return {};
-    const m: Record<string, { nome: string; fornecedor: string; preco: number; imagem: string }> = {};
-    data.avLib.forEach(a => { m[a.codigo] = { nome: a.nome, fornecedor: a.fornecedor || "", preco: Number(a.preco) || 0, imagem: a.imagem || "" }; });
+    if (!data) return {} as Record<string, { nome: string; fornecedor: string; codForn: string; preco: number; imagem: string }>;
+    const m: Record<string, { nome: string; fornecedor: string; codForn: string; preco: number; imagem: string }> = {};
+    data.avLib.forEach((a: any) => {
+      m[a.codigo] = { nome: a.nome, fornecedor: a.fornecedor || "", codForn: a.codigo_fornecedor || "", preco: Number(a.preco) || 0, imagem: a.imagem || "" };
+    });
     return m;
   }, [data]);
 
   // filter produto rows first
   const filteredProd = useMemo(() => {
     let r = comprasRows;
-    if (flFornProd) r = r.filter(x => x.fornecedor === flFornProd);
-    if (flStatus) r = r.filter(x => x.status === flStatus);
-    if (flColecao) r = r.filter(x => x.colecao === flColecao);
+    if (flFornProd) r = r.filter((x: any) => x.fornecedor === flFornProd);
+    if (flStatus)   r = r.filter((x: any) => x.status === flStatus);
+    if (flColecao)  r = r.filter((x: any) => x.colecao === flColecao);
     return r;
   }, [comprasRows, flFornProd, flStatus, flColecao]);
 
-  const refSet = useMemo(() => new Set(filteredProd.map(r => r.ref)), [filteredProd]);
+  const refSet = useMemo(() => new Set(filteredProd.map((r: any) => r.ref as string)), [filteredProd]);
 
   // map ficha_id → produto_ref for filtered products
   const fichaRefMap = useMemo(() => {
     if (!data) return new Map<number, string>();
     const m = new Map<number, string>();
-    data.fichas.forEach(f => { if (refSet.has(f.produto_ref)) m.set(f.id, f.produto_ref); });
+    data.fichas.forEach((f: any) => { if (refSet.has(f.produto_ref)) m.set(f.id, f.produto_ref); });
     return m;
   }, [data, refSet]);
 
-  // ref → product fornecedor map (from filteredProd)
+  // ref → product fornecedor
   const refFornMap = useMemo(() => {
     const m: Record<string, string> = {};
-    filteredProd.forEach(p => { m[p.ref] = p.fornecedor || ""; });
+    filteredProd.forEach((p: any) => { m[p.ref] = p.fornecedor || ""; });
     return m;
   }, [filteredProd]);
 
-  // aggregate aviamentos
+  // aggregate: group by codigo + cor (var01), multiply qty × variant count
   const aggregated = useMemo(() => {
     if (!data) return [];
-    const byCode: Record<string, { codigo: string; nome: string; fornAvi: string; preco: number; imagem: string; qtd: number; valorUnit: number; refs: Set<string>; fornsProd: Set<string> }> = {};
-    data.avFichas.forEach(av => {
+
+    type Entry = {
+      codigo: string; cor: string; nome: string;
+      fornAvi: string; codForn: string; preco: number; imagem: string;
+      qtd: number; valorUnit: number;
+      refs: Set<string>; fornsProd: Set<string>;
+    };
+    const byKey: Record<string, Entry> = {};
+
+    data.avFichas.forEach((av: any) => {
       const ref = fichaRefMap.get(av.ficha_id);
       if (!ref) return;
-      const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", preco: 0, imagem: "" };
-      if (!byCode[av.codigo]) {
-        byCode[av.codigo] = { codigo: av.codigo, nome: lib.nome, fornAvi: lib.fornecedor, preco: lib.preco, imagem: lib.imagem || "", qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0, refs: new Set(), fornsProd: new Set() };
+
+      const cor = av.var01 || "";
+      const key = `${av.codigo}||${cor}`;
+
+      // multiply qty by number of colour variants (at least 1)
+      const numVariants = Math.max(variantes[ref]?.length ?? 0, 1);
+      const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", codForn: "", preco: 0, imagem: "" };
+
+      if (!byKey[key]) {
+        byKey[key] = {
+          codigo: av.codigo, cor,
+          nome: lib.nome, fornAvi: lib.fornecedor, codForn: lib.codForn,
+          preco: lib.preco, imagem: lib.imagem,
+          qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0,
+          refs: new Set(), fornsProd: new Set(),
+        };
       }
-      byCode[av.codigo].qtd += Number(av.qtd) || 0;
-      byCode[av.codigo].refs.add(ref);
+      byKey[key].qtd += (Number(av.qtd) || 0) * numVariants;
+      byKey[key].refs.add(ref);
       const forn = refFornMap[ref];
-      if (forn) byCode[av.codigo].fornsProd.add(forn);
+      if (forn) byKey[key].fornsProd.add(forn);
     });
-    let rows = Object.values(byCode).map(r => ({
+
+    let rows = Object.values(byKey).map(r => ({
       ...r,
       fornecedor: r.fornAvi,
-      fornProd: Array.from(r.fornsProd).sort().join(", "),
-      refs: Array.from(r.refs).sort().join(", "),
+      fornProd:   Array.from(r.fornsProd).sort().join(", "),
+      refs:       Array.from(r.refs).sort().join(", "),
       valorTotal: r.qtd * r.valorUnit,
     }));
-    // filter by fornecedor aviamento
+
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
-  }, [data, fichaRefMap, avLibMap, refFornMap, flFornAvi]);
+  }, [data, fichaRefMap, avLibMap, refFornMap, variantes, flFornAvi]);
 
   const sorted = useMemo(() => {
     if (!sort) return aggregated;
@@ -101,12 +125,12 @@ export default function ExplosaoView({ comprasRows }: Props) {
   });
 
   // distinct filter options
-  const uv = (key: "fornecedor" | "status" | "colecao") => Array.from(new Set(comprasRows.map(r => r[key]).filter(Boolean))).sort();
+  const uv = (key: string) => Array.from(new Set(comprasRows.map((r: any) => r[key]).filter(Boolean))).sort() as string[];
   const uvFornAvi = useMemo(() => Array.from(new Set(Object.values(avLibMap).map(a => a.fornecedor).filter(Boolean))).sort(), [avLibMap]);
 
   const handleExport = () => {
-    const headers = ["Código", "Nome", "Forn. Aviamento", "Fornecedor", "Qtd Total", "Vlr. Unit (R$)", "Vlr. Total (R$)", "Referências"];
-    const dataRows = sorted.map(r => [r.codigo, r.nome, r.fornecedor, r.fornProd, r.qtd, r.valorUnit, r.valorTotal, r.refs]);
+    const headers = ["Código", "Cor", "Nome", "Cód. Forn.", "Forn. Aviamento", "Fornecedor", "Qtd Total", "Vlr. Unit (R$)", "Vlr. Total (R$)", "Referências"];
+    const dataRows = sorted.map(r => [r.codigo, r.cor, r.nome, r.codForn, r.fornecedor, r.fornProd, r.qtd, r.valorUnit, r.valorTotal, r.refs]);
     const date = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
     exportToExcel(`explosao_aviamentos_${date}`, headers, dataRows);
   };
@@ -114,14 +138,16 @@ export default function ExplosaoView({ comprasRows }: Props) {
   const COLS = [
     { key: "_img",      label: "",               w: 64  },
     { key: "codigo",    label: "Código",          w: 110 },
-    { key: "nome",      label: "Nome",            w: 260 },
+    { key: "cor",       label: "Cor",             w: 100 },
+    { key: "nome",      label: "Nome",            w: 240 },
+    { key: "codForn",   label: "Cód. Forn.",      w: 120 },
     { key: "fornecedor",label: "Forn. Aviamento", w: 160 },
-    { key: "fornProd",  label: "Fornecedor",      w: 160 },
+    { key: "fornProd",  label: "Fornecedor",      w: 150 },
     { key: "qtd",       label: "Qtd Total",       w: 100, num: true },
-    { key: "valorUnit", label: "Vlr. Unit",        w: 110, num: true, fmt: fmtBRL },
-    { key: "valorTotal",label: "Vlr. Total",       w: 120, num: true, fmt: fmtBRL },
-    { key: "refs",      label: "Referências",     w: 300 },
-  ];
+    { key: "valorUnit", label: "Vlr. Unit",       w: 110, num: true, fmt: fmtBRL },
+    { key: "valorTotal",label: "Vlr. Total",      w: 120, num: true, fmt: fmtBRL },
+    { key: "refs",      label: "Referências",     w: 280 },
+  ] as const;
 
   if (loading) return <div className="plm-loading"><div className="plm-loading-spinner" /><span>Carregando explosão...</span></div>;
 
@@ -161,7 +187,7 @@ export default function ExplosaoView({ comprasRows }: Props) {
             <label className="text-[11px] text-[var(--label-secondary)] mb-1 block font-medium">Fornecedor de Aviamento</label>
             <select value={flFornAvi} onChange={e => setFlFornAvi(e.target.value)} className={`apple-select w-full text-[12px] py-1.5 ${flFornAvi ? "!border-[var(--system-blue)] !bg-blue-50/60 text-[var(--system-blue)] font-semibold" : ""}`}>
               <option value="">Todos</option>
-              {uvFornAvi.map(v => <option key={v}>{v}</option>)}
+              {uvFornAvi.map(v => <option key={v as string}>{v}</option>)}
             </select>
           </div>
         </div>
@@ -170,7 +196,7 @@ export default function ExplosaoView({ comprasRows }: Props) {
       {/* Toolbar */}
       <div className="flex items-baseline gap-3 mb-4">
         <span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{sorted.length}</span>
-        <span className="text-[14px] text-[var(--label-secondary)]">aviamento{sorted.length !== 1 && "s"}</span>
+        <span className="text-[14px] text-[var(--label-secondary)]">linha{sorted.length !== 1 && "s"}</span>
         <span className="text-[12px] text-[var(--label-tertiary)]">
           de {filteredProd.length} referência{filteredProd.length !== 1 && "s"}
         </span>
@@ -204,7 +230,7 @@ export default function ExplosaoView({ comprasRows }: Props) {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={`${r.codigo}-${i}`}>
+              <tr key={`${r.codigo}||${r.cor}||${i}`}>
                 {COLS.map(c => {
                   if (c.key === "_img") return (
                     <td key="_img" style={{ width: c.w, minWidth: c.w, textAlign: "center", padding: "4px 6px" }}>
@@ -216,11 +242,12 @@ export default function ExplosaoView({ comprasRows }: Props) {
                     </td>
                   );
                   const val = (r as any)[c.key];
-                  const display = c.fmt ? c.fmt(val) : val ?? "—";
+                  const display = (c as any).fmt ? (c as any).fmt(val) : val ?? "—";
+                  const isEmpty = val == null || val === "" || val === 0;
                   return (
-                    <td key={c.key} style={{ width: c.w, minWidth: c.w, textAlign: c.num ? "right" : "left" }}>
-                      <span className={`text-[13px] px-2.5 py-1 block ${c.num ? "tabnum" : ""} ${val != null && val !== "" && val !== 0 ? "" : "text-[var(--label-quaternary)]"}`}>
-                        {c.num && val === 0 ? "—" : display}
+                    <td key={c.key} style={{ width: c.w, minWidth: c.w, textAlign: (c as any).num ? "right" : "left" }}>
+                      <span className={`text-[13px] px-2.5 py-1 block ${ (c as any).num ? "tabnum" : ""} ${isEmpty ? "text-[var(--label-quaternary)]" : ""}`}>
+                        {(c as any).num && val === 0 ? "—" : display}
                       </span>
                     </td>
                   );
