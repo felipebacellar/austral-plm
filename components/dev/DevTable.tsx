@@ -4,6 +4,7 @@ import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
+import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string; hiddenColumns?: string[] };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
@@ -190,6 +191,31 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const uv = (k:string):string[] => [...new Set(rows.map((r:any)=>r[k]).filter(Boolean))].sort();
   const sf2 = (k:string,v:string) => setFl(p=>{const n={...p};if(v)n[k]=v;else delete n[k];return n;});
 
+  const handleExport = () => {
+    const visReg  = COLUMNS.filter(c => isColVisible(c.key) && c.type !== "action");
+    const visStat = permPrefix === "compras_" ? COMPRAS_STATUS_COLS.filter(c => isColVisible(c.key)) : [];
+    const visPrice= permPrefix === "compras_" ? PRICE_COLS.filter(c => isColVisible(c.key)) : [];
+    const headers = [
+      ...visReg.map(c => c.label),
+      ...visStat.map(c => c.label),
+      ...visPrice.map(c => c.label),
+    ];
+    const dataRows = filtered.map(row => [
+      ...visReg.map(c => {
+        if (c.type === "readonly") return c.key === "composicao" ? ((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"") : (row[c.key]||"");
+        return row[c.key] ?? "";
+      }),
+      ...visStat.map(c => row[c.key] || ""),
+      ...visPrice.map(c => {
+        if (c.computed) { const v = getPriceVal(c.key, row); return v !== null ? v : ""; }
+        return row[c.key] != null && row[c.key] !== "" ? Number(row[c.key]) : "";
+      }),
+    ]);
+    const section = permPrefix === "compras_" ? "compras" : "estilo";
+    const date = new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
+    exportToExcel(`desenvolvimento_${section}_${date}`, headers, dataRows);
+  };
+
   return (
     <div>
       {/* Banner modo visualização ou compras */}
@@ -272,6 +298,10 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
             </div>
           )}
         </div>
+        <button onClick={handleExport} className="apple-input flex items-center gap-2 cursor-pointer transition-all hover:!border-[var(--system-green)] hover:text-[var(--system-green)]" title="Exportar para Excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
         {!readOnly && canAdd && <button onClick={add} className="apple-btn-primary">+ Novo SKU</button>}
         {!readOnly && !isAdmin && <span style={{ fontSize: 11, color: "var(--label-tertiary)" }}>Apenas campos com permissão podem ser editados</span>}
       </div>
