@@ -24,8 +24,8 @@ export default function ExplosaoView({ comprasRows }: Props) {
 
   const avLibMap = useMemo(() => {
     if (!data) return {};
-    const m: Record<string, { nome: string; fornecedor: string; preco: number }> = {};
-    data.avLib.forEach(a => { m[a.codigo] = { nome: a.nome, fornecedor: a.fornecedor || "", preco: Number(a.preco) || 0 }; });
+    const m: Record<string, { nome: string; fornecedor: string; preco: number; imagem: string }> = {};
+    data.avLib.forEach(a => { m[a.codigo] = { nome: a.nome, fornecedor: a.fornecedor || "", preco: Number(a.preco) || 0, imagem: a.imagem || "" }; });
     return m;
   }, [data]);
 
@@ -51,18 +51,18 @@ export default function ExplosaoView({ comprasRows }: Props) {
   // aggregate aviamentos
   const aggregated = useMemo(() => {
     if (!data) return [];
-    const byCode: Record<string, { codigo: string; nome: string; fornecedor: string; preco: number; localizacao: string; qtd: number; valorUnit: number; refs: Set<string> }> = {};
+    const byCode: Record<string, { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string; qtd: number; valorUnit: number; refs: Set<string> }> = {};
     data.avFichas.forEach(av => {
       const ref = fichaRefMap.get(av.ficha_id);
       if (!ref) return;
-      const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", preco: 0 };
+      const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", preco: 0, imagem: "" };
       if (!byCode[av.codigo]) {
-        byCode[av.codigo] = { codigo: av.codigo, nome: lib.nome, fornecedor: lib.fornecedor, preco: lib.preco, localizacao: av.localizacao || "", qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0, refs: new Set() };
+        byCode[av.codigo] = { codigo: av.codigo, nome: lib.nome, fornecedor: lib.fornecedor, preco: lib.preco, imagem: lib.imagem || "", qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0, refs: new Set() };
       }
       byCode[av.codigo].qtd += Number(av.qtd) || 0;
       byCode[av.codigo].refs.add(ref);
     });
-    let rows = Object.values(byCode).map(r => ({ ...r, refs: Array.from(r.refs).sort().join(", "), valorTotal: r.qtd * r.valorUnit }));
+    let rows = Object.values(byCode).map(r => ({ ...r, refs: Array.from(r.refs).sort().join(", "), valorTotal: r.qtd * r.valorUnit, imagem: r.imagem }));
     // filter by fornecedor aviamento
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
@@ -90,21 +90,21 @@ export default function ExplosaoView({ comprasRows }: Props) {
   const uvFornAvi = useMemo(() => Array.from(new Set(Object.values(avLibMap).map(a => a.fornecedor).filter(Boolean))).sort(), [avLibMap]);
 
   const handleExport = () => {
-    const headers = ["Código", "Nome", "Forn. Aviamento", "Localização", "Qtd Total", "Vlr. Unit (R$)", "Vlr. Total (R$)", "Referências"];
-    const dataRows = sorted.map(r => [r.codigo, r.nome, r.fornecedor, r.localizacao, r.qtd, r.valorUnit, r.valorTotal, r.refs]);
+    const headers = ["Código", "Nome", "Forn. Aviamento", "Qtd Total", "Vlr. Unit (R$)", "Vlr. Total (R$)", "Referências"];
+    const dataRows = sorted.map(r => [r.codigo, r.nome, r.fornecedor, r.qtd, r.valorUnit, r.valorTotal, r.refs]);
     const date = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
     exportToExcel(`explosao_aviamentos_${date}`, headers, dataRows);
   };
 
   const COLS = [
-    { key: "codigo", label: "Código", w: 110 },
-    { key: "nome", label: "Nome", w: 260 },
-    { key: "fornecedor", label: "Forn. Aviamento", w: 160 },
-    { key: "localizacao", label: "Localização", w: 140 },
-    { key: "qtd", label: "Qtd Total", w: 100, num: true },
-    { key: "valorUnit", label: "Vlr. Unit", w: 110, num: true, fmt: fmtBRL },
-    { key: "valorTotal", label: "Vlr. Total", w: 120, num: true, fmt: fmtBRL },
-    { key: "refs", label: "Referências", w: 300 },
+    { key: "_img",      label: "",               w: 64  },
+    { key: "codigo",    label: "Código",          w: 110 },
+    { key: "nome",      label: "Nome",            w: 260 },
+    { key: "fornecedor",label: "Forn. Aviamento", w: 160 },
+    { key: "qtd",       label: "Qtd Total",       w: 100, num: true },
+    { key: "valorUnit", label: "Vlr. Unit",        w: 110, num: true, fmt: fmtBRL },
+    { key: "valorTotal",label: "Vlr. Total",       w: 120, num: true, fmt: fmtBRL },
+    { key: "refs",      label: "Referências",     w: 300 },
   ];
 
   if (loading) return <div className="plm-loading"><div className="plm-loading-spinner" /><span>Carregando explosão...</span></div>;
@@ -173,12 +173,14 @@ export default function ExplosaoView({ comprasRows }: Props) {
                 const isActive = sort?.key === c.key;
                 return (
                   <th key={c.key} style={{ width: c.w, minWidth: c.w }}>
-                    <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
-                      <span>{c.label}</span>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={isActive ? "opacity-100" : "opacity-30"}>
-                        {isActive && sort?.dir === "desc" ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
-                      </svg>
-                    </button>
+                    {c.key === "_img" ? null : (
+                      <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
+                        <span>{c.label}</span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={isActive ? "opacity-100" : "opacity-30"}>
+                          {isActive && sort?.dir === "desc" ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
+                        </svg>
+                      </button>
+                    )}
                   </th>
                 );
               })}
@@ -188,6 +190,15 @@ export default function ExplosaoView({ comprasRows }: Props) {
             {sorted.map((r, i) => (
               <tr key={`${r.codigo}-${i}`}>
                 {COLS.map(c => {
+                  if (c.key === "_img") return (
+                    <td key="_img" style={{ width: c.w, minWidth: c.w, textAlign: "center", padding: "4px 6px" }}>
+                      {r.imagem
+                        ? <img src={r.imagem} alt={r.nome} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid var(--separator)", display: "inline-block" }} />
+                        : <div style={{ width: 44, height: 44, borderRadius: 8, border: "1px dashed var(--separator)", background: "var(--bg-secondary)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--label-quaternary)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                          </div>}
+                    </td>
+                  );
                   const val = (r as any)[c.key];
                   const display = c.fmt ? c.fmt(val) : val ?? "—";
                   return (

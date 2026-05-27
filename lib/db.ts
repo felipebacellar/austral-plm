@@ -199,7 +199,7 @@ export async function fetchExplosaoData() {
   const [fichasRes, avFichasRes, avLibRes] = await Promise.all([
     sb().from("fichas_tecnicas").select("id, produto_ref"),
     sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao"),
-    sb().from("aviamentos").select("codigo, nome, fornecedor, preco"),
+    sb().from("aviamentos").select("codigo, nome, fornecedor, preco, imagem"),
   ]);
   if (fichasRes.error) console.error("fetchExplosaoData fichas:", fichasRes.error);
   if (avFichasRes.error) console.error("fetchExplosaoData avFichas:", avFichasRes.error);
@@ -207,7 +207,7 @@ export async function fetchExplosaoData() {
   return {
     fichas: (fichasRes.data || []) as { id: number; produto_ref: string }[],
     avFichas: (avFichasRes.data || []) as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string }[],
-    avLib: (avLibRes.data || []) as { codigo: string; nome: string; fornecedor: string; preco: number }[],
+    avLib: (avLibRes.data || []) as { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string }[],
   };
 }
 
