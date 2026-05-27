@@ -302,7 +302,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {tab === "ficha" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
           <div style={{ background: fichaColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TÉCNICA</span>
-            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO PRODUÇÃO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
           <div className="apple-card">
@@ -503,7 +503,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           {/* Header */}
           <div style={{ background: fichaColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TECNICA DE ESTAMPARIA</span>
-            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO PRODUÇÃO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
 
