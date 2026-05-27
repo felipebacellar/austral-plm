@@ -23,7 +23,7 @@ const STATUS_CFG: Record<string, { color: string; label: string }> = {
   "DESENVOLVIMENTO":       { color: B400, label: "Desenvolvimento" },
   "MOSTRUÁRIO LIBERADO":   { color: B600, label: "Mostruário lib." },
   "PRODUÇÃO LIBERADA":     { color: B800, label: "Produção lib." },
-  "REPILOTANDO PRODUÇÃO":  { color: "#FF9500", label: "Repilotando" },
+  "REPILOTANDO PRODUÇÃO":  { color: B800, label: "Repilotando" },
   "CANCELADO":             { color: B200, label: "Cancelado" },
 };
 

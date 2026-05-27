@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, upsertFicha, saveFichaImagem, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos } from "@/lib/db";
+import { fetchFicha, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
@@ -132,7 +132,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
-    onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
+    // Auto-atualiza status do produto com base no resultado da liberação
+    let autoStatus: string | null = null;
+    if (statusLib === "REPROVADO") autoStatus = "REPILOTANDO PRODUÇÃO";
+    else if (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") autoStatus = "PRODUÇÃO LIBERADA";
+    if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
+    onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } });
     setSaving(false);
   };
 
@@ -184,12 +189,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const updTecnica = (i: number, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.map((t: any, j: number) => j === i ? { ...t, [field]: value } : t) }));
   const addTecnica = () => setEstamparia((prev: any) => ({ ...prev, tecnicas: [...prev.tecnicas, { tecnica: "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }] }));
   const _s = (row.status || "").toUpperCase();
-  const fichaColor = (_s.includes('CANCELADO')) ? '#EA2F46' : _s.includes('REPILOTANDO') ? '#FF9500' : (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO')) ? '#2DB564' : (_s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO')) ? '#EDCA35' : '#4464AF';
+  const fichaColor = (_s.includes('CANCELADO')) ? '#EA2F46' : (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO') || _s.includes('REPILOTANDO')) ? '#2DB564' : (_s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO')) ? '#EDCA35' : '#4464AF';
   const isMost = _s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO');
-  const isProd = !_s.includes('REPILOTANDO') && (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO'));
+  const isProd = _s.includes('PRODUÇÃO') || _s.includes('PRODUCAO') || _s.includes('REPILOTANDO');
   const isRepilotando = _s.includes('REPILOTANDO');
-  const showQtdRow = isMost || isProd || isRepilotando;
-  const qtdRowLabel = isProd ? 'QTD. COMPRA' : isRepilotando ? 'QTD. REPILOTAGEM' : 'QTD. MOSTRUÁRIO';
+  const showQtdRow = isMost || isProd;
+  const qtdRowLabel = isRepilotando ? 'QTD. REPILOTAGEM' : isProd ? 'QTD. COMPRA' : 'QTD. MOSTRUÁRIO';
   const hasComprasData = row.qtd_compra1 || row.pedido1 || row.qtd_compra2 || row.pedido2;
   const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
   const removeTecnica = (i: number) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.filter((_: any, j: number) => j !== i) }));
