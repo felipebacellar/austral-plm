@@ -5,13 +5,19 @@ import StatusPill from "@/components/ui/StatusPill";
 
 type Props = {
   value: string | number;
-  type: "text" | "number" | "select";
+  type: "text" | "number" | "select" | "date";
   options?: string[];
   isStatus?: boolean;
   onChange: (val: string | number) => void;
   displayFn?: (v: number) => string;
   displayEl?: React.ReactNode;
 };
+
+function fmtDate(v: string | number): string {
+  const s = String(v);
+  if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s.split("-").reverse().join("/");
+  return s;
+}
 
 export default function InlineCell({ value, type, options, isStatus, onChange, displayFn, displayEl }: Props) {
   const [editing, setEditing] = useState(false);
@@ -35,6 +41,17 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
         </select>
       );
     }
+    if (type === "date") {
+      return (
+        <input ref={ref as any} type="date" className={cls}
+          value={tmp as string} onChange={e => setTmp(e.target.value)}
+          onBlur={() => commit(tmp)}
+          onKeyDown={e => {
+            if (e.key === "Enter") commit(tmp);
+            if (e.key === "Escape") { setTmp(value); setEditing(false); }
+          }} />
+      );
+    }
     return (
       <input ref={ref as any} type={type === "number" ? "number" : "text"} className={cls}
         value={tmp} onChange={e => setTmp(e.target.value)}
@@ -51,13 +68,16 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
   }
 
   const isNum = type === "number";
+  const isDate = type === "date";
   const numVal = Number(value);
   const display = isNum
     ? (numVal > 0 ? (displayFn ? displayFn(numVal) : `R$ ${numVal.toFixed(2)}`) : "—")
-    : (value || "—");
+    : isDate
+    ? (value ? fmtDate(value) : "—")
+    : String(value || "—");
 
   return (
-    <div onDoubleClick={() => setEditing(true)} title={String(value || "")}
+    <div onDoubleClick={() => setEditing(true)} title={isDate ? fmtDate(String(value || "")) : String(value || "")}
       className={`cursor-default text-[13px] px-2.5 py-1.5 rounded-lg min-h-[28px] flex items-center transition-colors hover:bg-black/[0.02] ${isNum ? "justify-end tabnum" : ""} ${value ? "text-[var(--label-primary)]" : "text-[var(--label-quaternary)]"}`}>
       {displayEl ?? display}
     </div>

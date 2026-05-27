@@ -73,6 +73,12 @@ export async function fetchProdutos() {
     varejo_final:    p.varejo_final   != null ? Number(p.varejo_final)   : null,
     status_preco:    p.status_preco   || "",
     status_compras:  p.status_compras || "",
+    qtd_compra1:     p.qtd_compra1    != null ? Number(p.qtd_compra1)  : null,
+    pedido1:         p.pedido1        || "",
+    data_entrega1:   p.data_entrega1  || "",
+    qtd_compra2:     p.qtd_compra2    != null ? Number(p.qtd_compra2)  : null,
+    pedido2:         p.pedido2        || "",
+    data_entrega2:   p.data_entrega2  || "",
   }));
 }
 export async function insertProduto(p: any) {

@@ -33,7 +33,8 @@ const COMPRAS_GROUPS: PermGroup[] = [
     { key: "compras_status_preco",   label: "Status Preço (Sem custo / Solicitado / Negociação / Fechado)" },
     { key: "compras_status_compras", label: "Status Compras (Ped. most. / Mostruário / Ped. prod. / Entregue)" },
   ]},
-  { label: "Preços", fields: [{ key: "compras_precos", label: "Editar preços (custo / markup / target / varejo)" }] },
+  { label: "Preços",  fields: [{ key: "compras_precos",  label: "Editar preços (custo / markup / target / varejo)" }] },
+  { label: "Pedidos", fields: [{ key: "compras_pedidos", label: "Editar pedidos (qtd / pedido / data de entrega)" }] },
 ];
 
 const ALL_ESTILO_KEYS  = ESTILO_GROUPS.flatMap(g  => g.fields.map(f => f.key));

@@ -29,6 +29,16 @@ const COMPRAS_STATUS_COLS = [
   {key:"status_compras", label:"Status Compras", width:210, opts:STATUS_COMPRAS_OPTS, styles:SP_COMPRAS_STYLE},
 ];
 
+// ── Colunas de pedidos exclusivas de Compras ──────────────────────────────
+const COMPRAS_ORDER_COLS = [
+  {key:"qtd_compra1",   label:"Qtd. Compra 1", width:115, colType:"number"},
+  {key:"pedido1",       label:"Pedido 1",       width:120, colType:"text"  },
+  {key:"data_entrega1", label:"Entrega 1",      width:115, colType:"date"  },
+  {key:"qtd_compra2",   label:"Qtd. Compra 2", width:115, colType:"number"},
+  {key:"pedido2",       label:"Pedido 2",       width:120, colType:"text"  },
+  {key:"data_entrega2", label:"Entrega 2",      width:115, colType:"date"  },
+];
+
 // ── Colunas financeiras exclusivas de Compras ──────────────────────────────
 const PRICE_COLS = [
   { key: "custo_inicial",   label: "Custo inicial",    width: 115, computed: false },
@@ -90,7 +100,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const toggleCol = (key: string) => setVisibleCols(p => ({ ...p, [key]: !isColVisible(key) }));
   const toggleableCols = [
     ...COLUMNS.filter(c => !ALWAYS_VISIBLE.includes(c.key) && !hiddenColumns.includes(c.key)),
-    ...(permPrefix === "compras_" ? [...COMPRAS_STATUS_COLS, ...PRICE_COLS] : []),
+    ...(permPrefix === "compras_" ? [...COMPRAS_STATUS_COLS, ...PRICE_COLS, ...COMPRAS_ORDER_COLS] : []),
   ];
   const hiddenCount = toggleableCols.filter(c => !isColVisible(c.key)).length;
 
@@ -317,6 +327,16 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           <span className={c.computed ? "text-[var(--label-tertiary)] italic" : ""}>{c.label}</span>
         </th>
       ))}
+      {permPrefix === "compras_" && COMPRAS_ORDER_COLS.filter(c => isColVisible(c.key)).map(c => (
+        <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.colType==="number"?"right":"left"}}>
+          <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${sort?.key===c.key?"text-[var(--system-blue)]":""}`}>
+            <span>{c.label}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={sort?.key===c.key?"opacity-100":"opacity-30"}>
+              {sort?.key===c.key&&sort?.dir==="desc"?<path d="M6 9l6 6 6-6"/>:<path d="M18 15l-6-6-6 6"/>}
+            </svg>
+          </button>
+        </th>
+      ))}
       <th style={{width:36}}/></tr></thead><tbody>
         {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
           const isSticky = c.key === "ref";
@@ -351,6 +371,19 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
               ? <InlineCell value={rawVal ?? ""} type="number" displayFn={dispFn} onChange={v => upd(row.id, c.key, v)} />
               : <span className="text-[13px] px-2.5 py-1.5 block tabnum">{fmtBRL(rawVal != null && rawVal !== "" ? Number(rawVal) : null, isMult)}</span>
             }
+          </td>;
+        })}
+        {permPrefix === "compras_" && COMPRAS_ORDER_COLS.filter(c => isColVisible(c.key)).map(c => {
+          const val = row[c.key] ?? "";
+          const canEditOrder = isAdmin || perms["compras_pedidos"] === true;
+          const isRight = c.colType === "number";
+          if (!canEditOrder) {
+            const disp = c.colType === "date" && val ? String(val).split("-").reverse().join("/") : c.colType === "number" && val ? String(Math.round(Number(val))) : val || "—";
+            return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:isRight?"right":"left"}}><span className={`text-[13px] px-2.5 py-1.5 block ${isRight?"tabnum":""} ${val?"":"text-[var(--label-quaternary)]"}`}>{disp}</span></td>;
+          }
+          const dispFn = c.colType === "number" ? (v: number) => v > 0 ? String(Math.round(v)) : "—" : undefined;
+          return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:isRight?"right":"left"}}>
+            <InlineCell value={val} type={c.colType as "text"|"number"|"date"} displayFn={dispFn} onChange={v=>upd(row.id,c.key,v)}/>
           </td>;
         })}
         <td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
