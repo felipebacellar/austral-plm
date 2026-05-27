@@ -218,7 +218,7 @@ export default function Home() {
           {!loading && tab === "cad" && canSection("can_cadastros") && <CadView />}
           {!loading && tab === "medidas" && canSection("can_medidas") && <MedidasView />}
           {!loading && tab === "compras_dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
-          {!loading && tab === "compras_variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} readOnly />}
+          {!loading && tab === "compras_variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} readOnly compras />}
         </div>
       </main>
 

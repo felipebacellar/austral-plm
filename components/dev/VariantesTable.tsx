@@ -2,14 +2,27 @@
 import { useState, useMemo } from "react";
 import { COR_PALETTE } from "@/lib/cor-palette";
 
+// Colunas ESTILO
 const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
+// Colunas COMPRAS (sem tecido, forn_tecido, subgrupo; com status_compras)
+const VC_COMPRAS=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"status_compras",label:"Status Compras",w:215},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"_ficha",label:"Ficha",w:70}];
+
 const FK=["grupo","subgrupo","status","tecido","fornecedor","cor","estilista","linha"];
-const FL:Record<string,string>={grupo:"Grupo",subgrupo:"Subgrupo",status:"Status",tecido:"Tecido",fornecedor:"Fornecedor",cor:"Cor",estilista:"Estilista",linha:"Linha"};
+const FK_COMPRAS=["grupo","status","status_compras","fornecedor","cor"];
+const FL:Record<string,string>={grupo:"Grupo",subgrupo:"Subgrupo",status:"Status",status_compras:"Status Compras",tecido:"Tecido",fornecedor:"Fornecedor",cor:"Cor",estilista:"Estilista",linha:"Linha"};
 const SP:Record<string,string>={"MOSTRUÁRIO LIBERADO":"pill-green","PRODUÇÃO LIBERADA":"pill-blue","DESENVOLVIMENTO":"pill-orange","CANCELADO":"pill-red"};
+const SC_STYLE:Record<string,{bg:string;color:string}>={
+  "PEDIDO MOST. COLOCADO":     {bg:"rgba(255,149,0,0.12)",  color:"#b86a00"},
+  "MOSTRUÁRIO ENTREGUE":       {bg:"rgba(90,120,255,0.12)", color:"#3a4ec4"},
+  "PED. DE PRODUÇÃO COLOCADO": {bg:"rgba(175,82,222,0.12)", color:"#7c2eaa"},
+  "PRODUÇÃO ENTREGUE":         {bg:"rgba(52,199,89,0.15)",  color:"#1a7a35"},
+};
 
-type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void; readOnly?:boolean};
+type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void; readOnly?:boolean; compras?:boolean};
 
-export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false}:Props){
+export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false, compras=false}:Props){
+  const COLS = compras ? VC_COMPRAS : VC;
+  const FILTERS = compras ? FK_COMPRAS : FK;
   const [q,setQ]=useState("");const [fl,setFl]=useState<Record<string,string>>({});const [sf,setSf]=useState(false);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const ac=Object.values(fl).filter(Boolean).length;
@@ -55,12 +68,12 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
         <div className="relative flex-1 min-w-0 sm:min-w-[240px]"><svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Buscar referência, cor, tecido..." value={q} onChange={e=>setQ(e.target.value)} className="apple-input w-full !pl-10"/></div>
         <button onClick={()=>setSf(!sf)} className={`apple-input flex items-center gap-2 cursor-pointer ${sf||ac>0?"!border-[var(--system-blue)] !bg-blue-50 text-[var(--system-blue)] font-semibold":""}`}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Filtros{ac>0&&<span className="bg-[var(--system-blue)] text-white text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">{ac}</span>}</button>
       </div>
-      {sf&&(<div className="apple-card p-4 mb-4 bg-[var(--bg-secondary)]"><div className="flex items-center justify-between mb-3"><span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Filtrar por</span>{ac>0&&<button onClick={()=>{setFl({});setQ("");}} className="text-[12px] text-[var(--system-blue)] font-medium">Limpar</button>}</div><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">{FK.map(k=>(<div key={k}><label className="text-[11px] text-[var(--label-secondary)] mb-1 block font-medium">{FL[k]}</label><select value={fl[k]||""} onChange={e=>sf2(k,e.target.value)} className={`apple-select w-full text-[12px] py-1.5 ${fl[k]?"!border-[var(--system-blue)] !bg-blue-50/60 text-[var(--system-blue)] font-semibold":""}`}><option value="">Todos</option>{uv(k).map(v=><option key={v}>{v}</option>)}</select></div>))}</div></div>)}
+      {sf&&(<div className="apple-card p-4 mb-4 bg-[var(--bg-secondary)]"><div className="flex items-center justify-between mb-3"><span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Filtrar por</span>{ac>0&&<button onClick={()=>{setFl({});setQ("");}} className="text-[12px] text-[var(--system-blue)] font-medium">Limpar</button>}</div><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">{FILTERS.map(k=>(<div key={k}><label className="text-[11px] text-[var(--label-secondary)] mb-1 block font-medium">{FL[k]}</label><select value={fl[k]||""} onChange={e=>sf2(k,e.target.value)} className={`apple-select w-full text-[12px] py-1.5 ${fl[k]?"!border-[var(--system-blue)] !bg-blue-50/60 text-[var(--system-blue)] font-semibold":""}`}><option value="">Todos</option>{uv(k).map(v=><option key={v}>{v}</option>)}</select></div>))}</div></div>)}
       {ac>0&&!sf&&(<div className="flex flex-wrap gap-1.5 mb-3">{Object.entries(fl).map(([k,v])=>{if(!v)return null;return(<span key={k} className="inline-flex items-center gap-1 bg-blue-50 text-[var(--system-blue)] rounded-lg px-2.5 py-1 text-[12px] font-medium"><span className="text-blue-300">{FL[k]}:</span>{v}<button onClick={()=>sf2(k,"")} className="ml-0.5 text-blue-300">×</button></span>);})}<button onClick={()=>{setFl({});setQ("");}} className="text-[12px] text-[var(--label-tertiary)] px-2">Limpar</button></div>)}
 
       <div className="flex items-baseline gap-3 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">variante{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {vr.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto">Cores cadastradas na ficha técnica</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{VC.map(c=>{
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLS.map(c=>{
         const sortable = c.key !== "_ficha";
         const isActive = sort?.key === c.key;
         return (
@@ -76,13 +89,14 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
           </th>
         );
       })}</tr></thead><tbody>
-        {filtered.map((r:any)=>(<tr key={r._vid}>{VC.map(c=>(<td key={c.key} style={{width:c.w,minWidth:c.w}}>
+        {filtered.map((r:any)=>(<tr key={r._vid}>{COLS.map(c=>(<td key={c.key} style={{width:c.w,minWidth:c.w}}>
           {c.key==="_ficha"?<button onClick={()=>onOpenFicha(r)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>
           :c.key==="status"&&SP[r.status]?<span className={`pill ${SP[r.status]}`}>{r.status}</span>
+          :c.key==="status_compras"?(() => { const s=r.status_compras||""; const st=SC_STYLE[s]; return s?<span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={st?{background:st.bg,color:st.color}:{background:"rgba(142,142,147,0.12)",color:"var(--label-tertiary)"}}>{s}</span>:<span className="text-[var(--label-quaternary)] text-[13px] px-2.5">—</span>; })()
           :c.key==="cor"&&r.cor!=="—"?(() => { const pal = COR_PALETTE[r.cor]; return <span className="inline-flex items-center rounded-md px-2.5 py-1 text-[12px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-secondary)" }}>{r.cor}</span>; })()
           :<span className={`text-[13px] px-2.5 py-1 block ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{r[c.key]||"—"}</span>}
         </td>))}</tr>))}
-        {filtered.length===0&&<tr><td colSpan={VC.length} className="py-16 text-center text-[var(--label-tertiary)]">Nenhuma variante</td></tr>}
+        {filtered.length===0&&<tr><td colSpan={COLS.length} className="py-16 text-center text-[var(--label-tertiary)]">Nenhuma variante</td></tr>}
       </tbody></table></div>
     </div>
   );
