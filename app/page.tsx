@@ -35,6 +35,8 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rows, setRows] = useState<any[]>([]);
   const [variantes, setVariantes] = useState<Record<string, string[]>>({});
+  const COMPRAS_STATUS_ALLOW = ["DESENVOLVIMENTO", "MOSTRUÁRIO LIBERADO", "PRODUÇÃO LIBERADA"];
+  const comprasRows = rows.filter(r => COMPRAS_STATUS_ALLOW.includes(r.status));
   const [fichaRow, setFichaRow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -217,8 +219,8 @@ export default function Home() {
           {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} />}
           {!loading && tab === "cad" && canSection("can_cadastros") && <CadView />}
           {!loading && tab === "medidas" && canSection("can_medidas") && <MedidasView />}
-          {!loading && tab === "compras_dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
-          {!loading && tab === "compras_variantes" && <VariantesTable rows={rows} variantes={variantes} onOpenFicha={setFichaRow} readOnly compras setRows={setRows} canEditOrders={isAdmin || perms["compras_pedidos"] === true} />}
+          {!loading && tab === "compras_dev" && <DevTable rows={comprasRows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
+          {!loading && tab === "compras_variantes" && <VariantesTable rows={comprasRows} variantes={variantes} onOpenFicha={setFichaRow} readOnly compras setRows={setRows} canEditOrders={isAdmin || perms["compras_pedidos"] === true} />}
         </div>
       </main>
 
