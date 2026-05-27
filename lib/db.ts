@@ -194,6 +194,23 @@ export async function upsertFicha(ref: string, f: any) {
   return fid;
 }
 
+// ══ EXPLOSÃO DE AVIAMENTOS ══
+export async function fetchExplosaoData() {
+  const [fichasRes, avFichasRes, avLibRes] = await Promise.all([
+    sb().from("fichas_tecnicas").select("id, produto_ref"),
+    sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao"),
+    sb().from("aviamentos").select("codigo, nome, fornecedor, preco"),
+  ]);
+  if (fichasRes.error) console.error("fetchExplosaoData fichas:", fichasRes.error);
+  if (avFichasRes.error) console.error("fetchExplosaoData avFichas:", avFichasRes.error);
+  if (avLibRes.error) console.error("fetchExplosaoData avLib:", avLibRes.error);
+  return {
+    fichas: (fichasRes.data || []) as { id: number; produto_ref: string }[],
+    avFichas: (avFichasRes.data || []) as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string }[],
+    avLib: (avLibRes.data || []) as { codigo: string; nome: string; fornecedor: string; preco: number }[],
+  };
+}
+
 // ══ TABELAS DE MEDIDAS ══
 export async function fetchTabelasMedidas() {
   const { data, error } = await sb().from("tabelas_medidas").select("id, nome").order("nome");
