@@ -124,6 +124,11 @@ export async function fetchFicha(ref: string) {
     observacoes: data.observacoes || "", obsFechamento: data.obs_fechamento || "", ncm: data.ncm || "",
     pantones: (data.pantones as Record<string,string>) || {},
     statusLiberacao: data.status_liberacao || "",
+    qtdMost: {
+      var01: data.qtd_most_var01 ?? null, var02: data.qtd_most_var02 ?? null,
+      var03: data.qtd_most_var03 ?? null, var04: data.qtd_most_var04 ?? null,
+      var05: data.qtd_most_var05 ?? null, var06: data.qtd_most_var06 ?? null,
+    },
     tecidos: (tec.data || []).map((t: any) => ({ artigo: t.artigo, forn: t.fornecedor, preco: Number(t.preco) || 0, cores: t.cores || [] })),
     aviamentos: (avi.data || []).map((a: any) => ({ item: a.item, cod: a.codigo, qtd: a.qtd, valor: Number(a.valor) || 0, local: a.localizacao || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })),
     pilotagem: (pil.data || []).map((p: any) => ({ num: p.num, lacre: p.lacre || "", envio: p.data_envio || "", receb: p.data_recebimento || "", prova: p.data_prova || "", status: p.status || "" })),
@@ -158,6 +163,9 @@ export async function upsertFicha(ref: string, f: any) {
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
       pantones: f.pantones || {}, estamparia: f.estamparia || {},
       status_liberacao: f.statusLiberacao || "",
+      qtd_most_var01: f.qtdMost?.var01 ?? null, qtd_most_var02: f.qtdMost?.var02 ?? null,
+      qtd_most_var03: f.qtdMost?.var03 ?? null, qtd_most_var04: f.qtdMost?.var04 ?? null,
+      qtd_most_var05: f.qtdMost?.var05 ?? null, qtd_most_var06: f.qtdMost?.var06 ?? null,
     }).select().single();
     if (error) { console.error("upsertFicha:", error); return null; }
     fid = data.id;
@@ -167,6 +175,9 @@ export async function upsertFicha(ref: string, f: any) {
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
       pantones: f.pantones || {}, estamparia: f.estamparia || {},
       status_liberacao: f.statusLiberacao || "",
+      qtd_most_var01: f.qtdMost?.var01 ?? null, qtd_most_var02: f.qtdMost?.var02 ?? null,
+      qtd_most_var03: f.qtdMost?.var03 ?? null, qtd_most_var04: f.qtdMost?.var04 ?? null,
+      qtd_most_var05: f.qtdMost?.var05 ?? null, qtd_most_var06: f.qtdMost?.var06 ?? null,
     }).eq("id", fid);
   }
   // Tecidos

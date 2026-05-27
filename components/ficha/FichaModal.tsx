@@ -36,6 +36,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [estamparia, setEstamparia] = useState<any>({ artes: [{ posicao: "FRENTE", imagem: "", largura: "", localizacao: "" }, { posicao: "COSTAS", imagem: "", largura: "", localizacao: "" }, { posicao: "TAGLESS", imagem: "", largura: "", localizacao: "" }], tecnicas: [], simulacoes: { var01: { nome: "", imgSim: "", imgFoto: "", status: "" }, var02: { nome: "", imgSim: "", imgFoto: "", status: "" }, var03: { nome: "", imgSim: "", imgFoto: "", status: "" }, var04: { nome: "", imgSim: "", imgFoto: "", status: "" } }, observacoes: "" });
   const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }>({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
   const [varTingimento, setVarTingimento] = useState<{ var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }>({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
+  const [qtdMost, setQtdMost] = useState<{ var01: number|null; var02: number|null; var03: number|null; var04: number|null; var05: number|null; var06: number|null }>({ var01: null, var02: null, var03: null, var04: null, var05: null, var06: null });
   const [tingimentoOpts, setTingimentoOpts] = useState<string[]>([]);
   const [statusLib, setStatusLib] = useState("");
   const [numVars, setNumVars] = useState(4);
@@ -100,6 +101,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.estamparia) { setEstamparia(ficha.estamparia); if (ficha.estamparia.numVariantes) setNumVars(Math.max(4, ficha.estamparia.numVariantes)); }
         if (ficha.pantones) setVarCodigos({ var01: ficha.pantones.var01 || "", var02: ficha.pantones.var02 || "", var03: ficha.pantones.var03 || "", var04: ficha.pantones.var04 || "", var05: ficha.pantones.var05 || "", var06: ficha.pantones.var06 || "" });
         if (ficha.tingimento) setVarTingimento(prev => ({ ...prev, ...ficha.tingimento }));
+        if (ficha.qtdMost) setQtdMost(prev => ({ ...prev, ...ficha.qtdMost }));
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
         if (ficha.provaInfo) setProvaInfo(prev => ({ ...prev, ...ficha.provaInfo }));
         if (ficha.ncm) setNcm(ficha.ncm);
@@ -127,7 +129,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData);
     if (newId) setFichaId(newId);
     onSave({ ...row, ficha: { ...fichaData, id: newId || fichaId } });
@@ -183,6 +185,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const addTecnica = () => setEstamparia((prev: any) => ({ ...prev, tecnicas: [...prev.tecnicas, { tecnica: "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }] }));
   const _s = (row.status || "").toUpperCase();
   const fichaColor = (_s.includes('CANCELADO')) ? '#EA2F46' : (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO')) ? '#2DB564' : (_s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO')) ? '#EDCA35' : '#4464AF';
+  const isMost = _s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO');
+  const isProd = _s.includes('PRODUÇÃO') || _s.includes('PRODUCAO');
+  const showQtdRow = isMost || isProd;
+  const qtdRowLabel = isProd ? 'QTD. COMPRA' : 'QTD. MOSTRUÁRIO';
+  const hasComprasData = row.qtd_compra1 || row.pedido1 || row.qtd_compra2 || row.pedido2;
   const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
   const removeTecnica = (i: number) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.filter((_: any, j: number) => j !== i) }));
   const updSim = (vk: string, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, simulacoes: { ...prev.simulacoes, [vk]: { ...(prev.simulacoes?.[vk] || {}), [field]: value } } }));
@@ -347,11 +354,73 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     </td>
                   ))}
                 </tr>
+                {showQtdRow && (
+                <tr className="border-t-2 border-[var(--system-blue)]/30 bg-blue-50/40">
+                  <td colSpan={3} className="px-4 py-2.5 whitespace-nowrap">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--system-blue)]">{qtdRowLabel}</span>
+                    <span className="text-[10px] text-[var(--label-tertiary)] ml-1.5">pçs / cor</span>
+                  </td>
+                  <td />
+                  {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => (
+                    <td key={k} className="px-1.5 py-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        value={qtdMost[k] ?? ""}
+                        onChange={e => setQtdMost(prev => ({ ...prev, [k]: e.target.value === "" ? null : Number(e.target.value) }))}
+                        placeholder="0"
+                        className="w-full text-[13px] font-bold tabnum text-center px-2 py-1.5 rounded-lg border border-[var(--system-blue)]/40 bg-white outline-none focus:border-[var(--system-blue)] focus:ring-1 focus:ring-[var(--system-blue)]/20"
+                      />
+                    </td>
+                  ))}
+                </tr>
+                )}
               </tfoot></table></div>
           <div className="flex gap-2 mt-2 mb-1">
             {numVars > 1 && <button onClick={() => setNumVars(n => n - 1)} className="apple-btn-secondary text-[12px]">− Remover variante</button>}
             {numVars < 6 && <button onClick={() => setNumVars(n => n + 1)} className="apple-btn-secondary text-[12px]">+ Adicionar variante</button>}
           </div>
+
+          {hasComprasData && (
+            <div className="apple-card p-0 overflow-hidden border border-[var(--separator)]">
+              <div className="px-4 py-2.5 bg-[var(--bg-secondary)] border-b border-[var(--separator)] flex items-center gap-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--system-blue)" strokeWidth="2.2" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--system-blue)]">Informações de Compras</span>
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-[var(--separator)]">
+                <div className="p-4 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)] mb-3">Compra 1</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[var(--label-secondary)] w-20 shrink-0">Qtd. Compra</span>
+                    <span className="text-[13px] font-bold tabnum text-[var(--label-primary)]">{row.qtd_compra1 ? Math.round(Number(row.qtd_compra1)) : "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[var(--label-secondary)] w-20 shrink-0">Pedido</span>
+                    <span className="text-[13px] font-semibold text-[var(--label-primary)]">{row.pedido1 || "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[var(--label-secondary)] w-20 shrink-0">Entrega</span>
+                    <span className="text-[13px] font-semibold text-[var(--label-primary)]">{row.data_entrega1 ? String(row.data_entrega1).split("-").reverse().join("/") : "—"}</span>
+                  </div>
+                </div>
+                <div className="p-4 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--label-tertiary)] mb-3">Compra 2</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[var(--label-secondary)] w-20 shrink-0">Qtd. Compra</span>
+                    <span className="text-[13px] font-bold tabnum text-[var(--label-primary)]">{row.qtd_compra2 ? Math.round(Number(row.qtd_compra2)) : "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[var(--label-secondary)] w-20 shrink-0">Pedido</span>
+                    <span className="text-[13px] font-semibold text-[var(--label-primary)]">{row.pedido2 || "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[var(--label-secondary)] w-20 shrink-0">Entrega</span>
+                    <span className="text-[13px] font-semibold text-[var(--label-primary)]">{row.data_entrega2 ? String(row.data_entrega2).split("-").reverse().join("/") : "—"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ borderTop: `2px solid ${fichaColor}` }} className="pt-5">
             <div style={{ background: fichaColor }} className="text-white rounded-xl px-5 py-3 flex items-center justify-between mb-4"><span className="text-[13px] font-bold">AVIAMENTAÇÃO</span></div>
