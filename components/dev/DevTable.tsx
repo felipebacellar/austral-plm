@@ -9,6 +9,26 @@ type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) 
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 const ALWAYS_VISIBLE = ["ref"];
 
+// ── Colunas de status exclusivas de Compras ───────────────────────────────
+const STATUS_PRECO_OPTS = ["SEM CUSTO","CUSTO SOLICITADO","EM NEGOCIAÇÃO","CUSTO FECHADO"];
+const STATUS_COMPRAS_OPTS = ["PEDIDO MOST. COLOCADO","MOSTRUÁRIO ENTREGUE","PED. DE PRODUÇÃO COLOCADO","PRODUÇÃO ENTREGUE"];
+const SP_PRECO_STYLE: Record<string,{bg:string;color:string}> = {
+  "SEM CUSTO":         {bg:"rgba(142,142,147,0.15)",color:"var(--label-secondary)"},
+  "CUSTO SOLICITADO":  {bg:"rgba(255,149,0,0.15)",  color:"#b86a00"},
+  "EM NEGOCIAÇÃO":     {bg:"rgba(0,122,255,0.12)",  color:"var(--system-blue)"},
+  "CUSTO FECHADO":     {bg:"rgba(52,199,89,0.15)",  color:"#1a7a35"},
+};
+const SP_COMPRAS_STYLE: Record<string,{bg:string;color:string}> = {
+  "PEDIDO MOST. COLOCADO":     {bg:"rgba(255,149,0,0.12)",  color:"#b86a00"},
+  "MOSTRUÁRIO ENTREGUE":       {bg:"rgba(90,120,255,0.12)", color:"#3a4ec4"},
+  "PED. DE PRODUÇÃO COLOCADO": {bg:"rgba(175,82,222,0.12)", color:"#7c2eaa"},
+  "PRODUÇÃO ENTREGUE":         {bg:"rgba(52,199,89,0.15)",  color:"#1a7a35"},
+};
+const COMPRAS_STATUS_COLS = [
+  {key:"status_preco",   label:"Status Preço",   width:165, opts:STATUS_PRECO_OPTS,   styles:SP_PRECO_STYLE},
+  {key:"status_compras", label:"Status Compras", width:210, opts:STATUS_COMPRAS_OPTS, styles:SP_COMPRAS_STYLE},
+];
+
 // ── Colunas financeiras exclusivas de Compras ──────────────────────────────
 const PRICE_COLS = [
   { key: "custo_inicial",   label: "Custo inicial",    width: 115, computed: false },
@@ -70,7 +90,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const toggleCol = (key: string) => setVisibleCols(p => ({ ...p, [key]: !isColVisible(key) }));
   const toggleableCols = [
     ...COLUMNS.filter(c => !ALWAYS_VISIBLE.includes(c.key) && !hiddenColumns.includes(c.key)),
-    ...(permPrefix === "compras_" ? PRICE_COLS : []),
+    ...(permPrefix === "compras_" ? [...COMPRAS_STATUS_COLS, ...PRICE_COLS] : []),
   ];
   const hiddenCount = toggleableCols.filter(c => !isColVisible(c.key)).length;
 
@@ -262,11 +282,11 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.filter(c=>isColVisible(c.key)).map(c=>{
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
         const sortable = c.type !== "action";
         const isActive = sort?.key === c.key;
         const isSticky = c.key === "ref";
-        return (
+        const mainTh = (
           <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left",...(isSticky?{position:"sticky",left:0,zIndex:3,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.06)"}:{})}}>
             {sortable ? (
               <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
@@ -278,6 +298,19 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
             ) : c.label}
           </th>
         );
+        if (c.key === "ref" && permPrefix === "compras_") {
+          return [mainTh, ...COMPRAS_STATUS_COLS.filter(sc => isColVisible(sc.key)).map(sc => (
+            <th key={sc.key} style={{width:sc.width,minWidth:sc.width}}>
+              <button onClick={() => toggleSort(sc.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${sort?.key===sc.key?"text-[var(--system-blue)]":""}`}>
+                <span>{sc.label}</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={sort?.key===sc.key?"opacity-100":"opacity-30"}>
+                  {sort?.key===sc.key&&sort?.dir==="desc"?<path d="M6 9l6 6 6-6"/>:<path d="M18 15l-6-6-6 6"/>}
+                </svg>
+              </button>
+            </th>
+          ))];
+        }
+        return [mainTh];
       })}
       {permPrefix === "compras_" && PRICE_COLS.filter(c => isColVisible(c.key)).map(c => (
         <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}>
@@ -285,9 +318,22 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
         </th>
       ))}
       <th style={{width:36}}/></tr></thead><tbody>
-        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>isColVisible(c.key)).map(c=>{
+        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
           const isSticky = c.key === "ref";
-          return <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
+          const mainTd = <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:readOnly?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
+          if (c.key === "ref" && permPrefix === "compras_") {
+            return [mainTd, ...COMPRAS_STATUS_COLS.filter(sc => isColVisible(sc.key)).map(sc => {
+              const sv = row[sc.key] || "";
+              const ss = sc.styles[sv];
+              const pill = sv ? <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={ss?{background:ss.bg,color:ss.color}:{background:"rgba(142,142,147,0.12)",color:"var(--label-tertiary)"}}>{sv}</span> : <span className="text-[var(--label-quaternary)] text-[13px] px-2.5">—</span>;
+              return <td key={sc.key} style={{width:sc.width,minWidth:sc.width}}>
+                {canEdit(sc.key)
+                  ? <InlineCell value={sv} type="select" options={sc.opts} displayEl={pill} onChange={v=>upd(row.id,sc.key,String(v))}/>
+                  : <div className="px-1 py-0.5">{pill}</div>}
+              </td>;
+            })];
+          }
+          return [mainTd];
         })}
         {permPrefix === "compras_" && PRICE_COLS.filter(c => isColVisible(c.key)).map(c => {
           const isMult = MULT_KEYS.has(c.key);

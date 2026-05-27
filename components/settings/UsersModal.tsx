@@ -29,6 +29,10 @@ const COMPRAS_BASE = BASE_GROUPS.map(g => ({
 }));
 const COMPRAS_GROUPS: PermGroup[] = [
   ...COMPRAS_BASE,
+  { label: "Status Compras", fields: [
+    { key: "compras_status_preco",   label: "Status Preço (Sem custo / Solicitado / Negociação / Fechado)" },
+    { key: "compras_status_compras", label: "Status Compras (Ped. most. / Mostruário / Ped. prod. / Entregue)" },
+  ]},
   { label: "Preços", fields: [{ key: "compras_precos", label: "Editar preços (custo / markup / target / varejo)" }] },
 ];
 

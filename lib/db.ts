@@ -66,11 +66,13 @@ export async function fetchProdutos() {
     subcategoria: p.subcategoria || "", lavagem: p.lavagem || "",
     tab_medidas: p.tab_medidas || "", tipo: p.tipo || "",
     linha: p.linha || "", drop: p.drop_num || "", estilista: p.estilista || "",
-    custo_inicial:  p.custo_inicial  != null ? Number(p.custo_inicial)  : null,
-    markup_inicial: p.markup_inicial != null ? Number(p.markup_inicial) : null,
-    preco_target:   p.preco_target   != null ? Number(p.preco_target)   : null,
-    custo_final:    p.custo_final    != null ? Number(p.custo_final)    : null,
-    varejo_final:   p.varejo_final   != null ? Number(p.varejo_final)   : null,
+    custo_inicial:   p.custo_inicial  != null ? Number(p.custo_inicial)  : null,
+    markup_inicial:  p.markup_inicial != null ? Number(p.markup_inicial) : null,
+    preco_target:    p.preco_target   != null ? Number(p.preco_target)   : null,
+    custo_final:     p.custo_final    != null ? Number(p.custo_final)    : null,
+    varejo_final:    p.varejo_final   != null ? Number(p.varejo_final)   : null,
+    status_preco:    p.status_preco   || "",
+    status_compras:  p.status_compras || "",
   }));
 }
 export async function insertProduto(p: any) {

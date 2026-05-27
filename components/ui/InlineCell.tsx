@@ -10,9 +10,10 @@ type Props = {
   isStatus?: boolean;
   onChange: (val: string | number) => void;
   displayFn?: (v: number) => string;
+  displayEl?: React.ReactNode;
 };
 
-export default function InlineCell({ value, type, options, isStatus, onChange, displayFn }: Props) {
+export default function InlineCell({ value, type, options, isStatus, onChange, displayFn, displayEl }: Props) {
   const [editing, setEditing] = useState(false);
   const [tmp, setTmp] = useState(value);
   const ref = useRef<HTMLInputElement | HTMLSelectElement>(null);
@@ -58,7 +59,7 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
   return (
     <div onDoubleClick={() => setEditing(true)} title={String(value || "")}
       className={`cursor-default text-[13px] px-2.5 py-1.5 rounded-lg min-h-[28px] flex items-center transition-colors hover:bg-black/[0.02] ${isNum ? "justify-end tabnum" : ""} ${value ? "text-[var(--label-primary)]" : "text-[var(--label-quaternary)]"}`}>
-      {display}
+      {displayEl ?? display}
     </div>
   );
 }
