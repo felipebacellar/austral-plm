@@ -1,11 +1,28 @@
 "use client";
 import { useState, useMemo } from "react";
 import { COR_PALETTE } from "@/lib/cor-palette";
+import InlineCell from "@/components/ui/InlineCell";
+import { updateProdutoField } from "@/lib/db";
 
 // Colunas ESTILO
 const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
-// Colunas COMPRAS (sem tecido, forn_tecido, subgrupo; com status_compras)
-const VC_COMPRAS=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"status_compras",label:"Status Compras",w:215},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"_ficha",label:"Ficha",w:70}];
+// Colunas COMPRAS (sem tecido, forn_tecido, subgrupo; com status_compras e colunas de pedidos)
+const VC_COMPRAS=[
+  {key:"ref",           label:"Referência",     w:120},
+  {key:"desc",          label:"Descrição",       w:260},
+  {key:"cor",           label:"Cor",             w:180},
+  {key:"qtd_compra1",   label:"Qtd. Compra 1",  w:115, colType:"number"},
+  {key:"pedido1",       label:"Pedido 1",        w:120, colType:"text"  },
+  {key:"data_entrega1", label:"Entrega 1",       w:115, colType:"date"  },
+  {key:"qtd_compra2",   label:"Qtd. Compra 2",  w:115, colType:"number"},
+  {key:"pedido2",       label:"Pedido 2",        w:120, colType:"text"  },
+  {key:"data_entrega2", label:"Entrega 2",       w:115, colType:"date"  },
+  {key:"status_compras",label:"Status Compras",  w:215},
+  {key:"status",        label:"Status",          w:180},
+  {key:"fornecedor",    label:"Fornecedor",      w:140},
+  {key:"grupo",         label:"Grupo",           w:120},
+  {key:"_ficha",        label:"Ficha",           w:70 },
+];
 
 const FK=["grupo","subgrupo","status","tecido","fornecedor","cor","estilista","linha"];
 const FK_COMPRAS=["grupo","status","status_compras","fornecedor","cor"];
@@ -18,10 +35,15 @@ const SC_STYLE:Record<string,{bg:string;color:string}>={
   "PRODUÇÃO ENTREGUE":         {bg:"rgba(52,199,89,0.15)",  color:"#1a7a35"},
 };
 
-type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void; readOnly?:boolean; compras?:boolean};
+type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void; readOnly?:boolean; compras?:boolean; setRows?:(fn:any)=>void; canEditOrders?:boolean};
 
-export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false, compras=false}:Props){
+export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false, compras=false, setRows, canEditOrders=false}:Props){
   const COLS = compras ? VC_COMPRAS : VC;
+
+  const updOrder = async (id:number, field:string, value:any) => {
+    setRows?.((p:any[]) => p.map((r:any) => r.id===id ? {...r,[field]:value} : r));
+    await updateProdutoField(id, field, value);
+  };
   const FILTERS = compras ? FK_COMPRAS : FK;
   const [q,setQ]=useState("");const [fl,setFl]=useState<Record<string,string>>({});const [sf,setSf]=useState(false);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
@@ -89,11 +111,19 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
           </th>
         );
       })}</tr></thead><tbody>
-        {filtered.map((r:any)=>(<tr key={r._vid}>{COLS.map(c=>(<td key={c.key} style={{width:c.w,minWidth:c.w}}>
-          {c.key==="_ficha"?<button onClick={()=>onOpenFicha(r)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>
-          :c.key==="status"&&SP[r.status]?<span className={`pill ${SP[r.status]}`}>{r.status}</span>
-          :c.key==="status_compras"?(() => { const s=r.status_compras||""; const st=SC_STYLE[s]; return s?<span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={st?{background:st.bg,color:st.color}:{background:"rgba(142,142,147,0.12)",color:"var(--label-tertiary)"}}>{s}</span>:<span className="text-[var(--label-quaternary)] text-[13px] px-2.5">—</span>; })()
-          :c.key==="cor"&&r.cor!=="—"?(() => { const pal = COR_PALETTE[r.cor]; return <span className="inline-flex items-center rounded-md px-2.5 py-1 text-[12px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-secondary)" }}>{r.cor}</span>; })()
+        {filtered.map((r:any)=>(<tr key={r._vid}>{COLS.map((c:any)=>(<td key={c.key} style={{width:c.w,minWidth:c.w,textAlign:c.colType==="number"?"right":"left"}}>
+          {c.key==="_ficha"
+            ?<button onClick={()=>onOpenFicha(r)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>
+          :c.key==="status"&&SP[r.status]
+            ?<span className={`pill ${SP[r.status]}`}>{r.status}</span>
+          :c.key==="status_compras"
+            ?(() => { const s=r.status_compras||""; const st=SC_STYLE[s]; return s?<span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={st?{background:st.bg,color:st.color}:{background:"rgba(142,142,147,0.12)",color:"var(--label-tertiary)"}}>{s}</span>:<span className="text-[var(--label-quaternary)] text-[13px] px-2.5">—</span>; })()
+          :c.key==="cor"&&r.cor!=="—"
+            ?(() => { const pal = COR_PALETTE[r.cor]; return <span className="inline-flex items-center rounded-md px-2.5 py-1 text-[12px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-secondary)" }}>{r.cor}</span>; })()
+          :c.colType
+            ?(canEditOrders
+              ?<InlineCell value={r[c.key]??""} type={c.colType} displayFn={c.colType==="number"?(v:number)=>v>0?String(Math.round(v)):"—":undefined} onChange={v=>updOrder(r.id,c.key,v)}/>
+              :<span className={`text-[13px] px-2.5 py-1.5 block ${c.colType==="number"?"tabnum":""} ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{c.colType==="date"&&r[c.key]?String(r[c.key]).split("-").reverse().join("/"):c.colType==="number"&&r[c.key]?String(Math.round(Number(r[c.key]))):r[c.key]||"—"}</span>)
           :<span className={`text-[13px] px-2.5 py-1 block ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{r[c.key]||"—"}</span>}
         </td>))}</tr>))}
         {filtered.length===0&&<tr><td colSpan={COLS.length} className="py-16 text-center text-[var(--label-tertiary)]">Nenhuma variante</td></tr>}
