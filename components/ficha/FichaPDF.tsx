@@ -38,11 +38,12 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
   const _ps = (row.status || "").toUpperCase();
   const fichaType =
     _ps.includes('CANCELADO') ? 'cancelado' :
+    _ps.includes('REPILOTANDO') ? 'repilotando' :
     (_ps.includes('PRODUÇÃO') || _ps.includes('PRODUCAO')) ? 'producao' :
     (_ps.includes('MOSTRUÁRIO') || _ps.includes('MOSTRUARIO')) ? 'mostruario' :
     'desenvolvimento';
-  const headerBg = fichaType === 'cancelado' ? '#EA2F46' : fichaType === 'producao' ? '#2DB564' : fichaType === 'mostruario' ? '#EDCA35' : '#4464AF';
-  const headerLabel = fichaType === 'cancelado' ? 'CANCELADO' : fichaType === 'producao' ? 'PRODUÇÃO' : fichaType === 'mostruario' ? 'MOSTRUÁRIO' : 'DESENVOLVIMENTO';
+  const headerBg = fichaType === 'cancelado' ? '#EA2F46' : fichaType === 'repilotando' ? '#FF9500' : fichaType === 'producao' ? '#2DB564' : fichaType === 'mostruario' ? '#EDCA35' : '#4464AF';
+  const headerLabel = fichaType === 'cancelado' ? 'CANCELADO' : fichaType === 'repilotando' ? 'REPILOTANDO' : fichaType === 'producao' ? 'PRODUÇÃO' : fichaType === 'mostruario' ? 'MOSTRUÁRIO' : 'DESENVOLVIMENTO';
   const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
   const numVars = Math.max(4, Math.min(6, estamparia?.numVariantes || tec[0]?.cores?.filter(Boolean).length || 4));
 

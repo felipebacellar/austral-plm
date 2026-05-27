@@ -28,7 +28,7 @@ const VC_COMPRAS=[
 const FK=["grupo","subgrupo","status","tecido","fornecedor","cor","estilista","linha"];
 const FK_COMPRAS=["grupo","status","status_compras","fornecedor","cor"];
 const FL:Record<string,string>={grupo:"Grupo",subgrupo:"Subgrupo",status:"Status",status_compras:"Status Compras",tecido:"Tecido",fornecedor:"Fornecedor",cor:"Cor",estilista:"Estilista",linha:"Linha"};
-const SP:Record<string,string>={"MOSTRUÁRIO LIBERADO":"pill-green","PRODUÇÃO LIBERADA":"pill-blue","DESENVOLVIMENTO":"pill-orange","CANCELADO":"pill-red"};
+const SP:Record<string,string>={"MOSTRUÁRIO LIBERADO":"pill-green","PRODUÇÃO LIBERADA":"pill-blue","DESENVOLVIMENTO":"pill-orange","REPILOTANDO PRODUÇÃO":"pill-orange","CANCELADO":"pill-red"};
 const SC_STYLE:Record<string,{bg:string;color:string}>={
   "PEDIDO MOST. COLOCADO":     {bg:"rgba(255,149,0,0.12)",  color:"#b86a00"},
   "MOSTRUÁRIO ENTREGUE":       {bg:"rgba(90,120,255,0.12)", color:"#3a4ec4"},

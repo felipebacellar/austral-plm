@@ -20,10 +20,11 @@ const SCALE = [B500, B700, B400, B800, B300, B600, B200, B900];
 
 /* Status — 4 tons distintos da escala Apple blue */
 const STATUS_CFG: Record<string, { color: string; label: string }> = {
-  "DESENVOLVIMENTO":     { color: B400, label: "Desenvolvimento" },
-  "MOSTRUÁRIO LIBERADO": { color: B600, label: "Mostruário lib." },
-  "PRODUÇÃO LIBERADA":   { color: B800, label: "Produção lib." },
-  "CANCELADO":           { color: B200, label: "Cancelado" },
+  "DESENVOLVIMENTO":       { color: B400, label: "Desenvolvimento" },
+  "MOSTRUÁRIO LIBERADO":   { color: B600, label: "Mostruário lib." },
+  "PRODUÇÃO LIBERADA":     { color: B800, label: "Produção lib." },
+  "REPILOTANDO PRODUÇÃO":  { color: "#FF9500", label: "Repilotando" },
+  "CANCELADO":             { color: B200, label: "Cancelado" },
 };
 
 /* Stat cards — gradiente do escuro ao claro */
@@ -90,6 +91,7 @@ export default function DashboardView({ rows, variantes }: Props) {
     { label: "Desenvolvimento", value: sc("DESENVOLVIMENTO") },
     { label: "Mostr. liberado", value: sc("MOSTRUÁRIO LIBERADO") },
     { label: "Produção lib.",   value: sc("PRODUÇÃO LIBERADA") },
+    { label: "Repilotando",     value: sc("REPILOTANDO PRODUÇÃO") },
     { label: "Cancelado",       value: sc("CANCELADO") },
   ];
 

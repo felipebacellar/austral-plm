@@ -184,11 +184,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const updTecnica = (i: number, field: string, value: string) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.map((t: any, j: number) => j === i ? { ...t, [field]: value } : t) }));
   const addTecnica = () => setEstamparia((prev: any) => ({ ...prev, tecnicas: [...prev.tecnicas, { tecnica: "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" }] }));
   const _s = (row.status || "").toUpperCase();
-  const fichaColor = (_s.includes('CANCELADO')) ? '#EA2F46' : (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO')) ? '#2DB564' : (_s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO')) ? '#EDCA35' : '#4464AF';
+  const fichaColor = (_s.includes('CANCELADO')) ? '#EA2F46' : _s.includes('REPILOTANDO') ? '#FF9500' : (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO')) ? '#2DB564' : (_s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO')) ? '#EDCA35' : '#4464AF';
   const isMost = _s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO');
-  const isProd = _s.includes('PRODUÇÃO') || _s.includes('PRODUCAO');
-  const showQtdRow = isMost || isProd;
-  const qtdRowLabel = isProd ? 'QTD. COMPRA' : 'QTD. MOSTRUÁRIO';
+  const isProd = !_s.includes('REPILOTANDO') && (_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO'));
+  const isRepilotando = _s.includes('REPILOTANDO');
+  const showQtdRow = isMost || isProd || isRepilotando;
+  const qtdRowLabel = isProd ? 'QTD. COMPRA' : isRepilotando ? 'QTD. REPILOTAGEM' : 'QTD. MOSTRUÁRIO';
   const hasComprasData = row.qtd_compra1 || row.pedido1 || row.qtd_compra2 || row.pedido2;
   const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
   const removeTecnica = (i: number) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.filter((_: any, j: number) => j !== i) }));
@@ -296,7 +297,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {tab === "ficha" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
           <div style={{ background: fichaColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TÉCNICA</span>
-            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
           <div className="apple-card">
@@ -497,7 +498,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           {/* Header */}
           <div style={{ background: fichaColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-bold">FICHA TECNICA DE ESTAMPARIA</span>
-            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
+            <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
 

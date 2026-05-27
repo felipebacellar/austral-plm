@@ -37,7 +37,7 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rows, setRows] = useState<any[]>([]);
   const [variantes, setVariantes] = useState<Record<string, string[]>>({});
-  const COMPRAS_STATUS_ALLOW = ["DESENVOLVIMENTO", "MOSTRUÁRIO LIBERADO", "PRODUÇÃO LIBERADA"];
+  const COMPRAS_STATUS_ALLOW = ["DESENVOLVIMENTO", "MOSTRUÁRIO LIBERADO", "PRODUÇÃO LIBERADA", "REPILOTANDO PRODUÇÃO"];
   const comprasRows = rows.filter(r => COMPRAS_STATUS_ALLOW.includes(r.status));
   const [fichaRow, setFichaRow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
