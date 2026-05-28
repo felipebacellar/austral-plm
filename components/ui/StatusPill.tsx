@@ -1,5 +1,5 @@
 export default function StatusPill({ status }: { status: string }) {
-  const s = (status || "").toUpperCase();
+  const s = (status || "").toUpperCase().trim();
   const cls =
     s.includes("REPILOTANDO") ? "pill-orange" :
     s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "pill-green" :

@@ -1,13 +1,13 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import InlineCell from "@/components/ui/InlineCell";
-import { updateProdutoField } from "@/lib/db";
+import { updateProdutoField, fetchVarianteCompras, upsertVarianteCompra } from "@/lib/db";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 
 // Colunas ESTILO
 const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
-// Colunas COMPRAS (sem tecido, forn_tecido, subgrupo; com status_compras e colunas de pedidos)
+// Colunas COMPRAS
 const VC_COMPRAS=[
   {key:"ref",           label:"Referência",     w:120},
   {key:"desc",          label:"Descrição",       w:260},
@@ -25,6 +25,9 @@ const VC_COMPRAS=[
   {key:"_ficha",        label:"Ficha",           w:70 },
 ];
 
+// Campos armazenados por variante (não por produto)
+const COMPRA_FIELDS = new Set(["qtd_compra1","pedido1","data_entrega1","qtd_compra2","pedido2","data_entrega2"]);
+
 const FK=["grupo","subgrupo","status","tecido","fornecedor","cor","estilista","linha"];
 const FK_COMPRAS=["grupo","status","status_compras","fornecedor","cor"];
 const FL:Record<string,string>={grupo:"Grupo",subgrupo:"Subgrupo",status:"Status",status_compras:"Status Compras",tecido:"Tecido",fornecedor:"Fornecedor",cor:"Cor",estilista:"Estilista",linha:"Linha"};
@@ -36,14 +39,50 @@ const SC_STYLE:Record<string,{bg:string;color:string}>={
   "PRODUÇÃO ENTREGUE":         {bg:"rgba(52,199,89,0.15)",  color:"#1a7a35"},
 };
 
-type Props={rows:any[]; variantes:Record<string,string[]>; onOpenFicha:(r:any)=>void; readOnly?:boolean; compras?:boolean; setRows?:(fn:any)=>void; canEditOrders?:boolean};
+type Props={
+  rows:any[];
+  variantes:Record<string,string[]>;
+  onOpenFicha:(r:any)=>void;
+  readOnly?:boolean;
+  compras?:boolean;
+  setRows?:(fn:any)=>void;
+  canEditOrders?:boolean;
+};
 
 export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false, compras=false, setRows, canEditOrders=false}:Props){
   const COLS = compras ? VC_COMPRAS : VC;
 
-  const updOrder = async (id:number, field:string, value:any) => {
-    setRows?.((p:any[]) => p.map((r:any) => r.id===id ? {...r,[field]:value} : r));
-    await updateProdutoField(id, field, value);
+  // ── Compra data: fetched per-variant, stored locally ──────────────────
+  // vcMap: Record<"produtoId:cor", {qtd_compra1, pedido1, data_entrega1, qtd_compra2, pedido2, data_entrega2}>
+  const [vcMap, setVcMap] = useState<Record<string,any>>({});
+  const loadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!compras || loadedRef.current) return;
+    loadedRef.current = true;
+    let active = true;
+    fetchVarianteCompras().then(data => {
+      console.warn("[VariantesTable v2] vcMap carregado:", Object.keys(data).length, "entradas", data);
+      if (active) setVcMap(prev => ({ ...data, ...prev }));
+    });
+    return () => { active = false; };
+  }, [compras]);
+
+  const updOrder = async (r: any, field: string, value: any) => {
+    if (COMPRA_FIELDS.has(field)) {
+      const key = `${r.id}:${r.cor}`;
+      console.log("[VariantesTable v2] COMPRA salva — key:", key, "| campo:", field, "| valor:", value);
+      // Optimistic update
+      setVcMap(prev => ({
+        ...prev,
+        [key]: { ...(prev[key] ?? {}), [field]: value }
+      }));
+      // Persist
+      await upsertVarianteCompra(r.id, r.cor, field, value);
+    } else {
+      setRows?.((p:any[]) => p.map((row:any) => row.id===r.id ? {...row,[field]:value} : row));
+      await updateProdutoField(r.id, field, value);
+    }
   };
 
   const handleExport = () => {
@@ -59,8 +98,11 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
     const date = new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
     exportToExcel(`variantes_${section}_${date}`, headers, dataRows);
   };
+
   const FILTERS = compras ? FK_COMPRAS : FK;
-  const [q,setQ]=useState("");const [fl,setFl]=useState<Record<string,string>>({});const [sf,setSf]=useState(false);
+  const [q,setQ]=useState("");
+  const [fl,setFl]=useState<Record<string,string>>({});
+  const [sf,setSf]=useState(false);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const ac=Object.values(fl).filter(Boolean).length;
 
@@ -72,20 +114,44 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
     });
   };
 
-  const vr=useMemo(()=>{
-    const o:any[]=[];
-    rows.forEach((p:any)=>{
-      const cores=variantes[p.ref]||[];
-      if(!cores.length) o.push({...p,cor:"—",_vid:`${p.ref}-`});
-      else cores.forEach(x=>o.push({...p,cor:x,_vid:`${p.ref}-${x}`}));
+  // Build variant rows, merging per-variant compra data from vcMap
+  const vr = useMemo(() => {
+    const o: any[] = [];
+    rows.forEach((p: any) => {
+      const cores = variantes[p.ref] || [];
+      if (!cores.length) {
+        const vc = vcMap[`${p.id}:—`] ?? {};
+        o.push({
+          ...p, cor: "—", _vid: `${p.ref}-`,
+          qtd_compra1:   vc.qtd_compra1   ?? null,
+          pedido1:       vc.pedido1       ?? "",
+          data_entrega1: vc.data_entrega1 ?? "",
+          qtd_compra2:   vc.qtd_compra2   ?? null,
+          pedido2:       vc.pedido2       ?? "",
+          data_entrega2: vc.data_entrega2 ?? "",
+        });
+      } else {
+        cores.forEach(x => {
+          const vc = vcMap[`${p.id}:${x}`] ?? {};
+          o.push({
+            ...p, cor: x, _vid: `${p.ref}-${x}`,
+            qtd_compra1:   vc.qtd_compra1   ?? null,
+            pedido1:       vc.pedido1       ?? "",
+            data_entrega1: vc.data_entrega1 ?? "",
+            qtd_compra2:   vc.qtd_compra2   ?? null,
+            pedido2:       vc.pedido2       ?? "",
+            data_entrega2: vc.data_entrega2 ?? "",
+          });
+        });
+      }
     });
     return o;
-  },[rows, variantes]);
+  }, [rows, variantes, vcMap]);
 
-  const filtered=useMemo(()=>{
-    let r=vr;
-    Object.entries(fl).forEach(([k,v])=>{if(v)r=r.filter(x=>x[k]===v);});
-    if(q){const s=q.toLowerCase();r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.fornecedor).toLowerCase().includes(s));}
+  const filtered = useMemo(() => {
+    let r = vr;
+    Object.entries(fl).forEach(([k,v]) => { if(v) r = r.filter(x => x[k]===v); });
+    if(q){ const s=q.toLowerCase(); r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.fornecedor).toLowerCase().includes(s)); }
     if (sort) {
       r = [...r].sort((a, b) => {
         const av = a[sort.key] ?? "", bv = b[sort.key] ?? "";
@@ -94,12 +160,12 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
       });
     }
     return r;
-  },[vr,fl,q,sort]);
+  }, [vr, fl, q, sort]);
 
-  const uv=(k:string):string[]=>[...new Set(vr.map(r=>r[k]).filter(Boolean))].sort();
-  const sf2=(k:string,v:string)=>setFl(p=>{const n={...p};if(v)n[k]=v;else delete n[k];return n;});
+  const uv = (k: string): string[] => [...new Set(vr.map(r => r[k]).filter(Boolean))].sort();
+  const sf2 = (k: string, v: string) => setFl(p => { const n={...p}; if(v) n[k]=v; else delete n[k]; return n; });
 
-  return(
+  return (
     <div>
       <div className="flex gap-2 mb-3 flex-wrap items-center">
         <div className="relative flex-1 min-w-0 sm:min-w-[240px]"><svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Buscar referência, cor, tecido..." value={q} onChange={e=>setQ(e.target.value)} className="apple-input w-full !pl-10"/></div>
@@ -141,7 +207,7 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
             ?(() => { const pal = COR_PALETTE[r.cor]; return <span className="inline-flex items-center rounded-md px-2.5 py-1 text-[12px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-secondary)" }}>{r.cor}</span>; })()
           :c.colType
             ?(canEditOrders
-              ?<InlineCell value={r[c.key]??""} type={c.colType} displayFn={c.colType==="number"?(v:number)=>v>0?String(Math.round(v)):"—":undefined} onChange={v=>updOrder(r.id,c.key,v)}/>
+              ?<InlineCell value={r[c.key]??""} type={c.colType} displayFn={c.colType==="number"?(v:number)=>v>0?String(Math.round(v)):"—":undefined} onChange={v=>updOrder(r,c.key,v)}/>
               :<span className={`text-[13px] px-2.5 py-1.5 block ${c.colType==="number"?"tabnum":""} ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{c.colType==="date"&&r[c.key]?String(r[c.key]).split("-").reverse().join("/"):c.colType==="number"&&r[c.key]?String(Math.round(Number(r[c.key]))):r[c.key]||"—"}</span>)
           :<span className={`text-[13px] px-2.5 py-1 block ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{r[c.key]||"—"}</span>}
         </td>))}</tr>))}

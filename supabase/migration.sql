@@ -195,3 +195,18 @@ CREATE TABLE IF NOT EXISTS ficha_graduacao_especial (
   ordem INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_fge_ficha ON ficha_graduacao_especial(ficha_id);
+
+
+-- ── Quantidades/pedidos de compra por variante de cor ──────────────────────
+CREATE TABLE IF NOT EXISTS produto_variante_compras (
+  produto_id    INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+  cor           TEXT    NOT NULL,
+  qtd_compra1   INTEGER,
+  pedido1       TEXT,
+  data_entrega1 DATE,
+  qtd_compra2   INTEGER,
+  pedido2       TEXT,
+  data_entrega2 DATE,
+  PRIMARY KEY (produto_id, cor)
+);
+CREATE INDEX IF NOT EXISTS idx_pvc_produto ON produto_variante_compras(produto_id);

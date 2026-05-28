@@ -106,6 +106,28 @@ export async function deleteProduto(id: number) {
   if (error) console.error("deleteProduto:", error);
 }
 
+// ══ COMPRAS POR VARIANTE ══
+export async function fetchVarianteCompras(): Promise<Record<string, any>> {
+  const { data, error } = await sb().from("produto_variante_compras").select("*");
+  if (error) console.error("fetchVarianteCompras:", error);
+  const map: Record<string, any> = {};
+  (data || []).forEach((r: any) => {
+    map[`${r.produto_id}:${r.cor}`] = r;
+  });
+  return map;
+}
+
+export async function upsertVarianteCompra(produtoId: number, cor: string, field: string, value: any) {
+  // Use upsert: inserts if not exists, updates only the specified field on conflict
+  const { error } = await sb()
+    .from("produto_variante_compras")
+    .upsert(
+      { produto_id: produtoId, cor, [field]: value },
+      { onConflict: "produto_id,cor" }
+    );
+  if (error) console.error("upsertVarianteCompra:", { produtoId, cor, field, value, error });
+}
+
 // ══ FICHAS TÉCNICAS ══
 export async function fetchFicha(ref: string) {
   const { data, error } = await sb().from("fichas_tecnicas").select("*").eq("produto_ref", ref).maybeSingle();
