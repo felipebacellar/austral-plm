@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import InlineCell from "@/components/ui/InlineCell";
+import StatusPill from "@/components/ui/StatusPill";
 import { updateProdutoField, fetchVarianteCompras, upsertVarianteCompra } from "@/lib/db";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 
@@ -199,8 +200,8 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
         {filtered.map((r:any)=>(<tr key={r._vid}>{COLS.map((c:any)=>(<td key={c.key} style={{width:c.w,minWidth:c.w,textAlign:c.colType==="number"?"right":"left"}}>
           {c.key==="_ficha"
             ?<button onClick={()=>onOpenFicha(r)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>
-          :c.key==="status"&&SP[r.status]
-            ?<span className={`pill ${SP[r.status]}`}>{r.status}</span>
+          :c.key==="status"&&r.status
+            ?<StatusPill status={r.status} />
           :c.key==="status_compras"
             ?(() => { const s=r.status_compras||""; const st=SC_STYLE[s]; return s?<span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={st?{background:st.bg,color:st.color}:{background:"rgba(142,142,147,0.12)",color:"var(--label-tertiary)"}}>{s}</span>:<span className="text-[var(--label-quaternary)] text-[13px] px-2.5">—</span>; })()
           :c.key==="cor"&&r.cor!=="—"
