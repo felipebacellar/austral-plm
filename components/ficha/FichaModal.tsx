@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos } from "@/lib/db";
+import { fetchFicha, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
@@ -37,6 +37,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [varCodigos, setVarCodigos] = useState<{ var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }>({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
   const [varTingimento, setVarTingimento] = useState<{ var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }>({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
   const [qtdMost, setQtdMost] = useState<{ var01: number|null; var02: number|null; var03: number|null; var04: number|null; var05: number|null; var06: number|null }>({ var01: null, var02: null, var03: null, var04: null, var05: null, var06: null });
+  // Compras por variante (key = `${row.id}:${cor}`) — somente leitura aqui, fonte é Compras > Variantes
+  const [vcCompras, setVcCompras] = useState<Record<string, any>>({});
   const [tingimentoOpts, setTingimentoOpts] = useState<string[]>([]);
   const [statusLib, setStatusLib] = useState("");
   const [numVars, setNumVars] = useState(4);
@@ -59,7 +61,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   useEffect(() => {
     (async () => {
-      const [ficha, cadastros, aviCad, tecs] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(), fetchTecidos()]);
+      const [ficha, cadastros, aviCad, tecs, vcAll] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras()]);
+      setVcCompras(vcAll);
       setCorOpts(cadastros.cor || []);
       setTingimentoOpts(cadastros.tingimento || []);
       setAvCad(aviCad);
@@ -194,7 +197,14 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const isProd = _s.includes('PRODUÇÃO') || _s.includes('PRODUCAO') || _s.includes('REPILOTANDO');
   const isRepilotando = _s.includes('REPILOTANDO');
   const showQtdRow = isMost || isProd;
-  const qtdRowLabel = isRepilotando ? 'QTD. REPILOTAGEM' : isProd ? 'QTD. COMPRA' : 'QTD. MOSTRUÁRIO';
+  const qtdRowLabel = isProd ? 'QTD. COMPRA 1' : 'QTD. MOSTRUÁRIO';
+  // Helper: pega dados da compra por variante (key = produtoId:cor)
+  const vcFor = (varKey: "var01"|"var02"|"var03"|"var04"|"var05"|"var06") => {
+    const idx = Number(varKey.slice(3)) - 1;
+    const cor = tec[0]?.cores?.[idx];
+    if (!cor) return null;
+    return vcCompras[`${row.id}:${cor}`] || null;
+  };
   const hasComprasData = row.qtd_compra1 || row.pedido1 || row.qtd_compra2 || row.pedido2;
   const modelagemColor = statusLib === 'REPROVADO' ? '#EA2F46' : (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') ? '#2DB564' : '#4464AF';
   const removeTecnica = (i: number) => setEstamparia((prev: any) => ({ ...prev, tecnicas: prev.tecnicas.filter((_: any, j: number) => j !== i) }));
@@ -244,7 +254,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} />
       </div>
     );
   }
@@ -367,18 +377,51 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     <span className="text-[10px] text-[var(--label-tertiary)] ml-1.5">pçs / cor</span>
                   </td>
                   <td />
-                  {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => (
-                    <td key={k} className="px-1.5 py-1.5">
-                      <input
-                        type="number"
-                        min={0}
-                        value={qtdMost[k] ?? ""}
-                        onChange={e => setQtdMost(prev => ({ ...prev, [k]: e.target.value === "" ? null : Number(e.target.value) }))}
-                        placeholder="0"
-                        className="w-full text-[13px] font-bold tabnum text-center px-2 py-1.5 rounded-lg border border-[var(--system-blue)]/40 bg-white outline-none focus:border-[var(--system-blue)] focus:ring-1 focus:ring-[var(--system-blue)]/20"
-                      />
-                    </td>
-                  ))}
+                  {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => {
+                    if (isProd) {
+                      const vc = vcFor(k);
+                      const qtd = vc?.qtd_compra1;
+                      return (
+                        <td key={k} className="px-1.5 py-1.5">
+                          <div className="w-full text-[13px] font-bold tabnum text-center px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] bg-[var(--bg-secondary)] text-[var(--label-primary)]" title="Preenchido em Compras > Variantes (somente leitura)">
+                            {qtd != null && qtd !== "" ? Math.round(Number(qtd)) : "—"}
+                          </div>
+                        </td>
+                      );
+                    }
+                    return (
+                      <td key={k} className="px-1.5 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={qtdMost[k] ?? ""}
+                          onChange={e => setQtdMost(prev => ({ ...prev, [k]: e.target.value === "" ? null : Number(e.target.value) }))}
+                          placeholder="0"
+                          className="w-full text-[13px] font-bold tabnum text-center px-2 py-1.5 rounded-lg border border-[var(--system-blue)]/40 bg-white outline-none focus:border-[var(--system-blue)] focus:ring-1 focus:ring-[var(--system-blue)]/20"
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+                )}
+                {isProd && (
+                <tr className="border-t border-[var(--system-blue)]/20 bg-blue-50/40">
+                  <td colSpan={3} className="px-4 py-2.5 whitespace-nowrap">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-[var(--system-blue)]">NÚMERO DO PEDIDO 1</span>
+                    <span className="text-[10px] text-[var(--label-tertiary)] ml-1.5">por cor</span>
+                  </td>
+                  <td />
+                  {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => {
+                    const vc = vcFor(k);
+                    const ped = vc?.pedido1;
+                    return (
+                      <td key={k} className="px-1.5 py-1.5">
+                        <div className="w-full text-[12px] font-semibold text-center px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] bg-[var(--bg-secondary)] text-[var(--label-primary)] truncate" title={ped || "Preenchido em Compras > Variantes (somente leitura)"}>
+                          {ped || "—"}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
                 )}
               </tfoot></table></div>
