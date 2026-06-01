@@ -6,12 +6,14 @@ import { exportExplosaoPDF } from "@/lib/export-pdf-explosao";
 
 type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 
+const QTD_MOST_KEYS = ["qtd_most_var01","qtd_most_var02","qtd_most_var03","qtd_most_var04","qtd_most_var05","qtd_most_var06"] as const;
+
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export default function ExplosaoView({ comprasRows, variantes }: Props) {
-  const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[] } | null>(null);
+  const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [flFornProd, setFlFornProd] = useState("");
   const [flStatus, setFlStatus] = useState("");
@@ -59,7 +61,40 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
     return m;
   }, [filteredProd]);
 
-  // aggregate: group by codigo + cor (var01), multiply qty × variant count
+  // ref → status and id
+  const refStatusMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    filteredProd.forEach((p: any) => { m[p.ref] = (p.status || "").toUpperCase(); });
+    return m;
+  }, [filteredProd]);
+
+  const refIdMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    filteredProd.forEach((p: any) => { m[p.ref] = p.id; });
+    return m;
+  }, [filteredProd]);
+
+  // ficha_id → qtd_most per var slot
+  const fichaQtdMostMap = useMemo(() => {
+    if (!data) return {} as Record<number, (number|null)[]>;
+    const m: Record<number, (number|null)[]> = {};
+    data.fichas.forEach((f: any) => {
+      m[f.id] = QTD_MOST_KEYS.map(k => f[k] ?? null);
+    });
+    return m;
+  }, [data]);
+
+  // produto_id:cor → { qtd_compra1, qtd_compra2 }
+  const comprasVarMap = useMemo(() => {
+    if (!data) return {} as Record<string, { qtd1: number; qtd2: number }>;
+    const m: Record<string, { qtd1: number; qtd2: number }> = {};
+    data.comprasVar.forEach((vc: any) => {
+      m[`${vc.produto_id}:${vc.cor}`] = { qtd1: Number(vc.qtd_compra1) || 0, qtd2: Number(vc.qtd_compra2) || 0 };
+    });
+    return m;
+  }, [data]);
+
+  // aggregate: group by codigo + cor (var01), multiply qty × purchase/sample qty for that color
   const aggregated = useMemo(() => {
     if (!data) return [];
 
@@ -77,10 +112,24 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
 
       const cor = av.var01 || "";
       const key = `${av.codigo}||${cor}`;
-
-      // multiply qty by number of colour variants (at least 1)
-      const numVariants = Math.max(variantes[ref]?.length ?? 0, 1);
       const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", codForn: "", preco: 0, imagem: "" };
+
+      const status = refStatusMap[ref] || "";
+      const isMost = status.includes("MOSTRUÁRIO") || status.includes("MOSTRUARIO");
+      const isProd = status.includes("PRODUÇÃO") || status.includes("PRODUCAO") || status.includes("REPILOTANDO");
+      let multiplier = 0;
+      if (isMost) {
+        const colors = variantes[ref] || [];
+        const idx = colors.indexOf(cor);
+        if (idx >= 0) multiplier = fichaQtdMostMap[av.ficha_id]?.[idx] ?? 0;
+      } else if (isProd) {
+        const prodId = refIdMap[ref];
+        const vc = comprasVarMap[`${prodId}:${cor}`];
+        multiplier = (vc?.qtd1 || 0) + (vc?.qtd2 || 0);
+      } else {
+        // DESENVOLVIMENTO: use color variant count as before
+        multiplier = Math.max(variantes[ref]?.length ?? 0, 1);
+      }
 
       if (!byKey[key]) {
         byKey[key] = {
@@ -91,7 +140,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
           refs: new Set(), fornsProd: new Set(),
         };
       }
-      byKey[key].qtd += (Number(av.qtd) || 0) * numVariants;
+      byKey[key].qtd += (Number(av.qtd) || 0) * multiplier;
       byKey[key].refs.add(ref);
       const forn = refFornMap[ref];
       if (forn) byKey[key].fornsProd.add(forn);
@@ -107,7 +156,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
 
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
-  }, [data, fichaRefMap, avLibMap, refFornMap, variantes, flFornAvi]);
+  }, [data, fichaRefMap, avLibMap, refFornMap, refStatusMap, refIdMap, fichaQtdMostMap, comprasVarMap, variantes, flFornAvi]);
 
   const sorted = useMemo(() => {
     if (!sort) return aggregated;

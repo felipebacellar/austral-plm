@@ -229,18 +229,21 @@ export async function upsertFicha(ref: string, f: any) {
 
 // ══ EXPLOSÃO DE AVIAMENTOS ══
 export async function fetchExplosaoData() {
-  const [fichasRes, avFichasRes, avLibRes] = await Promise.all([
-    sb().from("fichas_tecnicas").select("id, produto_ref"),
+  const [fichasRes, avFichasRes, avLibRes, comprasVarRes] = await Promise.all([
+    sb().from("fichas_tecnicas").select("id, produto_ref, qtd_most_var01, qtd_most_var02, qtd_most_var03, qtd_most_var04, qtd_most_var05, qtd_most_var06"),
     sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao, var01"),
     sb().from("aviamentos").select("codigo, nome, fornecedor, preco, imagem, codigo_fornecedor"),
+    sb().from("produto_variante_compras").select("produto_id, cor, qtd_compra1, qtd_compra2"),
   ]);
   if (fichasRes.error) console.error("fetchExplosaoData fichas:", fichasRes.error);
   if (avFichasRes.error) console.error("fetchExplosaoData avFichas:", avFichasRes.error);
   if (avLibRes.error) console.error("fetchExplosaoData avLib:", avLibRes.error);
+  if (comprasVarRes.error) console.error("fetchExplosaoData comprasVar:", comprasVarRes.error);
   return {
-    fichas: (fichasRes.data || []) as { id: number; produto_ref: string }[],
-    avFichas: (avFichasRes.data || []) as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string }[],
+    fichas: (fichasRes.data || []) as { id: number; produto_ref: string; qtd_most_var01: number|null; qtd_most_var02: number|null; qtd_most_var03: number|null; qtd_most_var04: number|null; qtd_most_var05: number|null; qtd_most_var06: number|null }[],
+    avFichas: (avFichasRes.data || []) as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string; var01: string }[],
     avLib: (avLibRes.data || []) as { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string; codigo_fornecedor: string }[],
+    comprasVar: (comprasVarRes.data || []) as { produto_id: number; cor: string; qtd_compra1: number|null; qtd_compra2: number|null }[],
   };
 }
 
