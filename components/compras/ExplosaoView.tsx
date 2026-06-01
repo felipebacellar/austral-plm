@@ -84,12 +84,12 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
     return m;
   }, [data]);
 
-  // produto_id:cor → { qtd_compra1, qtd_compra2 }
-  const comprasVarMap = useMemo(() => {
-    if (!data) return {} as Record<string, { qtd1: number; qtd2: number }>;
-    const m: Record<string, { qtd1: number; qtd2: number }> = {};
+  // produto_id → total qtd_compra (sum across all colors)
+  const productTotalComprasMap = useMemo(() => {
+    if (!data) return {} as Record<number, number>;
+    const m: Record<number, number> = {};
     data.comprasVar.forEach((vc: any) => {
-      m[`${vc.produto_id}:${vc.cor}`] = { qtd1: Number(vc.qtd_compra1) || 0, qtd2: Number(vc.qtd_compra2) || 0 };
+      m[vc.produto_id] = (m[vc.produto_id] || 0) + (Number(vc.qtd_compra1) || 0) + (Number(vc.qtd_compra2) || 0);
     });
     return m;
   }, [data]);
@@ -119,13 +119,13 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
       const isProd = status.includes("PRODUÇÃO") || status.includes("PRODUCAO") || status.includes("REPILOTANDO");
       let multiplier = 0;
       if (isMost) {
-        const colors = variantes[ref] || [];
-        const idx = colors.indexOf(cor);
-        if (idx >= 0) multiplier = fichaQtdMostMap[av.ficha_id]?.[idx] ?? 0;
+        // sum qtd_most across all color variants of this ficha
+        const qtdMosts = fichaQtdMostMap[av.ficha_id] || [];
+        multiplier = qtdMosts.reduce((s: number, v) => s + (Number(v) || 0), 0);
       } else if (isProd) {
+        // sum qtd_compra across all colors of this product
         const prodId = refIdMap[ref];
-        const vc = comprasVarMap[`${prodId}:${cor}`];
-        multiplier = (vc?.qtd1 || 0) + (vc?.qtd2 || 0);
+        multiplier = productTotalComprasMap[prodId] || 0;
       } else {
         // DESENVOLVIMENTO: use color variant count as before
         multiplier = Math.max(variantes[ref]?.length ?? 0, 1);
@@ -156,7 +156,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
 
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
-  }, [data, fichaRefMap, avLibMap, refFornMap, refStatusMap, refIdMap, fichaQtdMostMap, comprasVarMap, variantes, flFornAvi]);
+  }, [data, fichaRefMap, avLibMap, refFornMap, refStatusMap, refIdMap, fichaQtdMostMap, productTotalComprasMap, variantes, flFornAvi]);
 
   const sorted = useMemo(() => {
     if (!sort) return aggregated;
