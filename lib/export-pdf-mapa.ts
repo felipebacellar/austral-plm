@@ -31,6 +31,18 @@ async function loadImg(url: string): Promise<ImgResult | null> {
   });
 }
 
+/** Return RGB for a status string (mirrors the online STATUS_COLORS logic). */
+function statusRgb(status: string): [number, number, number] {
+  const s = (status || "").toUpperCase();
+  if (s.includes("CANCELADO"))              return [234, 47, 70];
+  if (s.includes("PRODUÇÃO LIBERADA") || s.includes("PRODUCAO LIBERADA")) return [45, 181, 100];
+  if (s.includes("PRODUÇÃO") || s.includes("PRODUCAO"))                   return [45, 181, 100];
+  if (s.includes("MOSTRUÁRIO LIBERADO") || s.includes("MOSTRUARIO LIBERADO")) return [237, 202, 53];
+  if (s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO"))               return [237, 202, 53];
+  if (s.includes("DESENVOLVIMENTO"))        return [68, 100, 175];
+  return [170, 170, 170];
+}
+
 /** Draw an image contained (letterboxed) inside a box without stretching. */
 function addImageContained(
   doc: jsPDF,
@@ -188,6 +200,16 @@ export async function exportMapaColecaoPDF(
       // White image area background
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(cx + 0.5, cy + 0.5, cw - 1, IMG_H - 0.5, 2, 2, "F");
+
+      // Status dot (top-right corner of image area)
+      const [sr, sg, sb2] = statusRgb(item.status);
+      const dotR = 1.8;
+      const dotX = cx + cw - dotR - 2.5;
+      const dotY = cy + dotR + 2.5;
+      doc.setFillColor(255, 255, 255);
+      doc.circle(dotX, dotY, dotR + 0.6, "F");          // white halo
+      doc.setFillColor(sr, sg, sb2);
+      doc.circle(dotX, dotY, dotR, "F");
 
       // Image — contained (no stretch)
       const imgResult = imgUrlOf(item) ? imgDataMap[item.ref] : null;
