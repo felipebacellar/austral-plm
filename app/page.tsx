@@ -112,7 +112,7 @@ export default function Home() {
         <div className="plm-sidebar-header">
           <div className="plm-logo">
             <div className="plm-logo-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <img src="/logo-austral.png" alt="Austral" style={{ width: 22, height: 22, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
             </div>
             {!sidebarCollapsed && <div><span className="plm-logo-text">Austral</span><span className="plm-logo-sub">PLM</span></div>}
           </div>
