@@ -25,6 +25,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const [exporting, setExporting]   = useState(false);
   const [filterColecao, setFilterColecao]       = useState("");
   const [filterFornecedor, setFilterFornecedor] = useState("");
+  const [filterGrupo, setFilterGrupo]           = useState("");
   const [imageMode, setImageMode]   = useState<"desenho" | "foto">("desenho");
   const [zoom, setZoom]             = useState<any | null>(null); // item being zoomed
 
@@ -41,12 +42,14 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
   const colecoes    = useMemo(() => Array.from(new Set(items.map(i => i.colecao).filter(Boolean))).sort() as string[], [items]);
   const fornecedores = useMemo(() => Array.from(new Set(items.map(i => i.fornecedor).filter(Boolean))).sort() as string[], [items]);
+  const grupos      = useMemo(() => Array.from(new Set(items.map(i => i.grupo).filter(Boolean))).sort() as string[], [items]);
 
   const filtered = useMemo(() => items.filter(i => {
-    if (filterColecao   && i.colecao    !== filterColecao)   return false;
+    if (filterColecao    && i.colecao    !== filterColecao)    return false;
     if (filterFornecedor && i.fornecedor !== filterFornecedor) return false;
+    if (filterGrupo      && (i.grupo || "SEM GRUPO") !== filterGrupo) return false;
     return true;
-  }), [items, filterColecao, filterFornecedor]);
+  }), [items, filterColecao, filterFornecedor, filterGrupo]);
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -59,7 +62,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const handleExport = async () => {
     setExporting(true);
     try {
-      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor }, imageMode, "mapa-colecao");
+      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor, grupo: filterGrupo }, imageMode, "mapa-colecao");
     } finally { setExporting(false); }
   };
 
@@ -151,8 +154,13 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
           {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
 
-        {(filterColecao || filterFornecedor) && (
-          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); }} style={{ fontSize: 12, padding: "5px 12px" }}>
+        <select className="apple-select" value={filterGrupo} onChange={e => setFilterGrupo(e.target.value)} style={{ minWidth: 160 }}>
+          <option value="">Todos os grupos</option>
+          {grupos.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
+
+        {(filterColecao || filterFornecedor || filterGrupo) && (
+          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); setFilterGrupo(""); }} style={{ fontSize: 12, padding: "5px 12px" }}>
             Limpar
           </button>
         )}
