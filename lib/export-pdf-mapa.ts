@@ -29,7 +29,7 @@ async function loadImg(url: string): Promise<string | null> {
 
 export async function exportMapaColecaoPDF(
   items: any[],
-  filters: { colecao: string; fornecedor: string; grupo?: string },
+  filters: { colecao: string; fornecedor: string; grupo?: string; status?: string },
   imageMode: "desenho" | "foto",
   filename: string
 ): Promise<void> {
@@ -96,6 +96,7 @@ export async function exportMapaColecaoPDF(
     if (filters.colecao) chips.push(`Coleção: ${filters.colecao}`);
     if (filters.fornecedor) chips.push(`Fornecedor: ${filters.fornecedor}`);
     if (filters.grupo) chips.push(`Grupo: ${filters.grupo}`);
+    if (filters.status) chips.push(`Status: ${filters.status}`);
     if (chips.length > 0) {
       doc.setFontSize(7.5);
       doc.setTextColor(37, 99, 235);
