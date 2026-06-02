@@ -14,8 +14,10 @@ async function loadImg(url: string): Promise<string | null> {
         canvas.height = img.naturalHeight || 400;
         const ctx = canvas.getContext("2d");
         if (!ctx) { resolve(null); return; }
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/jpeg", 0.88));
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
       } catch {
         resolve(null);
       }
