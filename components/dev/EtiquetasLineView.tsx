@@ -129,7 +129,7 @@ function Etiqueta({ item, cores }: { item: any; cores: string[] }) {
       {/* ══ HEADER ══ */}
       <div className="etq-header">
         <div className="etq-header-left">
-          <span className="etq-brand">AUSTRAL</span>
+          <img src="/logo-austral.png" alt="Austral" className="etq-logo" />
           <span className="etq-line-div" />
           <span className="etq-colecao">{item.colecao || ""}</span>
         </div>
@@ -241,6 +241,7 @@ const STYLES = `
     flex-shrink: 0;
   }
   .etq-header-left { display: flex; align-items: center; gap: 7px; }
+  .etq-logo { height: 18px; width: auto; filter: brightness(0) invert(1); object-fit: contain; }
   .etq-brand { color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; }
   .etq-line-div { width: 1px; height: 11px; background: rgba(255,255,255,0.25); }
   .etq-colecao { color: rgba(255,255,255,0.55); font-size: 9px; font-weight: 500; letter-spacing: 0.05em; }
@@ -318,6 +319,7 @@ const STYLES = `
     flex-shrink: 0;
   }
   .etq-header-left { display: flex; align-items: center; gap: 2mm; }
+  .etq-logo { height: 5.5mm; width: auto; filter: brightness(0) invert(1); object-fit: contain; }
   .etq-brand { color: #fff; font-size: 7pt; font-weight: 800; letter-spacing: 0.2em; }
   .etq-line-div { width: 0.3pt; height: 3mm; background: rgba(255,255,255,0.3); }
   .etq-colecao { color: rgba(255,255,255,0.5); font-size: 5pt; font-weight: 500; letter-spacing: 0.05em; }
