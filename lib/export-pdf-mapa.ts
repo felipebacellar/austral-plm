@@ -30,6 +30,7 @@ async function loadImg(url: string): Promise<string | null> {
 export async function exportMapaColecaoPDF(
   items: any[],
   filters: { colecao: string; fornecedor: string },
+  imageMode: "desenho" | "foto",
   filename: string
 ): Promise<void> {
   const doc = new jsPDF({ orientation: "landscape", format: "a4", unit: "mm" });
@@ -44,9 +45,12 @@ export async function exportMapaColecaoPDF(
 
   // Pre-load all images in parallel
   const imgDataMap: Record<string, string | null> = {};
+  const imgUrlOf = (it: any) =>
+    imageMode === "foto" ? (it.imagem_modelo || it.imagem_url) : it.imagem_url;
+
   await Promise.all(
-    items.filter(it => it.imagem_url).map(async (it) => {
-      imgDataMap[it.ref] = await loadImg(it.imagem_url);
+    items.filter(it => imgUrlOf(it)).map(async (it) => {
+      imgDataMap[it.ref] = await loadImg(imgUrlOf(it));
     })
   );
 
@@ -157,7 +161,7 @@ export async function exportMapaColecaoPDF(
       doc.roundedRect(cx, cy, cw, CARD_H, 2, 2, "FD");
 
       // Image area
-      const imgData = item.imagem_url ? imgDataMap[item.ref] : null;
+      const imgData = imgUrlOf(item) ? imgDataMap[item.ref] : null;
       if (imgData) {
         const fmt = imgData.startsWith("data:image/png") ? "PNG" : "JPEG";
         doc.addImage(imgData, fmt, cx + 1, cy + 1, cw - 2, IMG_H - 1);

@@ -345,14 +345,18 @@ export async function upsertControleFluxo(produto_ref: string, field: string, va
 export async function fetchMapaColecao() {
   const [prodsRes, fichasRes, fichasIdRes, tecidosRes] = await Promise.all([
     sb().from("produtos").select("id, ref, descricao, tecido, forn_tecido, fornecedor, colecao, grupo, subgrupo, status").order("grupo").order("ref"),
-    sb().from("fichas_tecnicas").select("produto_ref, imagem_url"),
+    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo"),
     sb().from("fichas_tecnicas").select("id, produto_ref"),
     sb().from("ficha_tecidos").select("ficha_id, composicao").order("id"),
   ]);
   if (prodsRes.error) console.error("fetchMapaColecao:", prodsRes.error);
 
   const imgMap: Record<string, string> = {};
-  (fichasRes.data || []).forEach((f: any) => { if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url; });
+  const fotoMap: Record<string, string> = {};
+  (fichasRes.data || []).forEach((f: any) => {
+    if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
+    if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
+  });
 
   const fichaIdMap: Record<number, string> = {};
   (fichasIdRes.data || []).forEach((f: any) => { fichaIdMap[f.id] = f.produto_ref; });
@@ -370,5 +374,6 @@ export async function fetchMapaColecao() {
     fornecedor: p.fornecedor || "", colecao: p.colecao || "",
     grupo: p.grupo || "", subgrupo: p.subgrupo || "", status: p.status || "",
     imagem_url: imgMap[p.ref] || "",
+    imagem_modelo: fotoMap[p.ref] || "",
   }));
 }
