@@ -146,13 +146,17 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
       if (forn) byKey[key].fornsProd.add(forn);
     });
 
-    let rows = Object.values(byKey).map(r => ({
-      ...r,
-      fornecedor: r.fornAvi,
-      fornProd:   Array.from(r.fornsProd).sort().join(", "),
-      refs:       Array.from(r.refs).sort().join(", "),
-      valorTotal: r.qtd * r.valorUnit,
-    }));
+    let rows = Object.values(byKey).map(r => {
+      const qtdComMargem = Math.ceil(r.qtd * 1.1);
+      return {
+        ...r,
+        qtd: qtdComMargem,
+        fornecedor: r.fornAvi,
+        fornProd:   Array.from(r.fornsProd).sort().join(", "),
+        refs:       Array.from(r.refs).sort().join(", "),
+        valorTotal: qtdComMargem * r.valorUnit,
+      };
+    });
 
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
@@ -204,7 +208,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
     { key: "codForn",   label: "Cód. Forn.",      w: 120 },
     { key: "fornecedor",label: "Forn. Aviamento", w: 160 },
     { key: "fornProd",  label: "Fornecedor",      w: 150 },
-    { key: "qtd",       label: "Qtd Total",       w: 100, num: true },
+    { key: "qtd",       label: "Qtd Total +10%",  w: 120, num: true },
     { key: "valorUnit", label: "Vlr. Unit",       w: 110, num: true, fmt: fmtBRL },
     { key: "valorTotal",label: "Vlr. Total",      w: 120, num: true, fmt: fmtBRL },
     { key: "refs",      label: "Referências",     w: 280 },
