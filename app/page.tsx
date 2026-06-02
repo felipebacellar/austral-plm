@@ -112,7 +112,7 @@ export default function Home() {
         <div className="plm-sidebar-header">
           <div className="plm-logo">
             <div className="plm-logo-icon">
-              <img src="/logo-austral.png" alt="Austral" style={{ width: 22, height: 22, objectFit: "contain", filter: "invert(1)" }} />
+              <img src="/logo-austral.png" alt="Austral" style={{ width: 22, height: 22, objectFit: "contain", filter: "invert(1)", mixBlendMode: "screen" }} />
             </div>
             {!sidebarCollapsed && <div><span className="plm-logo-text">Austral</span><span className="plm-logo-sub">PLM</span></div>}
           </div>
