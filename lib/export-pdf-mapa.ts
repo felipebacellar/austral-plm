@@ -201,16 +201,6 @@ export async function exportMapaColecaoPDF(
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(cx + 0.5, cy + 0.5, cw - 1, IMG_H - 0.5, 2, 2, "F");
 
-      // Status dot (top-right corner of image area)
-      const [sr, sg, sb2] = statusRgb(item.status);
-      const dotR = 1.8;
-      const dotX = cx + cw - dotR - 2.5;
-      const dotY = cy + dotR + 2.5;
-      doc.setFillColor(255, 255, 255);
-      doc.circle(dotX, dotY, dotR + 0.6, "F");          // white halo
-      doc.setFillColor(sr, sg, sb2);
-      doc.circle(dotX, dotY, dotR, "F");
-
       // Image — contained (no stretch)
       const imgResult = imgUrlOf(item) ? imgDataMap[item.ref] : null;
       if (imgResult) {
@@ -225,6 +215,16 @@ export async function exportMapaColecaoPDF(
         doc.setTextColor(170, 174, 188);
         doc.text(item.ref, cx + cw / 2, cy + IMG_H / 2 + 1.5, { align: "center" });
       }
+
+      // Status dot — drawn AFTER image so it's always on top
+      const [sr, sg, sb2] = statusRgb(item.status);
+      const dotR = 1.8;
+      const dotX = cx + cw - dotR - 2.5;
+      const dotY = cy + dotR + 2.5;
+      doc.setFillColor(255, 255, 255);
+      doc.circle(dotX, dotY, dotR + 0.7, "F");   // white halo
+      doc.setFillColor(sr, sg, sb2);
+      doc.circle(dotX, dotY, dotR, "F");
 
       // Divider
       doc.setDrawColor(215, 217, 226);
