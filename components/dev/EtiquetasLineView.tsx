@@ -10,9 +10,25 @@ const isMostOrProd = (s: string) => {
          u.includes("PRODUÇÃO")   || u.includes("PRODUCAO")   || u.includes("REPILOTANDO");
 };
 const fmtBrl = (v: number | null | undefined) =>
-  v != null && v > 0 ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "";
+  v != null && v > 0
+    ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+    : "—";
 const fmtMkp = (v: number | null | undefined) =>
-  v != null && v > 0 ? v.toFixed(2) : "";
+  v != null && v > 0 ? `${v.toFixed(2)}x` : "—";
+
+function getPrices(item: any) {
+  const final = isMostOrProd(item.status);
+  const custo  = final ? item.custo_final   : item.custo_inicial;
+  const varejo = final ? item.varejo_final  : item.preco_target;
+  const mkp    = final
+    ? (item.varejo_final && item.custo_final > 0 ? item.varejo_final / item.custo_final : null)
+    : (item.markup_inicial || null);
+  const statusLabel = final
+    ? (item.status?.toUpperCase().includes("MOSTRUÁRIO") || item.status?.toUpperCase().includes("MOSTRUARIO")
+        ? "MOSTRUÁRIO" : "PRODUÇÃO")
+    : "DESENVOLVIMENTO";
+  return { custo, varejo, mkp, statusLabel, final };
+}
 
 /* ── Filter fields ── */
 const FILTER_FIELDS = [
@@ -98,133 +114,263 @@ function MultiSelect({ label, options, selected, onChange }: {
   );
 }
 
-/* ── Label component ── */
+/* ── Label ── */
 function Etiqueta({ item, cores }: { item: any; cores: string[] }) {
-  const useFinal = isMostOrProd(item.status);
-  const custo   = useFinal ? item.custo_final  : item.custo_inicial;
-  const varejo  = useFinal ? item.varejo_final : item.preco_target;
-  const mkpVal  = useFinal
-    ? (item.varejo_final && item.custo_final && item.custo_final > 0 ? item.varejo_final / item.custo_final : null)
-    : (item.markup_inicial || null);
-  const precoMkp = custo && mkpVal ? custo * mkpVal : null;
-  const coresStr = cores.length > 0 ? cores.join(" · ") : "—";
+  const { custo, varejo, mkp, statusLabel } = getPrices(item);
+
+  const statusColor =
+    statusLabel === "DESENVOLVIMENTO" ? { bg: "#EEF3FF", text: "#3B5FC0", dot: "#4464AF" } :
+    statusLabel === "MOSTRUÁRIO"      ? { bg: "#FFFBEA", text: "#8A6800", dot: "#D4A800" } :
+                                        { bg: "#EDFAF3", text: "#1A6E3C", dot: "#2DB564" };
 
   return (
     <div className="etq">
-      {/* ── Row 1: REF / FORN / COL ── */}
-      <div className="etq-row etq-row-header">
-        <div className="etq-cell etq-cell-wide">
-          <span className="etq-lbl">REF.:</span>
-          <span className="etq-val etq-val-bold etq-accent">{item.ref}</span>
+
+      {/* ══ HEADER ══ */}
+      <div className="etq-header">
+        <div className="etq-header-left">
+          <span className="etq-brand">AUSTRAL</span>
+          <span className="etq-line-div" />
+          <span className="etq-colecao">{item.colecao || ""}</span>
         </div>
-        <div className="etq-cell etq-cell-wide">
-          <span className="etq-lbl">FORN.:</span>
-          <span className="etq-val etq-accent">{item.fornecedor || "—"}</span>
+        <span className="etq-status-pill" style={{ background: statusColor.bg, color: statusColor.text }}>
+          <span className="etq-status-dot" style={{ background: statusColor.dot }} />
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* ══ PRODUCT INFO ══ */}
+      <div className="etq-section">
+        <div className="etq-ref-row">
+          <span className="etq-ref">{item.ref}</span>
+          {item.fornecedor && <span className="etq-forn">{item.fornecedor}</span>}
         </div>
-        <div className="etq-cell">
-          <span className="etq-lbl">COL.:</span>
-          <span className="etq-val etq-accent">{item.colecao || "—"}</span>
+        <div className="etq-desc">{item.desc}</div>
+
+        <div className="etq-meta-row">
+          {item.tecido && (
+            <div className="etq-meta-item">
+              <span className="etq-meta-lbl">Tecido</span>
+              <span className="etq-meta-val">{item.tecido}</span>
+            </div>
+          )}
+          {item.composicao && (
+            <div className="etq-meta-item">
+              <span className="etq-meta-lbl">Comp.</span>
+              <span className="etq-meta-val">{item.composicao}</span>
+            </div>
+          )}
+          {item.forn_tecido && (
+            <div className="etq-meta-item">
+              <span className="etq-meta-lbl">Forn. Tecido</span>
+              <span className="etq-meta-val">{item.forn_tecido}</span>
+            </div>
+          )}
+        </div>
+
+        {cores.length > 0 && (
+          <div className="etq-cores">
+            {cores.map(c => <span key={c} className="etq-cor-chip">{c}</span>)}
+          </div>
+        )}
+      </div>
+
+      {/* ══ PRICE STRIP ══ */}
+      <div className="etq-prices">
+        <div className="etq-price-col">
+          <span className="etq-price-lbl">Custo</span>
+          <span className="etq-price-val">{fmtBrl(custo)}</span>
+        </div>
+        <div className="etq-price-sep" />
+        <div className="etq-price-col">
+          <span className="etq-price-lbl">Markup</span>
+          <span className="etq-price-val">{fmtMkp(mkp)}</span>
+        </div>
+        <div className="etq-price-sep" />
+        <div className="etq-price-col etq-price-col-main">
+          <span className="etq-price-lbl">{isMostOrProd(item.status) ? "Preço Final" : "Preço Alvo"}</span>
+          <span className="etq-price-val etq-price-main-val">{fmtBrl(varejo)}</span>
         </div>
       </div>
 
-      {/* ── Row 2: DESC ── */}
-      <div className="etq-row">
-        <div className="etq-cell etq-cell-full">
-          <span className="etq-lbl">DESC.:</span>
-          <span className="etq-val etq-val-bold">{item.desc}</span>
-        </div>
-      </div>
-
-      {/* ── Row 3: TECIDO ── */}
-      <div className="etq-row">
-        <div className="etq-cell etq-cell-half">
-          <span className="etq-lbl">TECIDO:</span>
-          <span className="etq-val">{item.tecido || "—"}</span>
-        </div>
-        <div className="etq-cell etq-cell-half">
-          <span className="etq-lbl">FORN. TECIDO:</span>
-          <span className="etq-val">{item.forn_tecido || "—"}</span>
-        </div>
-      </div>
-
-      {/* ── Row 4: COMP ── */}
-      <div className="etq-row">
-        <div className="etq-cell etq-cell-full">
-          <span className="etq-lbl">COMP.:</span>
-          <span className="etq-val">{item.composicao || "—"}</span>
-        </div>
-      </div>
-
-      {/* ── Row 5: $ FORN / AVIOS / $ TOTAL ── */}
-      <div className="etq-row">
-        <div className="etq-cell">
-          <span className="etq-lbl">$ FORN:</span>
-          <span className="etq-val">{fmtBrl(custo) || "—"}</span>
-        </div>
-        <div className="etq-sep">-</div>
-        <div className="etq-cell">
-          <span className="etq-lbl">AVIOS:</span>
-          <span className="etq-val">R$</span>
-        </div>
-        <div className="etq-cell etq-ml-auto">
-          <span className="etq-lbl">$ TOTAL:</span>
-          <span className="etq-val etq-val-bold">{fmtBrl(custo) || "—"}</span>
-        </div>
-      </div>
-
-      {/* ── Row 6: $ MKP / PREÇO FINAL ── */}
-      <div className="etq-row">
-        <div className="etq-cell">
-          <span className="etq-lbl">$ MKP {mkpVal ? fmtMkp(mkpVal) : ""}:</span>
-          <span className="etq-val">{fmtBrl(precoMkp) || "R$"}</span>
-        </div>
-        <div className="etq-cell etq-ml-auto">
-          <span className="etq-lbl etq-accent">PREÇO FINAL</span>
-          <span className="etq-val etq-val-bold etq-val-lg etq-accent">{fmtBrl(varejo) || "R$"}</span>
-        </div>
-      </div>
-
-      {/* ── Row 7: COR / MKP FINAL ── */}
-      <div className="etq-row">
-        <div className="etq-cell etq-cell-half">
-          <span className="etq-lbl">COR:</span>
-          <span className="etq-val etq-cor">{coresStr}</span>
-        </div>
-        <div className="etq-cell etq-ml-auto">
-          <span className="etq-lbl etq-accent">MKP FINAL</span>
-          <span className="etq-val etq-accent">{mkpVal ? `${fmtMkp(mkpVal)}x` : ""}</span>
-        </div>
-      </div>
-
-      {/* ── OBS box ── */}
-      <div className="etq-obs">
-        <span className="etq-lbl">OBS.:</span>
-        <div className="etq-obs-area" />
-      </div>
-
-      {/* ── Footer checkboxes ── */}
-      <div className="etq-footer">
-        <div className="etq-check-block">
+      {/* ══ FOOTER CHECKBOXES ══ */}
+      <div className="etq-checks">
+        <div className="etq-check">
           <div className="etq-check-box" />
-          <span className="etq-check-lbl etq-lbl-green">APROVADO</span>
+          <span className="etq-check-lbl etq-check-green">APROVADO</span>
         </div>
-        <div className="etq-check-block">
+        <div className="etq-check-div" />
+        <div className="etq-check">
           <div className="etq-check-box" />
-          <span className="etq-check-lbl etq-lbl-red">COR<br/>CANCELADA</span>
+          <span className="etq-check-lbl etq-check-red">COR<br/>CANCELADA</span>
         </div>
-        <div className="etq-check-block">
+        <div className="etq-check-div" />
+        <div className="etq-check">
           <div className="etq-check-box" />
-          <span className="etq-check-lbl etq-lbl-red">REF.<br/>CANCELADA</span>
+          <span className="etq-check-lbl etq-check-red">REF.<br/>CANCELADA</span>
         </div>
       </div>
     </div>
   );
 }
 
+/* ── Styles ── */
+const STYLES = `
+/* ════ SHARED ════ */
+.etq {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* ════ SCREEN ════ */
+@media screen {
+  .etq {
+    width: 340px;
+    border: 1px solid #e0e0e8;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+  .etq-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 11px 6px;
+    background: #13131f;
+    border-radius: 7px 7px 0 0;
+    flex-shrink: 0;
+  }
+  .etq-header-left { display: flex; align-items: center; gap: 7px; }
+  .etq-brand { color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; }
+  .etq-line-div { width: 1px; height: 11px; background: rgba(255,255,255,0.25); }
+  .etq-colecao { color: rgba(255,255,255,0.55); font-size: 9px; font-weight: 500; letter-spacing: 0.05em; }
+  .etq-status-pill {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 8px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .etq-status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+  .etq-section { padding: 7px 11px 5px; flex: 1; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .etq-ref-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+  .etq-ref { font-size: 13px; font-weight: 800; color: #111; letter-spacing: 0.02em; }
+  .etq-forn { font-size: 9px; color: #888; font-weight: 500; white-space: nowrap; }
+  .etq-desc { font-size: 10px; font-weight: 500; color: #333; line-height: 1.3;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .etq-meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1px; }
+  .etq-meta-item { display: flex; flex-direction: column; }
+  .etq-meta-lbl { font-size: 7px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; }
+  .etq-meta-val { font-size: 8px; color: #555; font-weight: 500; }
+  .etq-cores { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+  .etq-cor-chip { font-size: 8px; padding: 1px 6px; border: 1px solid #e0e0e0;
+    border-radius: 3px; color: #555; background: #f7f7f9; white-space: nowrap; font-weight: 500; }
+
+  .etq-prices {
+    display: flex; align-items: stretch;
+    background: #f7f8fc;
+    border-top: 1px solid #eaebf0;
+    flex-shrink: 0;
+  }
+  .etq-price-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 4px; }
+  .etq-price-col-main { flex: 1.5; background: #13131f08; }
+  .etq-price-lbl { font-size: 7.5px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1px; }
+  .etq-price-val { font-size: 10px; font-weight: 700; color: #222; }
+  .etq-price-main-val { font-size: 13px; color: #13131f; }
+  .etq-price-sep { width: 1px; background: #eaebf0; margin: 5px 0; }
+
+  .etq-checks {
+    display: flex; align-items: center;
+    background: #fafafa; border-top: 1px solid #eaebf0;
+    flex-shrink: 0;
+  }
+  .etq-check { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 2px; }
+  .etq-check-div { width: 1px; height: 28px; background: #eaebf0; }
+  .etq-check-box { width: 13px; height: 13px; border: 1.5px solid #ccc; border-radius: 2px; flex-shrink: 0; background: white; }
+  .etq-check-lbl { font-size: 7.5px; font-weight: 700; text-align: center; line-height: 1.25; }
+  .etq-check-green { color: #1a7a1a; }
+  .etq-check-red { color: #cc0000; }
+}
+
+/* ════ PRINT — Pimaco 6183 (99.1 × 57 mm, 2 col × 5 row = 10/A4) ════ */
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  body > * { display: none !important; }
+  #etq-print { display: block !important; position: fixed; inset: 0; background: white; }
+  .etq-sheet {
+    padding-top: 15.1mm;
+    padding-left: 4.7mm;
+    display: grid;
+    grid-template-columns: 99.1mm 99.1mm;
+    column-gap: 2.5mm;
+    row-gap: 0mm;
+    page-break-after: always;
+  }
+  .etq {
+    width: 99.1mm; height: 57mm;
+    box-sizing: border-box;
+    border: 0.3pt solid #d0d0d8;
+    page-break-inside: avoid;
+  }
+  .etq-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2mm 3mm 1.8mm;
+    background: #13131f;
+    flex-shrink: 0;
+  }
+  .etq-header-left { display: flex; align-items: center; gap: 2mm; }
+  .etq-brand { color: #fff; font-size: 7pt; font-weight: 800; letter-spacing: 0.2em; }
+  .etq-line-div { width: 0.3pt; height: 3mm; background: rgba(255,255,255,0.3); }
+  .etq-colecao { color: rgba(255,255,255,0.5); font-size: 5pt; font-weight: 500; letter-spacing: 0.05em; }
+  .etq-status-pill {
+    display: flex; align-items: center; gap: 1mm;
+    font-size: 4.5pt; font-weight: 700; letter-spacing: 0.04em;
+    padding: 0.5mm 2mm; border-radius: 3mm;
+  }
+  .etq-status-dot { width: 1.5mm; height: 1.5mm; border-radius: 50%; flex-shrink: 0; }
+
+  .etq-section { padding: 1.5mm 3mm 1mm; flex: 1; display: flex; flex-direction: column; gap: 0.6mm; overflow: hidden; }
+  .etq-ref-row { display: flex; align-items: baseline; justify-content: space-between; gap: 2mm; }
+  .etq-ref { font-size: 9pt; font-weight: 800; color: #111; }
+  .etq-forn { font-size: 5pt; color: #888; }
+  .etq-desc { font-size: 6.5pt; font-weight: 500; color: #333; line-height: 1.2; max-height: 3em; overflow: hidden; }
+  .etq-meta-row { display: flex; gap: 3mm; flex-wrap: wrap; }
+  .etq-meta-item { display: flex; flex-direction: column; }
+  .etq-meta-lbl { font-size: 4pt; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; }
+  .etq-meta-val { font-size: 5.5pt; color: #555; }
+  .etq-cores { display: flex; flex-wrap: wrap; gap: 0.8mm; margin-top: 0.5mm; }
+  .etq-cor-chip { font-size: 4.5pt; padding: 0.2mm 1.5mm; border: 0.3pt solid #ddd;
+    border-radius: 1mm; color: #555; background: #f5f5f7; white-space: nowrap; }
+
+  .etq-prices {
+    display: flex; align-items: stretch;
+    background: #f7f8fc; border-top: 0.3pt solid #e0e0e8;
+    flex-shrink: 0;
+  }
+  .etq-price-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5mm 1mm; }
+  .etq-price-col-main { flex: 1.5; background: rgba(19,19,31,0.04); }
+  .etq-price-lbl { font-size: 4pt; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.07em; }
+  .etq-price-val { font-size: 6pt; font-weight: 700; color: #222; }
+  .etq-price-main-val { font-size: 8pt; color: #13131f; }
+  .etq-price-sep { width: 0.3pt; background: #e0e0e8; margin: 1.5mm 0; }
+
+  .etq-checks {
+    display: flex; align-items: center;
+    background: #fafafa; border-top: 0.3pt solid #e0e0e8;
+    flex-shrink: 0;
+  }
+  .etq-check { flex: 1; display: flex; align-items: center; justify-content: center; gap: 1.5mm; padding: 1.5mm 1mm; }
+  .etq-check-div { width: 0.3pt; height: 7mm; background: #e0e0e8; }
+  .etq-check-box { width: 4mm; height: 4mm; border: 0.4pt solid #bbb; flex-shrink: 0; background: white; }
+  .etq-check-lbl { font-size: 4.5pt; font-weight: 700; text-align: center; line-height: 1.25; }
+  .etq-check-green { color: #1a7a1a; }
+  .etq-check-red { color: #cc0000; }
+}
+`;
+
 /* ── Main view ── */
 export default function EtiquetasLineView({ rows, variantes }: Props) {
-  const [filters, setFilters]       = useState<Record<string, string[]>>({});
-  const [selected, setSelected]     = useState<Set<string>>(new Set());
+  const [filters, setFilters]         = useState<Record<string, string[]>>({});
+  const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const setFilter = (key: string, vals: string[]) =>
@@ -246,7 +392,6 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
   }), [rows, filters]);
 
   const activeCount = Object.values(filters).filter(v => v.length > 0).length;
-
   useEffect(() => { setSelected(new Set(filtered.map(r => r.ref))); }, [filtered]);
 
   const toggleRef  = (ref: string) => setSelected(prev => { const n = new Set(prev); n.has(ref) ? n.delete(ref) : n.add(ref); return n; });
@@ -255,123 +400,14 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
 
   return (
     <>
-      <style>{`
-        /* ════════════ SCREEN ════════════ */
-        @media screen {
-          .etq {
-            width: 340px;
-            border: 1.5px solid #c8a800;
-            background: #fff;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 10px;
-          }
-          .etq-row {
-            display: flex; align-items: center;
-            border-bottom: 1px solid #e8d080;
-            padding: 2px 5px; min-height: 17px; gap: 6px;
-          }
-          .etq-row-header { background: #fdf3b0; }
-          .etq-cell { display: flex; align-items: baseline; gap: 3px; flex-shrink: 0; }
-          .etq-cell-full { flex: 1; }
-          .etq-cell-wide { flex: 1; }
-          .etq-cell-half { flex: 1; min-width: 0; overflow: hidden; }
-          .etq-lbl { color: #8a7000; font-weight: 700; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
-          .etq-val { color: #00008b; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .etq-val-bold { font-weight: 700; }
-          .etq-val-lg { font-size: 11px; }
-          .etq-accent { color: #0033cc; }
-          .etq-cor { font-size: 8px; overflow: hidden; text-overflow: ellipsis; }
-          .etq-sep { color: #999; font-size: 9px; }
-          .etq-ml-auto { margin-left: auto; }
-          .etq-obs { border-bottom: 1px solid #e8d080; padding: 2px 5px; }
-          .etq-obs-area { height: 22px; border: 1px solid #ddd; margin-top: 2px; background: #fafafa; }
-          .etq-footer {
-            display: flex; border-top: 1.5px solid #c8a800;
-            background: #fdf3b0;
-          }
-          .etq-check-block {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            gap: 4px; padding: 4px 2px; border-right: 1px solid #e8d080;
-          }
-          .etq-check-block:last-child { border-right: none; }
-          .etq-check-box {
-            width: 12px; height: 12px; border: 1.5px solid #888;
-            flex-shrink: 0; background: white;
-          }
-          .etq-check-lbl { font-size: 7.5px; font-weight: 700; text-align: center; line-height: 1.2; }
-          .etq-lbl-green { color: #1a7a1a; }
-          .etq-lbl-red { color: #cc0000; }
-        }
-
-        /* ════════════ PRINT — Pimaco 6183 (99.1×57mm, 2×5=10/A4) ════════════ */
-        @media print {
-          @page { size: A4 portrait; margin: 0; }
-          body > * { display: none !important; }
-          #etq-print { display: block !important; position: fixed; inset: 0; background: white; }
-
-          .etq-sheet {
-            padding-top: 15.1mm;
-            padding-left: 4.7mm;
-            display: grid;
-            grid-template-columns: 99.1mm 99.1mm;
-            column-gap: 2.5mm;
-            row-gap: 0mm;
-            page-break-after: always;
-          }
-          .etq {
-            width: 99.1mm;
-            height: 57mm;
-            box-sizing: border-box;
-            border: 0.4pt solid #c8a800;
-            background: white;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 6.5pt;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            page-break-inside: avoid;
-          }
-          .etq-row {
-            display: flex; align-items: center;
-            border-bottom: 0.3pt solid #e8d080;
-            padding: 1pt 3pt; min-height: 0; gap: 4pt; flex-shrink: 0;
-          }
-          .etq-row-header { background: #fdf3b0; }
-          .etq-cell { display: flex; align-items: baseline; gap: 2pt; flex-shrink: 0; }
-          .etq-cell-full { flex: 1; min-width: 0; }
-          .etq-cell-wide { flex: 1; min-width: 0; }
-          .etq-cell-half { flex: 1; min-width: 0; overflow: hidden; }
-          .etq-lbl { color: #8a7000; font-weight: 700; font-size: 5pt; text-transform: uppercase; white-space: nowrap; }
-          .etq-val { color: #00008b; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .etq-val-bold { font-weight: 700; }
-          .etq-val-lg { font-size: 7.5pt; }
-          .etq-accent { color: #0033cc; }
-          .etq-cor { font-size: 5pt; max-width: 40mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .etq-sep { color: #999; font-size: 6pt; }
-          .etq-ml-auto { margin-left: auto; }
-          .etq-obs { border-bottom: 0.3pt solid #e8d080; padding: 1pt 3pt; flex-shrink: 0; }
-          .etq-obs-area { height: 5mm; border: 0.3pt solid #ccc; margin-top: 1pt; background: white; }
-          .etq-footer {
-            display: flex; border-top: 0.4pt solid #c8a800;
-            background: #fdf3b0; margin-top: auto;
-          }
-          .etq-check-block {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            gap: 2pt; padding: 2pt; border-right: 0.3pt solid #e8d080;
-          }
-          .etq-check-block:last-child { border-right: none; }
-          .etq-check-box { width: 4mm; height: 4mm; border: 0.5pt solid #888; flex-shrink: 0; background: white; }
-          .etq-check-lbl { font-size: 5pt; font-weight: 700; text-align: center; line-height: 1.2; }
-          .etq-lbl-green { color: #1a7a1a; }
-          .etq-lbl-red { color: #cc0000; }
-        }
-      `}</style>
+      <style>{STYLES}</style>
 
       <div style={{ padding: "0 0 40px" }}>
 
         {/* ── Toolbar ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-          padding: "12px 0", borderBottom: filtersOpen ? "none" : "1px solid var(--separator)", marginBottom: filtersOpen ? 0 : 16 }}>
+          padding: "12px 0", marginBottom: filtersOpen ? 0 : 16,
+          borderBottom: filtersOpen ? "none" : "1px solid var(--separator)" }}>
 
           <button onClick={() => setFiltersOpen(o => !o)} style={{
             display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
@@ -411,7 +447,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
               style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, padding: "7px 16px" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2v5a2 2 0 01-2 2h16a2 2 0 002-2v-5a2 2 0 00-2-2h0"/>
                 <rect x="6" y="14" width="12" height="8"/>
               </svg>
               Imprimir ({toGenerate.length})
@@ -436,19 +472,17 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: 60, color: "var(--label-tertiary)", fontSize: 14 }}>Nenhum produto encontrado.</div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
             {filtered.map(item => {
               const sel = selected.has(item.ref);
-              const cores = variantes[item.ref] || [];
               return (
                 <div key={item.ref} onClick={() => toggleRef(item.ref)} style={{
                   position: "relative", cursor: "pointer",
                   outline: sel ? "2.5px solid var(--system-blue)" : "2.5px solid transparent",
-                  outlineOffset: 3, borderRadius: 4,
-                  opacity: sel ? 1 : 0.45,
+                  outlineOffset: 3, borderRadius: 10,
+                  opacity: sel ? 1 : 0.4,
                   transition: "opacity .15s, outline .1s",
                 }}>
-                  {/* Checkmark badge */}
                   <div style={{
                     position: "absolute", top: -7, right: -7, zIndex: 3,
                     width: 20, height: 20, borderRadius: "50%",
@@ -459,7 +493,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                   }}>
                     {sel && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
-                  <Etiqueta item={item} cores={cores} />
+                  <Etiqueta item={item} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
