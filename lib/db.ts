@@ -340,3 +340,35 @@ export async function upsertControleFluxo(produto_ref: string, field: string, va
     .upsert({ produto_ref, [field]: value || null, updated_at: new Date().toISOString() }, { onConflict: "produto_ref" });
   if (error) console.error("upsertControleFluxo:", error);
 }
+
+// ══ MAPA DE COLEÇÃO ══
+export async function fetchMapaColecao() {
+  const [prodsRes, fichasRes, fichasIdRes, tecidosRes] = await Promise.all([
+    sb().from("produtos").select("id, ref, descricao, tecido, forn_tecido, fornecedor, colecao, grupo, subgrupo, status").order("grupo").order("ref"),
+    sb().from("fichas_tecnicas").select("produto_ref, imagem_url"),
+    sb().from("fichas_tecnicas").select("id, produto_ref"),
+    sb().from("ficha_tecidos").select("ficha_id, composicao").order("id"),
+  ]);
+  if (prodsRes.error) console.error("fetchMapaColecao:", prodsRes.error);
+
+  const imgMap: Record<string, string> = {};
+  (fichasRes.data || []).forEach((f: any) => { if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url; });
+
+  const fichaIdMap: Record<number, string> = {};
+  (fichasIdRes.data || []).forEach((f: any) => { fichaIdMap[f.id] = f.produto_ref; });
+
+  const compMap: Record<string, string> = {};
+  (tecidosRes.data || []).forEach((t: any) => {
+    const ref = fichaIdMap[t.ficha_id];
+    if (ref && !compMap[ref] && t.composicao) compMap[ref] = t.composicao;
+  });
+
+  return (prodsRes.data || []).map((p: any) => ({
+    id: p.id, ref: p.ref, desc: p.descricao || "",
+    tecido: p.tecido || "", forn_tecido: p.forn_tecido || "",
+    composicao: compMap[p.ref] || "",
+    fornecedor: p.fornecedor || "", colecao: p.colecao || "",
+    grupo: p.grupo || "", subgrupo: p.subgrupo || "", status: p.status || "",
+    imagem_url: imgMap[p.ref] || "",
+  }));
+}
