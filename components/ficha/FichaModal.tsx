@@ -226,7 +226,14 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const autoCalc = (r: any) => {
     const m = parseFloat(String(r.m).replace(",", ".")), a1 = parseFloat(String(r.a1).replace(",", ".")), a2 = parseFloat(String(r.a2).replace(",", "."));
     if (isNaN(m) || isNaN(a1) || isNaN(a2)) return r;
-    return { ...r, p: fmtN(m - a1), pp: fmtN(m - 2 * a1), g: fmtN(m + a2), gg: fmtN(m + 2 * a2) };
+    return { ...r, xpp: fmtN(m - 3 * a1), p: fmtN(m - a1), pp: fmtN(m - 2 * a1), g: fmtN(m + a2), gg: fmtN(m + 2 * a2) };
+  };
+  const xppOf = (g: any) => {
+    if (g.xpp) return g.xpp;
+    const pp = parseFloat(String(g.pp || "").replace(",", "."));
+    const a1 = parseFloat(String(g.a1 || "").replace(",", "."));
+    if (!isNaN(pp) && !isNaN(a1)) return fmtN(pp - a1);
+    return "";
   };
   const toggleEsp = () => {
     if (!tEsp) {
@@ -777,17 +784,17 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <td className="text-center text-[12px] text-[var(--label-secondary)] px-2 border-l border-[var(--separator-opaque)]">{p.tol}</td>
             </tr>); })}</tbody></table></div>
 
-            {/* Graduação */}
-            {gradAtivo.length > 0 && (
+            {/* Graduação — só para produção aprovada */}
+            {gradAtivo.length > 0 && isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Graduação — {tEsp ? "Especial" : tm}</span>
-                  {tEsp && <span className="text-[10px] text-[var(--system-orange)]">Edite M e ampliações — PP, P, G, GG são calculados</span>}
+                  {tEsp && <span className="text-[10px] text-[var(--system-orange)]">Edite M e ampliações — XPP, PP, P, G, GG são calculados</span>}
                 </div>
                 <div className="apple-card overflow-hidden overflow-x-auto">
                   <table className="plm-table">
                     <thead><tr>
-                      <th>Descrição</th><th className="text-center w-16">PP</th><th className="text-center w-16">P</th>
+                      <th>Descrição</th><th className="text-center w-16">XPP</th><th className="text-center w-16">PP</th><th className="text-center w-16">P</th>
                       <th className="text-center w-16 !bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]">M</th>
                       <th className="text-center w-16">G</th><th className="text-center w-16">GG</th>
                       <th className="text-center w-14">Ampl. ←</th><th className="text-center w-14">Ampl. →</th>
@@ -796,6 +803,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     <tbody>{gradAtivo.map((g: any, i: number) => (
                       <tr key={i}>
                         <td className="font-medium px-3">{g.desc}</td>
+                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{xppOf(g)}</td>
                         <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.pp}</td>
                         <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.p}</td>
                         <td className={`text-center tabnum font-bold px-1 ${tEsp ? "bg-[rgba(255,159,10,0.04)]" : "bg-[rgba(0,122,255,0.03)]"}`}>{tEsp
@@ -817,7 +825,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     ))}</tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? "PP, P, G, GG são calculados automaticamente a partir de M e das ampliações. As tabelas originais nos cadastros não são afetadas." : "Ampliação: diferença entre tamanhos (←M / M→)"}</p>
+                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? "XPP, PP, P, G, GG são calculados automaticamente a partir de M e das ampliações. As tabelas originais nos cadastros não são afetadas." : "Ampliação: diferença entre tamanhos (←M / M→) — XPP calculado como PP − Ampl. ←"}</p>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

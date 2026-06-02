@@ -424,38 +424,49 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             ); })}</tbody>
           </table>
 
-          {/* Graduação */}
-          {grad.length > 0 && (
-            <div style={{ marginTop: "16px" }}>
-              <div style={secTitle}>Graduação — {tm}</div>
-              <table style={tbl}>
-                <thead><tr style={headRow}>
-                  <th style={th}>Descrição</th>
-                  <th style={{ ...th, textAlign: "center", width: "36px" }}>PP</th>
-                  <th style={{ ...th, textAlign: "center", width: "36px" }}>P</th>
-                  <th style={{ ...th, textAlign: "center", width: "36px", background: "#EFF6FF", color: accent, fontWeight: 800 }}>M</th>
-                  <th style={{ ...th, textAlign: "center", width: "36px" }}>G</th>
-                  <th style={{ ...th, textAlign: "center", width: "36px" }}>GG</th>
-                  <th style={{ ...th, textAlign: "center", width: "30px" }}>←</th>
-                  <th style={{ ...th, textAlign: "center", width: "30px" }}>→</th>
-                  <th style={{ ...th, textAlign: "center", width: "45px" }}>Tol.</th>
-                </tr></thead>
-                <tbody>{grad.map((g: any, i: number) => (
-                  <tr key={i} style={i % 2 ? { background: bg } : {}}>
-                    <td style={{ ...td, fontWeight: 600 }}>{g.desc}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.pp}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.p}</td>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: "#FAFCFF" }}>{g.m}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.g}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.gg}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a1}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a2}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{g.tol}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          )}
+          {/* Graduação — só para produção com liberação aprovada */}
+          {grad.length > 0 && fichaType === 'producao' && (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') && (() => {
+            const xppOf = (g: any) => {
+              if (g.xpp) return g.xpp;
+              const pp = parseFloat(String(g.pp || "").replace(",", "."));
+              const a1 = parseFloat(String(g.a1 || "").replace(",", "."));
+              if (!isNaN(pp) && !isNaN(a1)) { const v = pp - a1; return v % 1 === 0 ? v.toString() : v.toFixed(1).replace(/\.0$/, ""); }
+              return "";
+            };
+            return (
+              <div style={{ marginTop: "16px" }}>
+                <div style={secTitle}>Graduação — {tm}</div>
+                <table style={tbl}>
+                  <thead><tr style={headRow}>
+                    <th style={th}>Descrição</th>
+                    <th style={{ ...th, textAlign: "center", width: "32px" }}>XPP</th>
+                    <th style={{ ...th, textAlign: "center", width: "32px" }}>PP</th>
+                    <th style={{ ...th, textAlign: "center", width: "32px" }}>P</th>
+                    <th style={{ ...th, textAlign: "center", width: "32px", background: "#EFF6FF", color: accent, fontWeight: 800 }}>M</th>
+                    <th style={{ ...th, textAlign: "center", width: "32px" }}>G</th>
+                    <th style={{ ...th, textAlign: "center", width: "32px" }}>GG</th>
+                    <th style={{ ...th, textAlign: "center", width: "26px" }}>←</th>
+                    <th style={{ ...th, textAlign: "center", width: "26px" }}>→</th>
+                    <th style={{ ...th, textAlign: "center", width: "40px" }}>Tol.</th>
+                  </tr></thead>
+                  <tbody>{grad.map((g: any, i: number) => (
+                    <tr key={i} style={i % 2 ? { background: bg } : {}}>
+                      <td style={{ ...td, fontWeight: 600 }}>{g.desc}</td>
+                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{xppOf(g)}</td>
+                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.pp}</td>
+                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.p}</td>
+                      <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: "#FAFCFF" }}>{g.m}</td>
+                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.g}</td>
+                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.gg}</td>
+                      <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a1}</td>
+                      <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a2}</td>
+                      <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{g.tol}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* Modelo */}
           {imgModelo && (
