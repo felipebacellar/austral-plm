@@ -193,19 +193,20 @@ function Etiqueta({ item, cores }: { item: any; cores: string[] }) {
         </div>
         <div className="etq-price-sep" />
         <div className="etq-price-col etq-price-col-main">
-          <span className="etq-price-lbl">{final ? "$ Varejo" : "$ Preço Alvo"}</span>
-          {final ? (
-            <span className="etq-price-val etq-price-main-val">{fmtBrl(varejo)}</span>
-          ) : (
-            <input
-              className="etq-preco-alvo-input"
-              type="text"
-              placeholder="R$ 0,00"
-              value={precoAlvo}
-              onChange={e => setPrecoAlvo(e.target.value)}
-              onClick={e => e.stopPropagation()}
-            />
-          )}
+          <span className="etq-price-lbl">{final ? "$ Varejo Final" : "$ Varejo Inicial"}</span>
+          <span className="etq-price-val etq-price-main-val">{fmtBrl(varejo)}</span>
+        </div>
+        <div className="etq-price-sep" />
+        <div className="etq-price-col etq-price-col-alvo">
+          <span className="etq-price-lbl">$ Preço Alvo</span>
+          <input
+            className="etq-preco-alvo-input"
+            type="text"
+            placeholder="R$ 0,00"
+            value={precoAlvo}
+            onChange={e => setPrecoAlvo(e.target.value)}
+            onClick={e => e.stopPropagation()}
+          />
         </div>
       </div>
 
@@ -289,7 +290,8 @@ const STYLES = `
     flex-shrink: 0;
   }
   .etq-price-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 4px; }
-  .etq-price-col-main { flex: 1.5; background: #13131f08; }
+  .etq-price-col-main { flex: 1.3; background: #13131f08; }
+  .etq-price-col-alvo { flex: 1.3; background: #EEF3FF44; }
   .etq-price-lbl { font-size: 7.5px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1px; }
   .etq-price-val { font-size: 10px; font-weight: 700; color: #222; }
   .etq-price-main-val { font-size: 13px; color: #13131f; }
@@ -371,7 +373,8 @@ const STYLES = `
     flex-shrink: 0;
   }
   .etq-price-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5mm 1mm; }
-  .etq-price-col-main { flex: 1.5; background: rgba(19,19,31,0.04); }
+  .etq-price-col-main { flex: 1.3; background: rgba(19,19,31,0.04); }
+  .etq-price-col-alvo { flex: 1.3; background: rgba(68,100,175,0.05); }
   .etq-price-lbl { font-size: 4pt; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.07em; }
   .etq-price-val { font-size: 6pt; font-weight: 700; color: #222; }
   .etq-price-main-val { font-size: 8pt; color: #13131f; }
