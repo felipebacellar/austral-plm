@@ -26,7 +26,8 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const [filterColecao, setFilterColecao]       = useState("");
   const [filterFornecedor, setFilterFornecedor] = useState("");
   const [filterGrupo, setFilterGrupo]           = useState("");
-  const [filterStatus, setFilterStatus]         = useState("");
+  const [filterStatuses, setFilterStatuses]     = useState<string[]>([]);
+  const [statusDropOpen, setStatusDropOpen]     = useState(false);
   const [imageMode, setImageMode]   = useState<"desenho" | "foto">("desenho");
   const [zoom, setZoom]             = useState<any | null>(null); // item being zoomed
 
@@ -44,15 +45,18 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const colecoes    = useMemo(() => Array.from(new Set(items.map(i => i.colecao).filter(Boolean))).sort() as string[], [items]);
   const fornecedores = useMemo(() => Array.from(new Set(items.map(i => i.fornecedor).filter(Boolean))).sort() as string[], [items]);
   const grupos      = useMemo(() => Array.from(new Set(items.map(i => i.grupo).filter(Boolean))).sort() as string[], [items]);
-  const statuses    = useMemo(() => Array.from(new Set(items.map(i => i.status).filter(Boolean))).sort() as string[], [items]);
+  const statuses    = useMemo(() => ["(SEM STATUS)", ...Array.from(new Set(items.map(i => i.status).filter(Boolean))).sort() as string[]], [items]);
 
   const filtered = useMemo(() => items.filter(i => {
     if (filterColecao    && i.colecao    !== filterColecao)    return false;
     if (filterFornecedor && i.fornecedor !== filterFornecedor) return false;
     if (filterGrupo      && (i.grupo || "SEM GRUPO") !== filterGrupo) return false;
-    if (filterStatus     && i.status !== filterStatus) return false;
+    if (filterStatuses.length > 0) {
+      const s = i.status || "(SEM STATUS)";
+      if (!filterStatuses.includes(s)) return false;
+    }
     return true;
-  }), [items, filterColecao, filterFornecedor, filterGrupo, filterStatus]);
+  }), [items, filterColecao, filterFornecedor, filterGrupo, filterStatuses]);
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -65,7 +69,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const handleExport = async () => {
     setExporting(true);
     try {
-      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor, grupo: filterGrupo, status: filterStatus }, imageMode, "mapa-colecao");
+      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor, grupo: filterGrupo, status: filterStatuses.join(", ") }, imageMode, "mapa-colecao");
     } finally { setExporting(false); }
   };
 
@@ -162,15 +166,66 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
           {grupos.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
 
-        <select className="apple-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ minWidth: 180 }}>
-          <option value="">Todos os status</option>
-          {statuses.map(s => (
-            <option key={s} value={s} style={{ color: statusColor(s) }}>{s}</option>
-          ))}
-        </select>
+        {/* Status multi-select dropdown */}
+        <div style={{ position: "relative" }}>
+          <button
+            className="apple-select"
+            onClick={() => setStatusDropOpen(o => !o)}
+            style={{
+              minWidth: 180, textAlign: "left", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
+              background: filterStatuses.length > 0 ? "var(--system-blue-tint, #e8f0fe)" : undefined,
+              borderColor: filterStatuses.length > 0 ? "var(--system-blue)" : undefined,
+              color: filterStatuses.length > 0 ? "var(--system-blue)" : undefined,
+              fontWeight: filterStatuses.length > 0 ? 600 : undefined,
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
+              {filterStatuses.length === 0 ? "Todos os status" : `Status (${filterStatuses.length})`}
+            </span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, transform: statusDropOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }}><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
 
-        {(filterColecao || filterFornecedor || filterGrupo || filterStatus) && (
-          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); setFilterGrupo(""); setFilterStatus(""); }} style={{ fontSize: 12, padding: "5px 12px" }}>
+          {statusDropOpen && (
+            <div
+              style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 1000,
+                background: "var(--bg-primary)", border: "1px solid var(--separator)",
+                borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
+                minWidth: 240, padding: "6px 0", maxHeight: 320, overflowY: "auto",
+              }}
+            >
+              {/* Select all / clear */}
+              <div style={{ display: "flex", gap: 6, padding: "4px 10px 6px", borderBottom: "1px solid var(--separator)" }}>
+                <button onClick={() => setFilterStatuses(statuses)} style={{ fontSize: 11, color: "var(--system-blue)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Selecionar todos</button>
+                <span style={{ color: "var(--separator)" }}>·</span>
+                <button onClick={() => setFilterStatuses([])} style={{ fontSize: 11, color: "var(--label-tertiary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Limpar</button>
+              </div>
+              {statuses.map(s => {
+                const checked = filterStatuses.includes(s);
+                const color = s === "(SEM STATUS)" ? "#aaa" : statusColor(s);
+                return (
+                  <label key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", cursor: "pointer", background: checked ? "var(--bg-secondary)" : "transparent" }}
+                    onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "var(--bg-secondary)"; }}
+                    onMouseLeave={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  >
+                    <input type="checkbox" checked={checked} onChange={() => {
+                      setFilterStatuses(prev => checked ? prev.filter(x => x !== s) : [...prev, s]);
+                    }} style={{ accentColor: "var(--system-blue)", width: 13, height: 13 }} />
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: "var(--label-primary)" }}>{s}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Close dropdown on outside click */}
+        {statusDropOpen && <div onClick={() => setStatusDropOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 999 }} />}
+
+        {(filterColecao || filterFornecedor || filterGrupo || filterStatuses.length > 0) && (
+          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); setFilterGrupo(""); setFilterStatuses([]); }} style={{ fontSize: 12, padding: "5px 12px" }}>
             Limpar
           </button>
         )}
