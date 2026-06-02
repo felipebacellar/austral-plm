@@ -161,6 +161,40 @@ export default function DashboardView({ rows, variantes }: Props) {
   const byGrupoDev = useMemo(() => byKey(comprasFiltered, "grupo"),       [comprasFiltered]);
   const byColDev   = useMemo(() => byKey(comprasFiltered, "colecao"),     [comprasFiltered]);
 
+  // helper: markup = varejo_final / custo_final (ratio), e.g. 2.8x
+  const mkpOf = (r: any): number | null => {
+    if (r.varejo_final && r.custo_final && r.custo_final > 0) return r.varejo_final / r.custo_final;
+    return null;
+  };
+  const fmtBrl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  const fmtMkp = (v: number) => `${v.toFixed(2)}x`;
+
+  const withPreco = comprasFiltered.filter((r: any) => r.varejo_final && r.varejo_final > 0);
+  const avgPreco  = withPreco.length ? withPreco.reduce((s, r) => s + r.varejo_final, 0) / withPreco.length : 0;
+
+  const withMkp   = comprasFiltered.filter((r: any) => mkpOf(r) !== null);
+  const avgMkp    = withMkp.length ? withMkp.reduce((s, r) => s + mkpOf(r)!, 0) / withMkp.length : 0;
+
+  // Média preço final por grupo (bar chart using float values)
+  const precoPorGrupo = useMemo(() => {
+    const grupos = [...new Set(comprasFiltered.map((r: any) => r.grupo).filter(Boolean))].sort() as string[];
+    return grupos.map(g => {
+      const gRows = comprasFiltered.filter((r: any) => r.grupo === g && r.varejo_final > 0);
+      const avg = gRows.length ? gRows.reduce((s, r) => s + r.varejo_final, 0) / gRows.length : 0;
+      return [g, avg] as [string, number];
+    }).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  }, [comprasFiltered]);
+
+  // Média markup por categoria
+  const mkpPorCategoria = useMemo(() => {
+    const cats = [...new Set(comprasFiltered.map((r: any) => r.categoria).filter(Boolean))].sort() as string[];
+    return cats.map(cat => {
+      const cRows = comprasFiltered.filter((r: any) => r.categoria === cat && mkpOf(r) !== null);
+      const avg = cRows.length ? cRows.reduce((s, r) => s + mkpOf(r)!, 0) / cRows.length : 0;
+      return [cat, avg] as [string, number];
+    }).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  }, [comprasFiltered]);
+
   /* ── Compras > Variantes ── */
   const varByForn = useMemo(() => byFornDev.map(([f]) => {
     const c = comprasFiltered.filter((r: any) => r.fornecedor === f)
@@ -173,6 +207,19 @@ export default function DashboardView({ rows, variantes }: Props) {
       .reduce((s, r) => s + (variantes[r.ref]?.length || 0), 0);
     return [g, c] as [string, number];
   }).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]), [byGrupoDev, comprasFiltered, variantes]);
+
+  // Total peças compradas por grupo = sum(qtd_compra1 + qtd_compra2) × nº variantes de cor
+  const totalCompradoPorGrupo = useMemo(() => {
+    const grupos = [...new Set(comprasFiltered.map((r: any) => r.grupo).filter(Boolean))].sort() as string[];
+    return grupos.map(g => {
+      const total = comprasFiltered.filter((r: any) => r.grupo === g).reduce((s, r) => {
+        const qtd = ((r.qtd_compra1 || 0) + (r.qtd_compra2 || 0));
+        const nVars = variantes[r.ref]?.length || 1;
+        return s + qtd * nVars;
+      }, 0);
+      return [g, total] as [string, number];
+    }).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  }, [comprasFiltered, variantes]);
 
   /* ── Render helpers ── */
   const toSeg = (items: [string, number][]) =>
@@ -328,7 +375,9 @@ export default function DashboardView({ rows, variantes }: Props) {
       {/* ══ COMPRAS > DESENVOLVIMENTO ══ */}
       {group === "compras" && subTab === "desenvolvimento" && (<>
         {filterBar}
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+
+        {/* KPI stats row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "SKUs com fornecedor", value: cTotal },
             { label: "Variantes",           value: cTotalVar },
@@ -336,9 +385,50 @@ export default function DashboardView({ rows, variantes }: Props) {
             { label: "Grupos",              value: byGrupoDev.length },
           ].map((s, i) => <StatCard key={s.label} label={s.label} value={s.value} bg={STAT_BG[i]} />)}
         </div>
+
+        {/* Preço & Markup summary */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="dash-card p-4 flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">Preço Final Médio</span>
+            <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: B700 }}>{avgPreco > 0 ? fmtBrl(avgPreco) : "—"}</span>
+            <span className="text-[11px] text-[var(--label-tertiary)]">{withPreco.length} SKUs com preço</span>
+          </div>
+          <div className="dash-card p-4 flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">Markup Médio (x)</span>
+            <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: B700 }}>{avgMkp > 0 ? fmtMkp(avgMkp) : "—"}</span>
+            <span className="text-[11px] text-[var(--label-tertiary)]">{withMkp.length} SKUs com custo+preço</span>
+          </div>
+          <div className="dash-card p-4 flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">Maior Preço Final</span>
+            {(() => {
+              const top = withPreco.sort((a: any, b: any) => b.varejo_final - a.varejo_final)[0];
+              return top ? (<>
+                <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: B700 }}>{fmtBrl(top.varejo_final)}</span>
+                <span className="text-[11px] text-[var(--label-tertiary)]">{top.ref}</span>
+              </>) : <span className="text-[22px] font-bold" style={{ color: B700 }}>—</span>;
+            })()}
+          </div>
+          <div className="dash-card p-4 flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)]">Maior Markup (x)</span>
+            {(() => {
+              const top = withMkp.sort((a: any, b: any) => (mkpOf(b) ?? 0) - (mkpOf(a) ?? 0))[0];
+              return top ? (<>
+                <span className="text-[22px] font-bold tabnum tracking-[-0.03em]" style={{ color: B700 }}>{fmtMkp(mkpOf(top)!)}</span>
+                <span className="text-[11px] text-[var(--label-tertiary)]">{top.ref}</span>
+              </>) : <span className="text-[22px] font-bold" style={{ color: B700 }}>—</span>;
+            })()}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ChartCard title="Por fornecedor"><BarChart items={byFornDev} /></ChartCard>
           <ChartCard title="Tipo de operação"><DonutChart segments={toSeg(byOpDev)} total={byOpDev.reduce((s,[,n])=>s+n,0)} /></ChartCard>
+          <ChartCard title="Preço final médio por grupo (R$)">
+            <BarChartFloat items={precoPorGrupo} fmt={fmtBrl} />
+          </ChartCard>
+          <ChartCard title="Markup médio por categoria (x)">
+            <BarChartFloat items={mkpPorCategoria} fmt={fmtMkp} />
+          </ChartCard>
           <ChartCard title="Por grupo"><BarChart items={byGrupoDev} /></ChartCard>
           <ChartCard title="Por coleção"><BarChart items={byColDev} /></ChartCard>
         </div>
@@ -347,7 +437,7 @@ export default function DashboardView({ rows, variantes }: Props) {
       {/* ══ COMPRAS > VARIANTES ══ */}
       {group === "compras" && subTab === "variantes" && (<>
         {filterBar}
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "SKUs com fornecedor", value: cTotal },
             { label: "Total variantes",     value: cTotalVar },
@@ -358,6 +448,9 @@ export default function DashboardView({ rows, variantes }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ChartCard title="Variantes por fornecedor"><BarChart items={varByForn} /></ChartCard>
           <ChartCard title="Variantes por grupo"><BarChart items={varByGrupoCmp} /></ChartCard>
+          <ChartCard title="Total peças compradas por grupo">
+            <BarChart items={totalCompradoPorGrupo} />
+          </ChartCard>
           <ChartCard title="Cores mais frequentes (compras)">
             {(() => {
               const allColors: string[] = [];
@@ -367,7 +460,7 @@ export default function DashboardView({ rows, variantes }: Props) {
               return <BarChart items={Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,10)} />;
             })()}
           </ChartCard>
-          <ChartCard title="Top SKUs por nº de cores (compras)">
+          <ChartCard title="Top SKUs por nº de cores">
             <BarChart items={comprasFiltered.map(r => [r.ref, variantes[r.ref]?.length || 0] as [string,number])
               .filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]).slice(0,10)} />
           </ChartCard>
@@ -450,6 +543,28 @@ function BarChart({ items }: { items: [string, number][] }) {
           <div className="w-full rounded-lg h-[20px] overflow-hidden" style={{ background: B50 }}>
             <div className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
               style={{ width: `${(count/max)*100}%`, background: SCALE[i % SCALE.length], minWidth: count > 0 ? 4 : 0 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Like BarChart but values are floats (price, markup) with custom formatter */
+function BarChartFloat({ items, fmt }: { items: [string, number][]; fmt: (v: number) => string }) {
+  if (!items.length) return <Empty />;
+  const max = items[0][1] || 1;
+  return (
+    <div className="space-y-3">
+      {items.map(([label, value], i) => (
+        <div key={label} className="group">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[12px] text-[var(--label-secondary)] font-medium truncate max-w-[200px]" title={label}>{label}</span>
+            <span className="text-[13px] tabnum font-bold" style={{ color: B800 }}>{fmt(value)}</span>
+          </div>
+          <div className="w-full rounded-lg h-[20px] overflow-hidden" style={{ background: B50 }}>
+            <div className="h-full rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
+              style={{ width: `${(value / max) * 100}%`, background: SCALE[i % SCALE.length], minWidth: value > 0 ? 4 : 0 }} />
           </div>
         </div>
       ))}
