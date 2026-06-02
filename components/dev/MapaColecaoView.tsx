@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMapaColecao } from "@/lib/db";
 import { exportMapaColecaoPDF } from "@/lib/export-pdf-mapa";
 
@@ -17,49 +17,191 @@ function statusColor(status: string): string {
   return key ? STATUS_COLORS[key] : "#aaa";
 }
 
+// Fields used in filter panel (order matches DevTable header, excluding composição/ficha/grade)
+const FILTER_FIELDS: { key: string; label: string; text?: true }[] = [
+  { key: "ref",          label: "Referência",      text: true },
+  { key: "desc",         label: "Descrição",        text: true },
+  { key: "tecido",       label: "Tecido" },
+  { key: "forn_tecido",  label: "Forn. Tecido" },
+  { key: "status",       label: "Status" },
+  { key: "piloto_most",  label: "Piloto / Mostr." },
+  { key: "colecao",      label: "Coleção" },
+  { key: "grupo",        label: "Grupo" },
+  { key: "subgrupo",     label: "Subgrupo" },
+  { key: "operacao",     label: "Operação" },
+  { key: "fornecedor",   label: "Fornecedor" },
+  { key: "categoria",    label: "Categoria" },
+  { key: "subcategoria", label: "Subcategoria" },
+  { key: "tab_medidas",  label: "Tab. Medidas" },
+  { key: "tipo",         label: "Tipo" },
+  { key: "linha",        label: "Linha" },
+  { key: "drop",         label: "Drop" },
+  { key: "estilista",    label: "Estilista" },
+];
+
+// ── Reusable multi-select dropdown ───────────────────────────────────────────
+function MultiSelect({
+  label, options, selected, onChange,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    if (open) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const visible = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const active  = selected.length > 0;
+
+  return (
+    <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 5,
+          fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid",
+          cursor: "pointer", whiteSpace: "nowrap", transition: "all .15s",
+          background: active ? "var(--system-blue)" : "var(--bg-secondary)",
+          borderColor: active ? "var(--system-blue)" : "var(--separator)",
+          color: active ? "#fff" : "var(--label-secondary)",
+          fontWeight: active ? 600 : 400,
+        }}
+      >
+        {label}{active ? ` (${selected.length})` : ""}
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s", opacity: .7 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 1000,
+          background: "var(--bg-primary)", border: "1px solid var(--separator)",
+          borderRadius: 10, boxShadow: "0 8px 28px rgba(0,0,0,0.15)",
+          minWidth: 220, maxWidth: 300, padding: "6px 0",
+        }}>
+          {/* Search */}
+          {options.length > 6 && (
+            <div style={{ padding: "4px 10px 6px", borderBottom: "1px solid var(--separator)" }}>
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar…"
+                style={{
+                  width: "100%", fontSize: 12, padding: "4px 8px",
+                  border: "1px solid var(--separator)", borderRadius: 6,
+                  background: "var(--bg-secondary)", color: "var(--label-primary)", outline: "none",
+                }}
+              />
+            </div>
+          )}
+          {/* Select all / clear */}
+          <div style={{ display: "flex", gap: 8, padding: "4px 10px 5px", borderBottom: "1px solid var(--separator)" }}>
+            <button onClick={() => onChange(options)} style={{ fontSize: 11, color: "var(--system-blue)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Todos</button>
+            <span style={{ color: "var(--separator)" }}>·</span>
+            <button onClick={() => onChange([])} style={{ fontSize: 11, color: "var(--label-tertiary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Limpar</button>
+          </div>
+          {/* Options */}
+          <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            {visible.length === 0 && (
+              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--label-tertiary)" }}>Nenhum resultado</div>
+            )}
+            {visible.map(opt => {
+              const checked = selected.includes(opt);
+              const dot = statusColor(opt);
+              return (
+                <label key={opt}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, padding: "5px 12px",
+                    cursor: "pointer", background: checked ? "var(--bg-secondary)" : "transparent",
+                  }}
+                >
+                  <input type="checkbox" checked={checked}
+                    onChange={() => onChange(checked ? selected.filter(x => x !== opt) : [...selected, opt])}
+                    style={{ accentColor: "var(--system-blue)", width: 13, height: 13, flexShrink: 0 }}
+                  />
+                  {dot !== "#aaa" && <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
+                  <span style={{ fontSize: 12, color: "var(--label-primary)", lineHeight: 1.3 }}>{opt || "—"}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props { rows: any[] }
 
 export default function MapaColecaoView({ rows: _rows }: Props) {
-  const [items, setItems]           = useState<any[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [exporting, setExporting]   = useState(false);
-  const [filterColecao, setFilterColecao]       = useState("");
-  const [filterFornecedor, setFilterFornecedor] = useState("");
-  const [filterGrupo, setFilterGrupo]           = useState("");
-  const [filterLinha, setFilterLinha]           = useState("");
-  const [filterStatuses, setFilterStatuses]     = useState<string[]>([]);
-  const [statusDropOpen, setStatusDropOpen]     = useState(false);
-  const [imageMode, setImageMode]   = useState<"desenho" | "foto">("desenho");
-  const [zoom, setZoom]             = useState<any | null>(null); // item being zoomed
+  const [items, setItems]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [imageMode, setImageMode] = useState<"desenho" | "foto">("desenho");
+  const [zoom, setZoom]           = useState<any | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // text searches
+  const [searchRef,  setSearchRef]  = useState("");
+  const [searchDesc, setSearchDesc] = useState("");
+
+  // multi-select filters: key → selected values
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+  const setFilter = (key: string, vals: string[]) =>
+    setFilters(prev => ({ ...prev, [key]: vals }));
 
   useEffect(() => {
     fetchMapaColecao().then(data => { setItems(data); setLoading(false); });
   }, []);
 
-  // Close zoom on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setZoom(null); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const colecoes    = useMemo(() => Array.from(new Set(items.map(i => i.colecao).filter(Boolean))).sort() as string[], [items]);
-  const fornecedores = useMemo(() => Array.from(new Set(items.map(i => i.fornecedor).filter(Boolean))).sort() as string[], [items]);
-  const grupos      = useMemo(() => Array.from(new Set(items.map(i => i.grupo).filter(Boolean))).sort() as string[], [items]);
-  const linhas      = useMemo(() => Array.from(new Set(items.map(i => i.linha).filter(Boolean))).sort() as string[], [items]);
-  const statuses    = useMemo(() => ["(SEM STATUS)", ...Array.from(new Set(items.map(i => i.status).filter(Boolean))).sort() as string[]], [items]);
+  // Unique sorted option lists for each field
+  const optionsFor = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const f of FILTER_FIELDS) {
+      if (f.text) continue;
+      map[f.key] = Array.from(new Set(
+        items.map(i => i[f.key] || "").filter(Boolean)
+      )).sort();
+    }
+    return map;
+  }, [items]);
+
+  const activeCount = useMemo(() =>
+    (searchRef ? 1 : 0) + (searchDesc ? 1 : 0) +
+    Object.values(filters).filter(v => v.length > 0).length,
+  [searchRef, searchDesc, filters]);
 
   const filtered = useMemo(() => items.filter(i => {
-    if (filterColecao    && i.colecao    !== filterColecao)    return false;
-    if (filterFornecedor && i.fornecedor !== filterFornecedor) return false;
-    if (filterGrupo      && (i.grupo || "SEM GRUPO") !== filterGrupo) return false;
-    if (filterLinha      && i.linha !== filterLinha) return false;
-    if (filterStatuses.length > 0) {
-      const s = i.status || "(SEM STATUS)";
-      if (!filterStatuses.includes(s)) return false;
+    if (searchRef  && !i.ref.toLowerCase().includes(searchRef.toLowerCase()))   return false;
+    if (searchDesc && !i.desc.toLowerCase().includes(searchDesc.toLowerCase())) return false;
+    for (const [key, vals] of Object.entries(filters)) {
+      if (vals.length === 0) continue;
+      const v = i[key] || "";
+      if (!vals.includes(v)) return false;
     }
     return true;
-  }), [items, filterColecao, filterFornecedor, filterGrupo, filterLinha, filterStatuses]);
+  }), [items, searchRef, searchDesc, filters]);
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -69,10 +211,21 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
   const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_modelo || item.imagem_url) : item.imagem_url;
 
+  const clearAll = () => { setSearchRef(""); setSearchDesc(""); setFilters({}); };
+
   const handleExport = async () => {
     setExporting(true);
     try {
-      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor, grupo: filterGrupo, linha: filterLinha, status: filterStatuses.join(", ") }, imageMode, "mapa-colecao");
+      const fStr = (key: string) => (filters[key] || []).join(", ");
+      await exportMapaColecaoPDF(
+        filtered,
+        {
+          colecao: fStr("colecao"), fornecedor: fStr("fornecedor"),
+          grupo: fStr("grupo"), linha: fStr("linha"), status: fStr("status"),
+        },
+        imageMode,
+        "mapa-colecao"
+      );
     } finally { setExporting(false); }
   };
 
@@ -83,26 +236,19 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   return (
     <div style={{ padding: "0 0 40px" }}>
 
-      {/* ── Lightbox zoom ── */}
+      {/* ── Lightbox ── */}
       {zoom && (
-        <div
-          onClick={() => setZoom(null)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: "var(--bg-primary)", borderRadius: 16,
-              boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
-              maxWidth: 700, width: "90vw", overflow: "hidden",
-              display: "flex", flexDirection: "column",
-            }}
-          >
-            {/* image */}
+        <div onClick={() => setZoom(null)} style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "var(--bg-primary)", borderRadius: 16,
+            boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
+            maxWidth: 700, width: "90vw", overflow: "hidden",
+            display: "flex", flexDirection: "column",
+          }}>
             <div style={{ background: "#fff", padding: 16, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 360 }}>
               {imgOf(zoom) ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -111,7 +257,6 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                 <div style={{ color: "var(--label-tertiary)", textAlign: "center", fontSize: 13 }}>Sem imagem</div>
               )}
             </div>
-            {/* info */}
             <div style={{ padding: "16px 20px 20px", borderTop: "1px solid var(--separator)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
@@ -123,26 +268,33 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 20px", marginTop: 12, fontSize: 12 }}>
-                {zoom.tecido && <div><span style={{ color: "var(--label-tertiary)" }}>Tecido: </span><span style={{ color: "var(--label-secondary)", fontWeight: 500 }}>{zoom.tecido}</span></div>}
+                {zoom.tecido     && <div><span style={{ color: "var(--label-tertiary)" }}>Tecido: </span><span style={{ color: "var(--label-secondary)", fontWeight: 500 }}>{zoom.tecido}</span></div>}
                 {zoom.composicao && <div><span style={{ color: "var(--label-tertiary)" }}>Comp.: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.composicao}</span></div>}
                 {zoom.forn_tecido && <div><span style={{ color: "var(--label-tertiary)" }}>Forn. Tecido: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.forn_tecido}</span></div>}
                 {zoom.fornecedor && <div><span style={{ color: "var(--label-tertiary)" }}>Fornecedor: </span><span style={{ color: "var(--system-blue)", fontWeight: 600 }}>{zoom.fornecedor}</span></div>}
-                {zoom.colecao && <div><span style={{ color: "var(--label-tertiary)" }}>Coleção: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.colecao}</span></div>}
-                {zoom.grupo && <div><span style={{ color: "var(--label-tertiary)" }}>Grupo: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.grupo}</span></div>}
+                {zoom.colecao    && <div><span style={{ color: "var(--label-tertiary)" }}>Coleção: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.colecao}</span></div>}
+                {zoom.grupo      && <div><span style={{ color: "var(--label-tertiary)" }}>Grupo: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.grupo}</span></div>}
+                {zoom.linha      && <div><span style={{ color: "var(--label-tertiary)" }}>Linha: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.linha}</span></div>}
+                {zoom.estilista  && <div><span style={{ color: "var(--label-tertiary)" }}>Estilista: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.estilista}</span></div>}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Toolbar ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 20, padding: "14px 0", borderBottom: "1px solid var(--separator)" }}>
+      {/* ── Toolbar (row 1) ── */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+        marginBottom: filtersOpen ? 0 : 16, padding: "12px 0",
+        borderBottom: filtersOpen ? "none" : "1px solid var(--separator)",
+      }}>
 
         {/* Image mode toggle */}
         <div style={{ display: "flex", background: "var(--bg-secondary)", borderRadius: 8, border: "1px solid var(--separator)", padding: 2, gap: 2 }}>
           {(["desenho", "foto"] as const).map(mode => (
             <button key={mode} onClick={() => setImageMode(mode)} style={{
-              fontSize: 12, fontWeight: 600, padding: "5px 14px", borderRadius: 6, border: "none", cursor: "pointer", transition: "all .15s",
+              fontSize: 12, fontWeight: 600, padding: "5px 14px", borderRadius: 6, border: "none",
+              cursor: "pointer", transition: "all .15s",
               background: imageMode === mode ? "var(--bg-primary)" : "transparent",
               color: imageMode === mode ? "var(--system-blue)" : "var(--label-tertiary)",
               boxShadow: imageMode === mode ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
@@ -154,87 +306,29 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
         <div style={{ width: 1, height: 24, background: "var(--separator)" }} />
 
-        <select className="apple-select" value={filterColecao} onChange={e => setFilterColecao(e.target.value)} style={{ minWidth: 160 }}>
-          <option value="">Todas as coleções</option>
-          {colecoes.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        {/* Filters toggle button */}
+        <button
+          onClick={() => setFiltersOpen(o => !o)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 7,
+            border: "1px solid", cursor: "pointer", transition: "all .15s",
+            background: activeCount > 0 ? "var(--system-blue)" : "var(--bg-secondary)",
+            borderColor: activeCount > 0 ? "var(--system-blue)" : "var(--separator)",
+            color: activeCount > 0 ? "#fff" : "var(--label-secondary)",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          Filtros{activeCount > 0 ? ` (${activeCount})` : ""}
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+            style={{ transform: filtersOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
 
-        <select className="apple-select" value={filterFornecedor} onChange={e => setFilterFornecedor(e.target.value)} style={{ minWidth: 180 }}>
-          <option value="">Todos os fornecedores</option>
-          {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-
-        <select className="apple-select" value={filterGrupo} onChange={e => setFilterGrupo(e.target.value)} style={{ minWidth: 160 }}>
-          <option value="">Todos os grupos</option>
-          {grupos.map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
-
-        <select className="apple-select" value={filterLinha} onChange={e => setFilterLinha(e.target.value)} style={{ minWidth: 140 }}>
-          <option value="">Todas as linhas</option>
-          {linhas.map(l => <option key={l} value={l}>{l}</option>)}
-        </select>
-
-        {/* Status multi-select dropdown */}
-        <div style={{ position: "relative" }}>
-          <button
-            className="apple-select"
-            onClick={() => setStatusDropOpen(o => !o)}
-            style={{
-              minWidth: 180, textAlign: "left", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
-              background: filterStatuses.length > 0 ? "var(--system-blue-tint, #e8f0fe)" : undefined,
-              borderColor: filterStatuses.length > 0 ? "var(--system-blue)" : undefined,
-              color: filterStatuses.length > 0 ? "var(--system-blue)" : undefined,
-              fontWeight: filterStatuses.length > 0 ? 600 : undefined,
-            }}
-          >
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
-              {filterStatuses.length === 0 ? "Todos os status" : `Status (${filterStatuses.length})`}
-            </span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, transform: statusDropOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }}><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-
-          {statusDropOpen && (
-            <div
-              style={{
-                position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 1000,
-                background: "var(--bg-primary)", border: "1px solid var(--separator)",
-                borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
-                minWidth: 240, padding: "6px 0", maxHeight: 320, overflowY: "auto",
-              }}
-            >
-              {/* Select all / clear */}
-              <div style={{ display: "flex", gap: 6, padding: "4px 10px 6px", borderBottom: "1px solid var(--separator)" }}>
-                <button onClick={() => setFilterStatuses(statuses)} style={{ fontSize: 11, color: "var(--system-blue)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Selecionar todos</button>
-                <span style={{ color: "var(--separator)" }}>·</span>
-                <button onClick={() => setFilterStatuses([])} style={{ fontSize: 11, color: "var(--label-tertiary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Limpar</button>
-              </div>
-              {statuses.map(s => {
-                const checked = filterStatuses.includes(s);
-                const color = s === "(SEM STATUS)" ? "#aaa" : statusColor(s);
-                return (
-                  <label key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", cursor: "pointer", background: checked ? "var(--bg-secondary)" : "transparent" }}
-                    onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "var(--bg-secondary)"; }}
-                    onMouseLeave={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                  >
-                    <input type="checkbox" checked={checked} onChange={() => {
-                      setFilterStatuses(prev => checked ? prev.filter(x => x !== s) : [...prev, s]);
-                    }} style={{ accentColor: "var(--system-blue)", width: 13, height: 13 }} />
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: "var(--label-primary)" }}>{s}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Close dropdown on outside click */}
-        {statusDropOpen && <div onClick={() => setStatusDropOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 999 }} />}
-
-        {(filterColecao || filterFornecedor || filterGrupo || filterLinha || filterStatuses.length > 0) && (
-          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); setFilterGrupo(""); setFilterLinha(""); setFilterStatuses([]); }} style={{ fontSize: 12, padding: "5px 12px" }}>
-            Limpar
+        {activeCount > 0 && (
+          <button className="apple-btn-secondary" onClick={clearAll} style={{ fontSize: 12, padding: "5px 10px" }}>
+            Limpar tudo
           </button>
         )}
 
@@ -248,11 +342,59 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
             {exporting ? (
               <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Gerando...</>
             ) : (
-              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar PDF (Paisagem)</>
+              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar PDF</>
             )}
           </button>
         </div>
       </div>
+
+      {/* ── Filter panel (row 2, collapsible) ── */}
+      {filtersOpen && (
+        <div style={{
+          padding: "14px 16px", marginBottom: 16,
+          background: "var(--bg-secondary)", borderRadius: "0 0 10px 10px",
+          border: "1px solid var(--separator)", borderTop: "none",
+        }}>
+          {/* Text searches */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+            {[{ key: "searchRef", label: "Referência", val: searchRef, set: setSearchRef },
+              { key: "searchDesc", label: "Descrição", val: searchDesc, set: setSearchDesc }]
+              .map(({ key, label, val, set }) => (
+                <div key={key} style={{ position: "relative" }}>
+                  <input
+                    value={val}
+                    onChange={e => set(e.target.value)}
+                    placeholder={label}
+                    className="apple-input"
+                    style={{ fontSize: 12, padding: "5px 28px 5px 10px", minWidth: 160, borderRadius: 7,
+                      borderColor: val ? "var(--system-blue)" : undefined,
+                      background: val ? "var(--system-blue-tint, #eef3ff)" : undefined,
+                    }}
+                  />
+                  {val && (
+                    <button onClick={() => set("")} style={{
+                      position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", cursor: "pointer", color: "var(--label-tertiary)", padding: 0, lineHeight: 1,
+                    }}>✕</button>
+                  )}
+                </div>
+              ))}
+          </div>
+
+          {/* Multi-select filters */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {FILTER_FIELDS.filter(f => !f.text).map(f => (
+              <MultiSelect
+                key={f.key}
+                label={f.label}
+                options={optionsFor[f.key] || []}
+                selected={filters[f.key] || []}
+                onChange={vals => setFilter(f.key, vals)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Groups ── */}
       {groups.length === 0 ? (
@@ -283,15 +425,8 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 20px rgba(0,0,0,0.13)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.07)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; }}
                 >
-                  {/* Status dot */}
                   <div style={{ position: "absolute", top: 9, right: 9, width: 10, height: 10, borderRadius: "50%", background: statusColor(item.status), border: "1.5px solid rgba(255,255,255,0.9)", zIndex: 2 }} title={item.status} />
 
-                  {/* Zoom hint */}
-                  <div style={{ position: "absolute", top: 9, left: 9, zIndex: 2, opacity: 0, transition: "opacity .15s" }} className="zoom-hint">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                  </div>
-
-                  {/* Image */}
                   <div style={{ width: "100%", aspectRatio: "4/3", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -304,7 +439,6 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                     )}
                   </div>
 
-                  {/* Info */}
                   <div style={{ padding: "10px 12px 12px", borderTop: "1px solid var(--separator)" }}>
                     <div style={{ fontWeight: 700, fontSize: 11, color: "var(--label-primary)", marginBottom: 2 }}>{item.ref}</div>
                     <div style={{ fontSize: 12, color: "var(--label-primary)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.35, marginBottom: 6 }}>{item.desc}</div>
