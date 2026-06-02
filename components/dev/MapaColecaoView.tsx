@@ -26,6 +26,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const [filterColecao, setFilterColecao]       = useState("");
   const [filterFornecedor, setFilterFornecedor] = useState("");
   const [filterGrupo, setFilterGrupo]           = useState("");
+  const [filterLinha, setFilterLinha]           = useState("");
   const [filterStatuses, setFilterStatuses]     = useState<string[]>([]);
   const [statusDropOpen, setStatusDropOpen]     = useState(false);
   const [imageMode, setImageMode]   = useState<"desenho" | "foto">("desenho");
@@ -45,18 +46,20 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const colecoes    = useMemo(() => Array.from(new Set(items.map(i => i.colecao).filter(Boolean))).sort() as string[], [items]);
   const fornecedores = useMemo(() => Array.from(new Set(items.map(i => i.fornecedor).filter(Boolean))).sort() as string[], [items]);
   const grupos      = useMemo(() => Array.from(new Set(items.map(i => i.grupo).filter(Boolean))).sort() as string[], [items]);
+  const linhas      = useMemo(() => Array.from(new Set(items.map(i => i.linha).filter(Boolean))).sort() as string[], [items]);
   const statuses    = useMemo(() => ["(SEM STATUS)", ...Array.from(new Set(items.map(i => i.status).filter(Boolean))).sort() as string[]], [items]);
 
   const filtered = useMemo(() => items.filter(i => {
     if (filterColecao    && i.colecao    !== filterColecao)    return false;
     if (filterFornecedor && i.fornecedor !== filterFornecedor) return false;
     if (filterGrupo      && (i.grupo || "SEM GRUPO") !== filterGrupo) return false;
+    if (filterLinha      && i.linha !== filterLinha) return false;
     if (filterStatuses.length > 0) {
       const s = i.status || "(SEM STATUS)";
       if (!filterStatuses.includes(s)) return false;
     }
     return true;
-  }), [items, filterColecao, filterFornecedor, filterGrupo, filterStatuses]);
+  }), [items, filterColecao, filterFornecedor, filterGrupo, filterLinha, filterStatuses]);
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -69,7 +72,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const handleExport = async () => {
     setExporting(true);
     try {
-      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor, grupo: filterGrupo, status: filterStatuses.join(", ") }, imageMode, "mapa-colecao");
+      await exportMapaColecaoPDF(filtered, { colecao: filterColecao, fornecedor: filterFornecedor, grupo: filterGrupo, linha: filterLinha, status: filterStatuses.join(", ") }, imageMode, "mapa-colecao");
     } finally { setExporting(false); }
   };
 
@@ -166,6 +169,11 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
           {grupos.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
 
+        <select className="apple-select" value={filterLinha} onChange={e => setFilterLinha(e.target.value)} style={{ minWidth: 140 }}>
+          <option value="">Todas as linhas</option>
+          {linhas.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+
         {/* Status multi-select dropdown */}
         <div style={{ position: "relative" }}>
           <button
@@ -224,8 +232,8 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
         {/* Close dropdown on outside click */}
         {statusDropOpen && <div onClick={() => setStatusDropOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 999 }} />}
 
-        {(filterColecao || filterFornecedor || filterGrupo || filterStatuses.length > 0) && (
-          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); setFilterGrupo(""); setFilterStatuses([]); }} style={{ fontSize: 12, padding: "5px 12px" }}>
+        {(filterColecao || filterFornecedor || filterGrupo || filterLinha || filterStatuses.length > 0) && (
+          <button className="apple-btn-secondary" onClick={() => { setFilterColecao(""); setFilterFornecedor(""); setFilterGrupo(""); setFilterLinha(""); setFilterStatuses([]); }} style={{ fontSize: 12, padding: "5px 12px" }}>
             Limpar
           </button>
         )}

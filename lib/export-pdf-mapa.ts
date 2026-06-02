@@ -48,7 +48,7 @@ function addImageContained(
 
 export async function exportMapaColecaoPDF(
   items: any[],
-  filters: { colecao: string; fornecedor: string; grupo?: string; status?: string },
+  filters: { colecao: string; fornecedor: string; grupo?: string; linha?: string; status?: string },
   imageMode: "desenho" | "foto",
   filename: string
 ): Promise<void> {
@@ -114,6 +114,7 @@ export async function exportMapaColecaoPDF(
     if (filters.colecao)    chips.push(`Coleção: ${filters.colecao}`);
     if (filters.fornecedor) chips.push(`Fornecedor: ${filters.fornecedor}`);
     if (filters.grupo)      chips.push(`Grupo: ${filters.grupo}`);
+    if (filters.linha)      chips.push(`Linha: ${filters.linha}`);
     if (filters.status)     chips.push(`Status: ${filters.status}`);
     if (chips.length > 0) {
       doc.setFontSize(7);

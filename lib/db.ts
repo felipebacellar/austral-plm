@@ -344,7 +344,7 @@ export async function upsertControleFluxo(produto_ref: string, field: string, va
 // ══ MAPA DE COLEÇÃO ══
 export async function fetchMapaColecao() {
   const [prodsRes, fichasRes, fichasIdRes, tecidosRes] = await Promise.all([
-    sb().from("produtos").select("id, ref, descricao, tecido, forn_tecido, fornecedor, colecao, grupo, subgrupo, status").order("grupo").order("ref"),
+    sb().from("produtos").select("id, ref, descricao, tecido, forn_tecido, fornecedor, colecao, grupo, subgrupo, linha, status").order("grupo").order("ref"),
     sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo"),
     sb().from("fichas_tecnicas").select("id, produto_ref"),
     sb().from("ficha_tecidos").select("ficha_id, composicao").order("id"),
@@ -372,7 +372,7 @@ export async function fetchMapaColecao() {
     tecido: p.tecido || "", forn_tecido: p.forn_tecido || "",
     composicao: compMap[p.ref] || "",
     fornecedor: p.fornecedor || "", colecao: p.colecao || "",
-    grupo: p.grupo || "", subgrupo: p.subgrupo || "", status: p.status || "",
+    grupo: p.grupo || "", subgrupo: p.subgrupo || "", linha: p.linha || "", status: p.status || "",
     imagem_url: imgMap[p.ref] || "",
     imagem_modelo: fotoMap[p.ref] || "",
   }));
