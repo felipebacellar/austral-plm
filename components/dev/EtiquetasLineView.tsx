@@ -116,7 +116,12 @@ function MultiSelect({ label, options, selected, onChange }: {
 
 /* ── Label ── */
 function Etiqueta({ item, cores }: { item: any; cores: string[] }) {
-  const { custo, varejo, mkp, statusLabel } = getPrices(item);
+  const { custo, varejo, mkp, statusLabel, final } = getPrices(item);
+  const [precoAlvo, setPrecoAlvo] = useState<string>(
+    item.preco_target != null && item.preco_target > 0
+      ? item.preco_target.toFixed(2).replace(".", ",")
+      : ""
+  );
 
   const statusColor =
     statusLabel === "DESENVOLVIMENTO" ? { bg: "#EEF3FF", text: "#3B5FC0", dot: "#4464AF" } :
@@ -188,8 +193,19 @@ function Etiqueta({ item, cores }: { item: any; cores: string[] }) {
         </div>
         <div className="etq-price-sep" />
         <div className="etq-price-col etq-price-col-main">
-          <span className="etq-price-lbl">{isMostOrProd(item.status) ? "Preço Final" : "Preço Alvo"}</span>
-          <span className="etq-price-val etq-price-main-val">{fmtBrl(varejo)}</span>
+          <span className="etq-price-lbl">{final ? "$ Varejo" : "$ Preço Alvo"}</span>
+          {final ? (
+            <span className="etq-price-val etq-price-main-val">{fmtBrl(varejo)}</span>
+          ) : (
+            <input
+              className="etq-preco-alvo-input"
+              type="text"
+              placeholder="R$ 0,00"
+              value={precoAlvo}
+              onChange={e => setPrecoAlvo(e.target.value)}
+              onClick={e => e.stopPropagation()}
+            />
+          )}
         </div>
       </div>
 
@@ -278,6 +294,12 @@ const STYLES = `
   .etq-price-val { font-size: 10px; font-weight: 700; color: #222; }
   .etq-price-main-val { font-size: 13px; color: #13131f; }
   .etq-price-sep { width: 1px; background: #eaebf0; margin: 5px 0; }
+  .etq-preco-alvo-input {
+    width: 90%; font-size: 13px; font-weight: 700; color: #13131f;
+    border: none; border-bottom: 1.5px solid #4464AF; background: transparent;
+    text-align: center; outline: none; padding: 1px 2px;
+  }
+  .etq-preco-alvo-input::placeholder { color: #bbb; font-weight: 400; font-size: 11px; }
 
   .etq-checks {
     display: flex; align-items: center;
@@ -354,6 +376,11 @@ const STYLES = `
   .etq-price-val { font-size: 6pt; font-weight: 700; color: #222; }
   .etq-price-main-val { font-size: 8pt; color: #13131f; }
   .etq-price-sep { width: 0.3pt; background: #e0e0e8; margin: 1.5mm 0; }
+  .etq-preco-alvo-input {
+    width: 90%; font-size: 8pt; font-weight: 700; color: #13131f;
+    border: none; border-bottom: 0.5pt solid #4464AF; background: transparent;
+    text-align: center; outline: none; padding: 0.5mm 1mm;
+  }
 
   .etq-checks {
     display: flex; align-items: center;
