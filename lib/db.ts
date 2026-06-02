@@ -326,3 +326,17 @@ export async function fetchAllVariantes(): Promise<Record<string, string[]>> {
   });
   return result;
 }
+
+// ══ CONTROLE DE FLUXO ══
+export async function fetchControleFluxo() {
+  const { data, error } = await sb().from("controle_fluxo").select("*");
+  if (error) console.error("fetchControleFluxo:", error);
+  return (data || []) as Record<string, any>[];
+}
+
+export async function upsertControleFluxo(produto_ref: string, field: string, value: string | null) {
+  const { error } = await sb()
+    .from("controle_fluxo")
+    .upsert({ produto_ref, [field]: value || null, updated_at: new Date().toISOString() }, { onConflict: "produto_ref" });
+  if (error) console.error("upsertControleFluxo:", error);
+}

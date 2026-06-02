@@ -1,0 +1,177 @@
+"use client";
+import { useEffect, useState } from "react";
+import { fetchControleFluxo, upsertControleFluxo } from "@/lib/db";
+
+const PILOTAGEM_COLS = [
+  { field: "data_desenvolvimento",  label: "Data Desenv.",         type: "date", width: 140 },
+  { field: "prev_entrega_piloto",   label: "Prev. Entrega Piloto", type: "date", width: 140 },
+  { field: "status_mostruario",     label: "Status Mostruário",    type: "select", width: 200,
+    options: ["","AGUARDANDO PILOTO","PILOTO RECEBIDA - AGUARDANDO PROVA","MOSTRUÁRIO LIBERADO","INCLUÍDO DIRETO P/ MOSTRUÁRIO"] },
+  { field: "data_entrega_piloto",   label: "Data Entrega Piloto",  type: "date", width: 140 },
+  { field: "data_prova_piloto",     label: "Data Prova Piloto",    type: "date", width: 130 },
+  { field: "data_retorno_laudo_forn", label: "Retorno Laudo Forn.", type: "date", width: 140 },
+  { field: "prev_entrega_mostruario", label: "Prev. Entrega Mostruário", type: "date", width: 150 },
+];
+
+const PRODUCAO_COLS = [
+  { field: "status_producao",          label: "Status Produção",         type: "select", width: 260,
+    options: ["","AGUARDANDO MOSTRUÁRIO","MOSTRUÁRIO RECEBIDO - AGUARDANDO PROVA DE PRODUÇÃO","PRODUÇÃO REPROVADA - AGUARDANDO REPILOTAGEM","PRODUÇÃO LIBERADA"] },
+  { field: "data_entrega_mostruario",  label: "Data Entrega Mostruário", type: "date", width: 150 },
+  { field: "data_prova_producao_1",    label: "Data Prova Produção 1",   type: "date", width: 140 },
+  { field: "data_retorno_laudo_forn_1",label: "Retorno Laudo Forn. 1",   type: "date", width: 140 },
+  { field: "data_entrega_repilotagem", label: "Data Entrega Repilotagem",type: "date", width: 150 },
+  { field: "data_prova_producao_2",    label: "Data Prova Produção 2",   type: "date", width: 140 },
+  { field: "data_retorno_laudo_forn_2",label: "Retorno Laudo Forn. 2",   type: "date", width: 140 },
+];
+
+const PRE_PRODUCAO_COLS = [
+  { field: "prev_entrega_pre_producao", label: "Prev. Entrega Pré-Prod.", type: "date", width: 160 },
+  { field: "data_entrega_pre_producao", label: "Data Entrega Pré-Prod.",  type: "date", width: 150 },
+  { field: "data_retorno_pre_producao", label: "Data Retorno Pré-Prod.",  type: "date", width: 150 },
+  { field: "status_pre_producao",       label: "Status Pré-Produção",     type: "select", width: 200,
+    options: ["","PRÉ-PRODUÇÃO LIBERADA","PRÉ PRODUÇÃO REPROVADA"] },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  "AGUARDANDO PILOTO": "#3b82f6",
+  "PILOTO RECEBIDA - AGUARDANDO PROVA": "#f97316",
+  "MOSTRUÁRIO LIBERADO": "#22c55e",
+  "INCLUÍDO DIRETO P/ MOSTRUÁRIO": "#a855f7",
+  "AGUARDANDO MOSTRUÁRIO": "#3b82f6",
+  "MOSTRUÁRIO RECEBIDO - AGUARDANDO PROVA DE PRODUÇÃO": "#f97316",
+  "PRODUÇÃO REPROVADA - AGUARDANDO REPILOTAGEM": "#ef4444",
+  "PRODUÇÃO LIBERADA": "#22c55e",
+  "PRÉ-PRODUÇÃO LIBERADA": "#22c55e",
+  "PRÉ PRODUÇÃO REPROVADA": "#ef4444",
+};
+
+function fmtDate(v: string) {
+  if (!v) return "";
+  return v.includes("T") ? v.split("T")[0] : v;
+}
+
+interface Props { rows: any[] }
+
+export default function ControleFluxoView({ rows }: Props) {
+  const [fluxoMap, setFluxoMap] = useState<Record<string, any>>({});
+  const [localData, setLocalData] = useState<Record<string, Record<string, string>>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchControleFluxo().then(data => {
+      const m: Record<string, any> = {};
+      data.forEach(r => { m[r.produto_ref] = r; });
+      setFluxoMap(m);
+      setLoading(false);
+    });
+  }, []);
+
+  const val = (ref: string, field: string) =>
+    localData[ref]?.[field] !== undefined ? localData[ref][field] : fmtDate(fluxoMap[ref]?.[field] ?? "");
+
+  const handleChange = (ref: string, field: string, value: string) => {
+    setLocalData(prev => ({ ...prev, [ref]: { ...(prev[ref] || {}), [field]: value } }));
+    upsertControleFluxo(ref, field, value || null);
+  };
+
+  const sorted = [...rows].sort((a, b) => (a.ref || "").localeCompare(b.ref || ""));
+  const allCols = [...PILOTAGEM_COLS, ...PRODUCAO_COLS, ...PRE_PRODUCAO_COLS];
+
+  const stickyStyle = (left: number): React.CSSProperties => ({
+    position: "sticky", left, zIndex: 2, background: "var(--bg-primary)",
+  });
+
+  if (loading) return (
+    <div className="plm-loading"><div className="plm-loading-spinner" /><span>Carregando...</span></div>
+  );
+
+  return (
+    <div className="apple-card-scroll" style={{ overflow: "auto", maxHeight: "calc(100vh - 140px)" }}>
+      <div style={{ padding: "12px 16px 8px", fontSize: 12, color: "var(--label-secondary)", fontWeight: 500 }}>
+        {sorted.length} produto(s)
+      </div>
+      <table className="plm-table" style={{ minWidth: 2200, borderCollapse: "collapse" }}>
+        <thead>
+          {/* Group header row */}
+          <tr>
+            <th colSpan={3} style={{ ...stickyStyle(0), background: "var(--bg-secondary)", borderBottom: "2px solid var(--separator)" }} />
+            <th colSpan={PILOTAGEM_COLS.length}
+              style={{ background: "#dbeafe", color: "#1d4ed8", textAlign: "center", fontWeight: 700, fontSize: 11, letterSpacing: ".05em", borderBottom: "2px solid #93c5fd" }}>
+              PILOTAGEM
+            </th>
+            <th colSpan={PRODUCAO_COLS.length}
+              style={{ background: "#dcfce7", color: "#15803d", textAlign: "center", fontWeight: 700, fontSize: 11, letterSpacing: ".05em", borderBottom: "2px solid #86efac" }}>
+              PRODUÇÃO
+            </th>
+            <th colSpan={PRE_PRODUCAO_COLS.length}
+              style={{ background: "#f3e8ff", color: "#7e22ce", textAlign: "center", fontWeight: 700, fontSize: 11, letterSpacing: ".05em", borderBottom: "2px solid #d8b4fe" }}>
+              PRÉ-PRODUÇÃO
+            </th>
+          </tr>
+          {/* Column headers */}
+          <tr>
+            <th style={{ ...stickyStyle(0), width: 110, minWidth: 110 }}>Referência</th>
+            <th style={{ ...stickyStyle(110), width: 200, minWidth: 200 }}>Descrição</th>
+            <th style={{ ...stickyStyle(310), width: 130, minWidth: 130, borderRight: "2px solid var(--separator)" }}>Fornecedor</th>
+            {PILOTAGEM_COLS.map(c => (
+              <th key={c.field} style={{ minWidth: c.width, background: "#f0f9ff", fontSize: 11, color: "#1d4ed8" }}>{c.label}</th>
+            ))}
+            {PRODUCAO_COLS.map(c => (
+              <th key={c.field} style={{ minWidth: c.width, background: "#f0fdf4", fontSize: 11, color: "#15803d" }}>{c.label}</th>
+            ))}
+            {PRE_PRODUCAO_COLS.map(c => (
+              <th key={c.field} style={{ minWidth: c.width, background: "#faf5ff", fontSize: 11, color: "#7e22ce" }}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(row => (
+            <tr key={row.ref}>
+              <td style={{ ...stickyStyle(0), fontWeight: 600, fontSize: 12 }}>{row.ref}</td>
+              <td style={{ ...stickyStyle(110), fontSize: 12 }}>{row.descricao || row.desc || ""}</td>
+              <td style={{ ...stickyStyle(310), fontSize: 12, borderRight: "2px solid var(--separator)" }}>{row.fornecedor || ""}</td>
+              {allCols.map(col => {
+                const v = val(row.ref, col.field);
+                if (col.type === "date") {
+                  return (
+                    <td key={col.field} style={{ padding: "4px 6px" }}>
+                      <input
+                        type="date"
+                        className="apple-input"
+                        style={{ fontSize: 12, padding: "4px 6px", width: "100%", minWidth: col.width - 12 }}
+                        value={v}
+                        onChange={e => handleChange(row.ref, col.field, e.target.value)}
+                      />
+                    </td>
+                  );
+                }
+                // select
+                const color = STATUS_COLORS[v];
+                return (
+                  <td key={col.field} style={{ padding: "4px 6px" }}>
+                    <select
+                      className="apple-select"
+                      style={{
+                        fontSize: 11, width: "100%", minWidth: col.width - 12,
+                        background: color ? color + "22" : undefined,
+                        color: color || undefined,
+                        fontWeight: color ? 600 : undefined,
+                        borderColor: color ? color + "66" : undefined,
+                      }}
+                      value={v}
+                      onChange={e => handleChange(row.ref, col.field, e.target.value)}
+                    >
+                      {(col as any).options.map((o: string) => (
+                        <option key={o} value={o}>{o || "—"}</option>
+                      ))}
+                    </select>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

@@ -210,3 +210,28 @@ CREATE TABLE IF NOT EXISTS produto_variante_compras (
   PRIMARY KEY (produto_id, cor)
 );
 CREATE INDEX IF NOT EXISTS idx_pvc_produto ON produto_variante_compras(produto_id);
+
+-- ── Controle de Fluxo ──────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS controle_fluxo (
+  produto_ref          TEXT PRIMARY KEY REFERENCES produtos(ref) ON DELETE CASCADE,
+  data_desenvolvimento DATE,
+  prev_entrega_piloto  DATE,
+  status_mostruario    TEXT DEFAULT '',
+  data_entrega_piloto  DATE,
+  data_prova_piloto    DATE,
+  data_retorno_laudo_forn DATE,
+  prev_entrega_mostruario DATE,
+  status_producao      TEXT DEFAULT '',
+  data_entrega_mostruario DATE,
+  data_prova_producao_1   DATE,
+  data_retorno_laudo_forn_1 DATE,
+  data_entrega_repilotagem  DATE,
+  data_prova_producao_2     DATE,
+  data_retorno_laudo_forn_2 DATE,
+  prev_entrega_pre_producao  DATE,
+  data_entrega_pre_producao  DATE,
+  data_retorno_pre_producao  DATE,
+  status_pre_producao  TEXT DEFAULT '',
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_cf_ref ON controle_fluxo(produto_ref);
