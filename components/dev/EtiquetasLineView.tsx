@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface Props { rows: any[]; variantes: Record<string, string[]> }
 
@@ -18,11 +19,14 @@ const fmtMkp = (v: number | null | undefined) =>
 
 function getPrices(item: any) {
   const final = isMostOrProd(item.status);
-  const custo  = final ? item.custo_final   : item.custo_inicial;
-  const varejo = final ? item.varejo_final  : item.preco_target;
+  const custo  = final ? item.custo_final  : item.custo_inicial;
   const mkp    = final
     ? (item.varejo_final && item.custo_final > 0 ? item.varejo_final / item.custo_final : null)
     : (item.markup_inicial || null);
+  // varejo: final → varejo_final; dev → custo_inicial × markup_inicial
+  const varejo = final
+    ? item.varejo_final
+    : (item.custo_inicial && item.markup_inicial ? item.custo_inicial * item.markup_inicial : null);
   const statusLabel = final
     ? (item.status?.toUpperCase().includes("MOSTRUÁRIO") || item.status?.toUpperCase().includes("MOSTRUARIO")
         ? "MOSTRUÁRIO" : "PRODUÇÃO")
@@ -404,6 +408,25 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
   const [filters, setFilters]         = useState<Record<string, string[]>>({});
   const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [compMap, setCompMap]         = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    async function loadComposicoes() {
+      const [fichasRes, tecidosRes] = await Promise.all([
+        supabase.from("fichas_tecnicas").select("id, produto_ref"),
+        supabase.from("ficha_tecidos").select("ficha_id, composicao").order("id"),
+      ]);
+      const fichaIdMap: Record<number, string> = {};
+      (fichasRes.data || []).forEach((f: any) => { fichaIdMap[f.id] = f.produto_ref; });
+      const map: Record<string, string> = {};
+      (tecidosRes.data || []).forEach((t: any) => {
+        const ref = fichaIdMap[t.ficha_id];
+        if (ref && !map[ref] && t.composicao) map[ref] = t.composicao;
+      });
+      setCompMap(map);
+    }
+    loadComposicoes();
+  }, []);
 
   const setFilter = (key: string, vals: string[]) =>
     setFilters(prev => ({ ...prev, [key]: vals }));
@@ -525,7 +548,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                   }}>
                     {sel && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
-                  <Etiqueta item={item} cores={variantes[item.ref] || []} />
+                  <Etiqueta item={{ ...item, composicao: compMap[item.ref] || item.composicao || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
