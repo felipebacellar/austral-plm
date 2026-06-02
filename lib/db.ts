@@ -344,7 +344,7 @@ export async function upsertControleFluxo(produto_ref: string, field: string, va
 // ══ MAPA DE COLEÇÃO ══
 export async function fetchMapaColecao() {
   const [prodsRes, fichasRes, fichasIdRes, tecidosRes] = await Promise.all([
-    sb().from("produtos").select("id, ref, descricao, tecido, forn_tecido, fornecedor, colecao, grupo, subgrupo, operacao, categoria, subcategoria, tab_medidas, tipo, linha, drop, estilista, piloto_most, status").order("grupo").order("ref"),
+    sb().from("produtos").select("*").order("grupo").order("ref"),
     sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo"),
     sb().from("fichas_tecnicas").select("id, produto_ref"),
     sb().from("ficha_tecidos").select("ficha_id, composicao").order("id"),
@@ -375,7 +375,7 @@ export async function fetchMapaColecao() {
     grupo: p.grupo || "", subgrupo: p.subgrupo || "", operacao: p.operacao || "",
     categoria: p.categoria || "", subcategoria: p.subcategoria || "",
     tab_medidas: p.tab_medidas || "", tipo: p.tipo || "",
-    linha: p.linha || "", drop: p.drop || "", estilista: p.estilista || "",
+    linha: p.linha || "", drop: p.drop_num || "", estilista: p.estilista || "",
     piloto_most: p.piloto_most || "", status: p.status || "",
     imagem_url: imgMap[p.ref] || "",
     imagem_modelo: fotoMap[p.ref] || "",

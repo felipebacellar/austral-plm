@@ -17,10 +17,8 @@ function statusColor(status: string): string {
   return key ? STATUS_COLORS[key] : "#aaa";
 }
 
-// Fields used in filter panel (order matches DevTable header, excluding composição/ficha/grade)
+// Fields used in filter panel (order matches DevTable header, excluding ref/desc/composição/ficha/grade)
 const FILTER_FIELDS: { key: string; label: string; text?: true }[] = [
-  { key: "ref",          label: "Referência",      text: true },
-  { key: "desc",         label: "Descrição",        text: true },
   { key: "tecido",       label: "Tecido" },
   { key: "forn_tecido",  label: "Forn. Tecido" },
   { key: "status",       label: "Status" },
@@ -155,10 +153,6 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   const [zoom, setZoom]           = useState<any | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // text searches
-  const [searchRef,  setSearchRef]  = useState("");
-  const [searchDesc, setSearchDesc] = useState("");
-
   // multi-select filters: key → selected values
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
@@ -188,13 +182,10 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   }, [items]);
 
   const activeCount = useMemo(() =>
-    (searchRef ? 1 : 0) + (searchDesc ? 1 : 0) +
     Object.values(filters).filter(v => v.length > 0).length,
-  [searchRef, searchDesc, filters]);
+  [filters]);
 
   const filtered = useMemo(() => items.filter(i => {
-    if (searchRef  && !i.ref.toLowerCase().includes(searchRef.toLowerCase()))   return false;
-    if (searchDesc && !i.desc.toLowerCase().includes(searchDesc.toLowerCase())) return false;
     for (const [key, vals] of Object.entries(filters)) {
       if (vals.length === 0) continue;
       const v = i[key] || "";
@@ -211,7 +202,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
   const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_modelo || item.imagem_url) : item.imagem_url;
 
-  const clearAll = () => { setSearchRef(""); setSearchDesc(""); setFilters({}); };
+  const clearAll = () => setFilters({});
 
   const handleExport = async () => {
     setExporting(true);
@@ -355,35 +346,9 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
           background: "var(--bg-secondary)", borderRadius: "0 0 10px 10px",
           border: "1px solid var(--separator)", borderTop: "none",
         }}>
-          {/* Text searches */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-            {[{ key: "searchRef", label: "Referência", val: searchRef, set: setSearchRef },
-              { key: "searchDesc", label: "Descrição", val: searchDesc, set: setSearchDesc }]
-              .map(({ key, label, val, set }) => (
-                <div key={key} style={{ position: "relative" }}>
-                  <input
-                    value={val}
-                    onChange={e => set(e.target.value)}
-                    placeholder={label}
-                    className="apple-input"
-                    style={{ fontSize: 12, padding: "5px 28px 5px 10px", minWidth: 160, borderRadius: 7,
-                      borderColor: val ? "var(--system-blue)" : undefined,
-                      background: val ? "var(--system-blue-tint, #eef3ff)" : undefined,
-                    }}
-                  />
-                  {val && (
-                    <button onClick={() => set("")} style={{
-                      position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)",
-                      background: "none", border: "none", cursor: "pointer", color: "var(--label-tertiary)", padding: 0, lineHeight: 1,
-                    }}>✕</button>
-                  )}
-                </div>
-              ))}
-          </div>
-
           {/* Multi-select filters */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {FILTER_FIELDS.filter(f => !f.text).map(f => (
+            {FILTER_FIELDS.map(f => (
               <MultiSelect
                 key={f.key}
                 label={f.label}
