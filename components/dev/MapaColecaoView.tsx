@@ -192,7 +192,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
       if (!vals.includes(v)) return false;
     }
     return true;
-  }), [items, searchRef, searchDesc, filters]);
+  }), [items, filters]);
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
