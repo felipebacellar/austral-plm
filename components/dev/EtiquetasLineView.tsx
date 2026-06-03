@@ -417,11 +417,15 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
 
   useEffect(() => {
     async function loadComposicoes() {
-      // composicao lives in the tecidos library, keyed by fabric name
-      const { data } = await supabase.from("tecidos").select("nome, composicao");
+      // Join produtos → tecidos via FK to get composicao per ref
+      const { data, error } = await supabase
+        .from("produtos")
+        .select("ref, tecidos(composicao)");
+      if (error) console.error("loadComposicoes:", error);
       const map: Record<string, string> = {};
-      (data || []).forEach((t: any) => {
-        if (t.nome && t.composicao) map[t.nome] = t.composicao;
+      (data || []).forEach((p: any) => {
+        const comp = p.tecidos?.composicao;
+        if (p.ref && comp) map[p.ref] = comp;
       });
       setCompMap(map);
     }
@@ -575,7 +579,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                       }}>+</button>
                     </div>
                   )}
-                  <Etiqueta item={{ ...item, composicao: compMap[item.tecido] || "" }} cores={variantes[item.ref] || []} />
+                  <Etiqueta item={{ ...item, composicao: compMap[item.ref] || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
@@ -591,7 +595,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
           toGenerate.forEach(item => {
             const qty = getQty(item.ref);
             for (let i = 0; i < qty; i++)
-              expanded.push({ ...item, composicao: compMap[item.tecido] || "" });
+              expanded.push({ ...item, composicao: compMap[item.ref] || "" });
           });
           // Split into pages of 10
           return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {
