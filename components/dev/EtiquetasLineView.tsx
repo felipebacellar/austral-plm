@@ -590,7 +590,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                       }}>+</button>
                     </div>
                   )}
-                  <Etiqueta item={{ ...item, composicao: compMap[item.ref] || "" }} cores={variantes[item.ref] || []} />
+                  <Etiqueta item={{ ...item, composicao: item.composicao || compMap[item.ref] || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
@@ -606,7 +606,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
           toGenerate.forEach(item => {
             const qty = getQty(item.ref);
             for (let i = 0; i < qty; i++)
-              expanded.push({ ...item, composicao: compMap[item.ref] || "" });
+              expanded.push({ ...item, composicao: item.composicao || compMap[item.ref] || "" });
           });
           // Split into pages of 10
           return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {

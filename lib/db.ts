@@ -58,6 +58,7 @@ export async function fetchProdutos() {
   if (error) console.error("fetchProdutos:", error);
   return (data || []).map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "", tecido: p.tecido || "",
+    composicao: p.composicao || "",
     forn_tecido: p.forn_tecido || "", status: p.status || "",
     piloto_most: p.piloto_most || "", colecao: p.colecao || "",
     grupo: p.grupo || "", subgrupo: p.subgrupo || "",
