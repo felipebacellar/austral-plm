@@ -417,14 +417,25 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
 
   useEffect(() => {
     async function loadComposicoes() {
-      // Join produtos → tecidos via FK to get composicao per ref
-      const { data, error } = await supabase
-        .from("produtos")
-        .select("ref, tecidos(composicao)");
-      if (error) console.error("loadComposicoes:", error);
+      // Fetch tecidos library (id→comp and nome→comp)
+      const { data: tecs } = await supabase.from("tecidos").select("id, nome, composicao");
+      const byId:   Record<number, string> = {};
+      const byNome: Record<string, string> = {};
+      (tecs || []).forEach((t: any) => {
+        if (t.composicao) {
+          if (t.id)   byId[t.id]                     = t.composicao;
+          if (t.nome) byNome[t.nome.trim().toUpperCase()] = t.composicao;
+        }
+      });
+
+      // Fetch produtos with tecido_id + tecido text for dual lookup
+      const { data: prods } = await supabase.from("produtos").select("ref, tecido_id, tecido");
       const map: Record<string, string> = {};
-      (data || []).forEach((p: any) => {
-        const comp = p.tecidos?.composicao;
+      (prods || []).forEach((p: any) => {
+        const comp =
+          (p.tecido_id && byId[p.tecido_id]) ||
+          (p.tecido    && byNome[p.tecido.trim().toUpperCase()]) ||
+          "";
         if (p.ref && comp) map[p.ref] = comp;
       });
       setCompMap(map);
