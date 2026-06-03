@@ -409,6 +409,11 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
   const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compMap, setCompMap]         = useState<Record<string, string>>({});
+  const [quantities, setQuantities]   = useState<Record<string, number>>({});
+
+  const getQty = (ref: string) => quantities[ref] ?? 1;
+  const setQty = (ref: string, val: number) =>
+    setQuantities(prev => ({ ...prev, [ref]: Math.max(1, Math.min(99, val || 1)) }));
 
   useEffect(() => {
     async function loadComposicoes() {
@@ -447,6 +452,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
   const toggleRef  = (ref: string) => setSelected(prev => { const n = new Set(prev); n.has(ref) ? n.delete(ref) : n.add(ref); return n; });
   const toggleAll  = () => setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(r => r.ref)));
   const toGenerate = filtered.filter(r => selected.has(r.ref));
+  const totalLabels = toGenerate.reduce((acc, r) => acc + getQty(r.ref), 0);
 
   return (
     <>
@@ -500,7 +506,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                 <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2v5a2 2 0 01-2 2h16a2 2 0 002-2v-5a2 2 0 00-2-2h0"/>
                 <rect x="6" y="14" width="12" height="8"/>
               </svg>
-              Imprimir ({toGenerate.length})
+              Imprimir ({totalLabels} etiqueta{totalLabels !== 1 ? "s" : ""})
             </button>
           </div>
         </div>
@@ -522,7 +528,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: 60, color: "var(--label-tertiary)", fontSize: 14 }}>Nenhum produto encontrado.</div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, paddingBottom: 20 }}>
             {filtered.map(item => {
               const sel = selected.has(item.ref);
               return (
@@ -543,6 +549,32 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                   }}>
                     {sel && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
+                  {sel && (
+                    <div onClick={e => e.stopPropagation()} style={{
+                      position: "absolute", bottom: -14, left: "50%", transform: "translateX(-50%)",
+                      zIndex: 4, display: "flex", alignItems: "center", gap: 4,
+                      background: "#fff", border: "1.5px solid var(--system-blue)",
+                      borderRadius: 20, padding: "2px 6px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                    }}>
+                      <button onClick={() => setQty(item.ref, getQty(item.ref) - 1)} style={{
+                        width: 18, height: 18, border: "none", background: "none", cursor: "pointer",
+                        fontSize: 16, lineHeight: 1, color: "var(--system-blue)", fontWeight: 700, padding: 0,
+                      }}>−</button>
+                      <input
+                        type="number" min={1} max={99} value={getQty(item.ref)}
+                        onChange={e => setQty(item.ref, parseInt(e.target.value) || 1)}
+                        style={{
+                          width: 28, textAlign: "center", border: "none", outline: "none",
+                          fontSize: 12, fontWeight: 700, color: "var(--label-primary)", background: "none",
+                          MozAppearance: "textfield",
+                        }}
+                      />
+                      <button onClick={() => setQty(item.ref, getQty(item.ref) + 1)} style={{
+                        width: 18, height: 18, border: "none", background: "none", cursor: "pointer",
+                        fontSize: 16, lineHeight: 1, color: "var(--system-blue)", fontWeight: 700, padding: 0,
+                      }}>+</button>
+                    </div>
+                  )}
                   <Etiqueta item={{ ...item, composicao: compMap[item.tecido] || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
@@ -553,20 +585,29 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
 
       {/* ── Print area ── */}
       <div id="etq-print" style={{ display: "none" }}>
-        {Array.from({ length: Math.ceil(toGenerate.length / 10) }, (_, si) => {
-          const page = toGenerate.slice(si * 10, si * 10 + 10);
-          const padded = [...page];
-          if (padded.length % 2 !== 0) padded.push(null as any);
-          return (
-            <div key={si} className="etq-sheet">
-              {padded.map((item, idx) =>
-                item
-                  ? <Etiqueta key={item.ref + idx} item={item} cores={variantes[item.ref] || []} />
-                  : <div key={"pad" + idx} style={{ width: "99.1mm", height: "57mm" }} />
-              )}
-            </div>
-          );
-        })}
+        {(() => {
+          // Expand each item by its quantity
+          const expanded: any[] = [];
+          toGenerate.forEach(item => {
+            const qty = getQty(item.ref);
+            for (let i = 0; i < qty; i++)
+              expanded.push({ ...item, composicao: compMap[item.tecido] || "" });
+          });
+          // Split into pages of 10
+          return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {
+            const page = expanded.slice(si * 10, si * 10 + 10);
+            if (page.length % 2 !== 0) page.push(null as any);
+            return (
+              <div key={si} className="etq-sheet">
+                {page.map((item, idx) =>
+                  item
+                    ? <Etiqueta key={item.ref + si + idx} item={item} cores={variantes[item.ref] || []} />
+                    : <div key={"pad" + idx} style={{ width: "99.1mm", height: "57mm" }} />
+                )}
+              </div>
+            );
+          });
+        })()}
       </div>
     </>
   );
