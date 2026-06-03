@@ -412,16 +412,11 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
 
   useEffect(() => {
     async function loadComposicoes() {
-      const [fichasRes, tecidosRes] = await Promise.all([
-        supabase.from("fichas_tecnicas").select("id, produto_ref"),
-        supabase.from("ficha_tecidos").select("ficha_id, composicao").order("id"),
-      ]);
-      const fichaIdMap: Record<number, string> = {};
-      (fichasRes.data || []).forEach((f: any) => { fichaIdMap[f.id] = f.produto_ref; });
+      // composicao lives in the tecidos library, keyed by fabric name
+      const { data } = await supabase.from("tecidos").select("nome, composicao");
       const map: Record<string, string> = {};
-      (tecidosRes.data || []).forEach((t: any) => {
-        const ref = fichaIdMap[t.ficha_id];
-        if (ref && !map[ref] && t.composicao) map[ref] = t.composicao;
+      (data || []).forEach((t: any) => {
+        if (t.nome && t.composicao) map[t.nome] = t.composicao;
       });
       setCompMap(map);
     }
@@ -548,7 +543,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                   }}>
                     {sel && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
-                  <Etiqueta item={{ ...item, composicao: compMap[item.ref] || item.composicao || "" }} cores={variantes[item.ref] || []} />
+                  <Etiqueta item={{ ...item, composicao: compMap[item.tecido] || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
