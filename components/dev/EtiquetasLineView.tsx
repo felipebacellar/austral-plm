@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 interface Props { rows: any[]; variantes: Record<string, string[]> }
 
@@ -408,40 +407,11 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
   const [filters, setFilters]         = useState<Record<string, string[]>>({});
   const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [compMap, setCompMap]         = useState<Record<string, string>>({});
   const [quantities, setQuantities]   = useState<Record<string, number>>({});
 
   const getQty = (ref: string) => quantities[ref] ?? 1;
   const setQty = (ref: string, val: number) =>
     setQuantities(prev => ({ ...prev, [ref]: Math.max(1, Math.min(99, val || 1)) }));
-
-  useEffect(() => {
-    async function loadComposicoes() {
-      // Fetch tecidos library (id→comp and nome→comp)
-      const { data: tecs } = await supabase.from("tecidos").select("id, nome, composicao");
-      const byId:   Record<number, string> = {};
-      const byNome: Record<string, string> = {};
-      (tecs || []).forEach((t: any) => {
-        if (t.composicao) {
-          if (t.id)   byId[t.id]                     = t.composicao;
-          if (t.nome) byNome[t.nome.trim().toUpperCase()] = t.composicao;
-        }
-      });
-
-      // Fetch produtos with tecido_id + tecido text for dual lookup
-      const { data: prods } = await supabase.from("produtos").select("ref, tecido_id, tecido");
-      const map: Record<string, string> = {};
-      (prods || []).forEach((p: any) => {
-        const comp =
-          (p.tecido_id && byId[p.tecido_id]) ||
-          (p.tecido    && byNome[p.tecido.trim().toUpperCase()]) ||
-          "";
-        if (p.ref && comp) map[p.ref] = comp;
-      });
-      setCompMap(map);
-    }
-    loadComposicoes();
-  }, []);
 
   const setFilter = (key: string, vals: string[]) =>
     setFilters(prev => ({ ...prev, [key]: vals }));
@@ -590,7 +560,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                       }}>+</button>
                     </div>
                   )}
-                  <Etiqueta item={{ ...item, composicao: item.composicao || compMap[item.ref] || "" }} cores={variantes[item.ref] || []} />
+                  <Etiqueta item={{ ...item, composicao: item.composicao || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
@@ -606,7 +576,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
           toGenerate.forEach(item => {
             const qty = getQty(item.ref);
             for (let i = 0; i < qty; i++)
-              expanded.push({ ...item, composicao: item.composicao || compMap[item.ref] || "" });
+              expanded.push({ ...item, composicao: item.composicao || "" });
           });
           // Split into pages of 10
           return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {
