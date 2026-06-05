@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchTecidos } from "@/lib/db";
 
 interface Props { rows: any[]; variantes: Record<string, string[]> }
 
@@ -408,6 +409,15 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
   const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [quantities, setQuantities]   = useState<Record<string, number>>({});
+  const [tecidoCompMap, setTecidoCompMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetchTecidos().then(tecidos => {
+      const map: Record<string, string> = {};
+      tecidos.forEach((t: any) => { if (t.comp) map[t.nome] = t.comp; });
+      setTecidoCompMap(map);
+    });
+  }, []);
 
   const getQty = (ref: string) => quantities[ref] ?? 1;
   const setQty = (ref: string, val: number) =>
@@ -560,7 +570,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
                       }}>+</button>
                     </div>
                   )}
-                  <Etiqueta item={{ ...item, composicao: item.composicao || "" }} cores={variantes[item.ref] || []} />
+                  <Etiqueta item={{ ...item, composicao: tecidoCompMap[item.tecido] || item.composicao || "" }} cores={variantes[item.ref] || []} />
                 </div>
               );
             })}
@@ -576,7 +586,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
           toGenerate.forEach(item => {
             const qty = getQty(item.ref);
             for (let i = 0; i < qty; i++)
-              expanded.push({ ...item, composicao: item.composicao || "" });
+              expanded.push({ ...item, composicao: tecidoCompMap[item.tecido] || item.composicao || "" });
           });
           // Split into pages of 10
           return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {

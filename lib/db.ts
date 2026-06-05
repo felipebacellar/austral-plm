@@ -63,8 +63,6 @@ export async function fetchProdutos() {
 
   const tecidoCompMap: Record<string, string> = {};
   (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
-  console.log("[fetchProdutos] tecidoCompMap sample:", Object.entries(tecidoCompMap).slice(0, 3));
-
   return (data || []).map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "", tecido: p.tecido || "",
     composicao: tecidoCompMap[p.tecido] || "",
