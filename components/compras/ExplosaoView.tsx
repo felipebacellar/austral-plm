@@ -118,18 +118,18 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
 
       const status = refStatusMap[ref] || "";
       const isMost = status.includes("MOSTRUÁRIO") || status.includes("MOSTRUARIO");
-      const isProd = status.includes("PRODUÇÃO") || status.includes("PRODUCAO") || status.includes("REPILOTANDO");
+      const prodId = refIdMap[ref];
+      const qtdCompra = productTotalComprasMap[prodId] || 0;
       let multiplier = 0;
-      if (isMost) {
-        // sum qtd_most across all color variants of this ficha
+      if (qtdCompra > 0) {
+        // compra preenchida: sempre usa qtd_compra independente do status
+        multiplier = qtdCompra;
+      } else if (isMost) {
+        // sem compra e mostruário: usa qtd_most
         const qtdMosts = fichaQtdMostMap[av.ficha_id] || [];
         multiplier = qtdMosts.reduce((s: number, v) => s + (Number(v) || 0), 0);
-      } else if (isProd) {
-        // sum qtd_compra across all colors of this product
-        const prodId = refIdMap[ref];
-        multiplier = productTotalComprasMap[prodId] || 0;
       } else {
-        // DESENVOLVIMENTO: use color variant count as before
+        // desenvolvimento sem compra: usa contagem de variantes
         multiplier = Math.max(variantes[ref]?.length ?? 0, 1);
       }
 
