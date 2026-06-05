@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMapaEntregas } from "@/lib/db";
+import { exportMapaEntregasPDF } from "@/lib/export-pdf-entregas";
 
 /* ── Status ── */
 const STATUS_COLORS: Record<string, string> = {
@@ -250,6 +251,7 @@ export default function MapaEntregasView() {
   const [imageMode, setImageMode]   = useState<"desenho" | "foto">("desenho");
   const [zoom, setZoom]             = useState<any>(null);
   const [collapsed, setCollapsed]   = useState<Set<string>>(new Set());
+  const [exporting, setExporting]   = useState(false);
 
   useEffect(() => {
     fetchMapaEntregas().then(data => { setItems(data); setLoading(false); });
@@ -434,6 +436,34 @@ export default function MapaEntregasView() {
         <span style={{ fontSize: 12, color: "var(--label-tertiary)", marginLeft: 4 }}>
           {filtered.length} entrega{filtered.length !== 1 ? "s" : ""} · {months.length} mês/meses
         </span>
+
+        <div style={{ marginLeft: "auto" }}>
+          <button
+            className="apple-btn-primary"
+            disabled={filtered.length === 0 || exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                const activeFilters: Record<string, string[]> = {};
+                for (const [k, v] of Object.entries(filters)) if (v.length > 0) activeFilters[k] = v;
+                await exportMapaEntregasPDF(filtered, activeFilters, imageMode, "mapa-entregas");
+              } finally { setExporting(false); }
+            }}
+            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "5px 14px" }}
+          >
+            {exporting ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                style={{ animation: "spin 1s linear infinite" }}>
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M22 12a10 10 0 01-10 10"/>
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            )}
+            {exporting ? "Gerando PDF…" : "Exportar PDF"}
+          </button>
+        </div>
       </div>
 
       {/* ── Filter panel ── */}
