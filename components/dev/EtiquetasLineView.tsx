@@ -251,6 +251,7 @@ const STYLES = `
 @media screen {
   .etq {
     width: 340px;
+    min-height: 170px;
     border: 1px solid #e0e0e8;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -321,7 +322,7 @@ const STYLES = `
   .etq-check-red { color: #cc0000; }
 }
 
-/* ════ PRINT — Pimaco 6083 (99.1 × 53.34 mm, 2 col × 5 row = 10/Carta 215.9×279.4mm) ════ */
+/* ════ PRINT — Pimaco 6083 (101.6 × 50.8 mm, 2 col × 5 row = 10/Carta 215.9×279.4mm) ════ */
 @media print {
   @page { size: 215.9mm 279.4mm; margin: 0; }
   body > * { display: none !important; }
@@ -333,7 +334,7 @@ const STYLES = `
     padding-top: 12.7mm;
     padding-left: 4.76mm;
     display: grid;
-    grid-template-columns: 99.1mm 99.1mm;
+    grid-template-columns: 101.6mm 101.6mm;
     column-gap: 3.175mm;
     row-gap: 0mm;
     page-break-after: always;
@@ -341,19 +342,19 @@ const STYLES = `
     overflow: hidden;
   }
   .etq {
-    width: 99.1mm; height: 53.34mm;
+    width: 101.6mm; height: 50.8mm;
     box-sizing: border-box;
     border: 0.3pt solid #d0d0d8;
     page-break-inside: avoid;
   }
   .etq-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 1.5mm 3mm 1.5mm;
+    padding: 1.2mm 3mm 1.2mm;
     background: #13131f;
     flex-shrink: 0;
   }
   .etq-header-left { display: flex; align-items: center; gap: 2mm; }
-  .etq-logo { height: 8mm; width: auto; max-width: 30mm; filter: invert(1); mix-blend-mode: screen; object-fit: contain; }
+  .etq-logo { height: 7mm; width: auto; max-width: 30mm; filter: invert(1); mix-blend-mode: screen; object-fit: contain; }
   .etq-brand { color: #fff; font-size: 7pt; font-weight: 800; letter-spacing: 0.2em; }
   .etq-line-div { width: 0.3pt; height: 3mm; background: rgba(255,255,255,0.3); }
   .etq-colecao { color: rgba(255,255,255,0.5); font-size: 5pt; font-weight: 500; letter-spacing: 0.05em; }
