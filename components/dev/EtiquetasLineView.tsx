@@ -321,54 +321,54 @@ const STYLES = `
   .etq-check-red { color: #cc0000; }
 }
 
-/* ════ PRINT — Pimaco 6183 (99.1 × 57 mm, 2 col × 5 row = 10/A4) ════ */
+/* ════ PRINT — Pimaco 6083 (99.1 × 53.34 mm, 2 col × 5 row = 10/Carta) ════ */
 @media print {
-  @page { size: A4 portrait; margin: 0; }
+  @page { size: letter portrait; margin: 0; }
   body > * { display: none !important; }
   #etq-print { display: block !important; position: fixed; inset: 0; background: white; }
   .etq-sheet {
-    padding-top: 15.1mm;
-    padding-left: 4.7mm;
+    padding-top: 12.7mm;
+    padding-left: 4.76mm;
     display: grid;
     grid-template-columns: 99.1mm 99.1mm;
-    column-gap: 2.5mm;
+    column-gap: 3.17mm;
     row-gap: 0mm;
     page-break-after: always;
   }
   .etq {
-    width: 99.1mm; height: 57mm;
+    width: 99.1mm; height: 53.34mm;
     box-sizing: border-box;
     border: 0.3pt solid #d0d0d8;
     page-break-inside: avoid;
   }
   .etq-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 2mm 3mm 1.8mm;
+    padding: 1.5mm 3mm 1.5mm;
     background: #13131f;
     flex-shrink: 0;
   }
   .etq-header-left { display: flex; align-items: center; gap: 2mm; }
-  .etq-logo { height: 10mm; width: auto; max-width: 35mm; filter: invert(1); mix-blend-mode: screen; object-fit: contain; }
+  .etq-logo { height: 8mm; width: auto; max-width: 30mm; filter: invert(1); mix-blend-mode: screen; object-fit: contain; }
   .etq-brand { color: #fff; font-size: 7pt; font-weight: 800; letter-spacing: 0.2em; }
   .etq-line-div { width: 0.3pt; height: 3mm; background: rgba(255,255,255,0.3); }
   .etq-colecao { color: rgba(255,255,255,0.5); font-size: 5pt; font-weight: 500; letter-spacing: 0.05em; }
   .etq-status-pill {
     display: flex; align-items: center; gap: 1mm;
     font-size: 4.5pt; font-weight: 700; letter-spacing: 0.04em;
-    padding: 0.5mm 2mm; border-radius: 3mm;
+    padding: 0.4mm 1.8mm; border-radius: 3mm;
   }
   .etq-status-dot { width: 1.5mm; height: 1.5mm; border-radius: 50%; flex-shrink: 0; }
 
-  .etq-section { padding: 1.5mm 3mm 1mm; flex: 1; display: flex; flex-direction: column; gap: 0.6mm; overflow: hidden; }
+  .etq-section { padding: 1mm 3mm 0.8mm; flex: 1; display: flex; flex-direction: column; gap: 0.4mm; overflow: hidden; }
   .etq-ref-row { display: flex; align-items: baseline; justify-content: space-between; gap: 2mm; }
   .etq-ref { font-size: 9pt; font-weight: 800; color: #111; }
   .etq-forn { font-size: 5pt; color: #888; }
-  .etq-desc { font-size: 6.5pt; font-weight: 500; color: #333; line-height: 1.2; max-height: 3em; overflow: hidden; }
+  .etq-desc { font-size: 6pt; font-weight: 500; color: #333; line-height: 1.2; max-height: 2.5em; overflow: hidden; }
   .etq-meta-row { display: flex; gap: 3mm; flex-wrap: wrap; }
   .etq-meta-item { display: flex; flex-direction: column; }
   .etq-meta-lbl { font-size: 4pt; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; }
-  .etq-meta-val { font-size: 5.5pt; color: #555; }
-  .etq-cores { display: flex; flex-wrap: wrap; gap: 0.8mm; margin-top: 0.5mm; }
+  .etq-meta-val { font-size: 5pt; color: #555; }
+  .etq-cores { display: flex; flex-wrap: wrap; gap: 0.6mm; margin-top: 0.3mm; }
   .etq-cor-chip { font-size: 4.5pt; padding: 0.2mm 1.5mm; border: 0.3pt solid #ddd;
     border-radius: 1mm; color: #555; background: #f5f5f7; white-space: nowrap; }
 
@@ -377,17 +377,17 @@ const STYLES = `
     background: #f7f8fc; border-top: 0.3pt solid #e0e0e8;
     flex-shrink: 0;
   }
-  .etq-price-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5mm 1mm; }
+  .etq-price-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1mm 1mm; }
   .etq-price-col-main { flex: 1.3; background: rgba(19,19,31,0.04); }
   .etq-price-col-alvo { flex: 1.3; background: rgba(68,100,175,0.05); }
   .etq-price-lbl { font-size: 4pt; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.07em; }
-  .etq-price-val { font-size: 6pt; font-weight: 700; color: #222; }
-  .etq-price-main-val { font-size: 8pt; color: #13131f; }
-  .etq-price-sep { width: 0.3pt; background: #e0e0e8; margin: 1.5mm 0; }
+  .etq-price-val { font-size: 5.5pt; font-weight: 700; color: #222; }
+  .etq-price-main-val { font-size: 7.5pt; color: #13131f; }
+  .etq-price-sep { width: 0.3pt; background: #e0e0e8; margin: 1mm 0; }
   .etq-preco-alvo-input {
-    width: 90%; font-size: 8pt; font-weight: 700; color: #13131f;
+    width: 90%; font-size: 7.5pt; font-weight: 700; color: #13131f;
     border: none; border-bottom: 0.5pt solid #4464AF; background: transparent;
-    text-align: center; outline: none; padding: 0.5mm 1mm;
+    text-align: center; outline: none; padding: 0.3mm 1mm;
   }
 
   .etq-checks {
@@ -395,10 +395,10 @@ const STYLES = `
     background: #fafafa; border-top: 0.3pt solid #e0e0e8;
     flex-shrink: 0;
   }
-  .etq-check { flex: 1; display: flex; align-items: center; justify-content: center; gap: 1.5mm; padding: 1.5mm 1mm; }
-  .etq-check-div { width: 0.3pt; height: 7mm; background: #e0e0e8; }
-  .etq-check-box { width: 4mm; height: 4mm; border: 0.4pt solid #bbb; flex-shrink: 0; background: white; }
-  .etq-check-lbl { font-size: 4.5pt; font-weight: 700; text-align: center; line-height: 1.25; }
+  .etq-check { flex: 1; display: flex; align-items: center; justify-content: center; gap: 1.5mm; padding: 1mm 1mm; }
+  .etq-check-div { width: 0.3pt; height: 6mm; background: #e0e0e8; }
+  .etq-check-box { width: 3.5mm; height: 3.5mm; border: 0.4pt solid #bbb; flex-shrink: 0; background: white; }
+  .etq-check-lbl { font-size: 4pt; font-weight: 700; text-align: center; line-height: 1.25; }
   .etq-check-green { color: #1a7a1a; }
   .etq-check-red { color: #cc0000; }
 }
