@@ -74,7 +74,14 @@ export default function ControleFluxoView({ rows }: Props) {
     upsertControleFluxo(ref, field, value || null);
   };
 
-  const sorted = [...rows].sort((a, b) => (a.ref || "").localeCompare(b.ref || ""));
+  const [search, setSearch] = useState("");
+  const sorted = [...rows]
+    .filter(r => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (r.ref || "").toLowerCase().includes(q) || (r.descricao || "").toLowerCase().includes(q);
+    })
+    .sort((a, b) => (a.ref || "").localeCompare(b.ref || ""));
   const allCols = [...PILOTAGEM_COLS, ...PRODUCAO_COLS, ...PRE_PRODUCAO_COLS];
 
   const stickyStyle = (left: number): React.CSSProperties => ({
@@ -87,8 +94,23 @@ export default function ControleFluxoView({ rows }: Props) {
 
   return (
     <div className="apple-card-scroll" style={{ overflow: "auto", maxHeight: "calc(100vh - 140px)" }}>
-      <div style={{ padding: "12px 16px 8px", fontSize: 12, color: "var(--label-secondary)", fontWeight: 500 }}>
-        {sorted.length} produto(s)
+      <div style={{ padding: "12px 16px 8px", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--label-tertiary)" strokeWidth="2.2" strokeLinecap="round"
+            style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar ref ou descrição…"
+            style={{
+              fontSize: 12, padding: "5px 10px 5px 28px", borderRadius: 7,
+              border: "1px solid var(--separator)", background: "var(--bg-secondary)",
+              color: "var(--label-primary)", outline: "none", width: 220,
+            }}
+          />
+        </div>
+        <span style={{ fontSize: 12, color: "var(--label-secondary)", fontWeight: 500 }}>{sorted.length} produto(s)</span>
       </div>
       <table className="plm-table" style={{ minWidth: 2200, borderCollapse: "collapse" }}>
         <thead>

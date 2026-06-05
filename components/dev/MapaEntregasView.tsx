@@ -251,6 +251,7 @@ export default function MapaEntregasView() {
   const [items, setItems]           = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
   const [filters, setFilters]       = useState<Record<string, string[]>>({});
+  const [search, setSearch]         = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [imageMode, setImageMode]   = useState<"desenho" | "foto">("desenho");
   const [zoom, setZoom]             = useState<any>(null);
@@ -276,13 +277,20 @@ export default function MapaEntregasView() {
     return map;
   }, [items]);
 
-  const filtered = useMemo(() => items.filter(i => {
-    for (const [key, vals] of Object.entries(filters)) {
-      if (!vals.length) continue;
-      if (!vals.includes(i[key] || "")) return false;
-    }
-    return true;
-  }), [items, filters]);
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return items.filter(i => {
+      if (q) {
+        const hay = `${i.ref} ${i.desc} ${i.tecido} ${i.fornecedor} ${i.colecao} ${i.status}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      for (const [key, vals] of Object.entries(filters)) {
+        if (!vals.length) continue;
+        if (!vals.includes(i[key] || "")) return false;
+      }
+      return true;
+    });
+  }, [items, filters, search]);
 
   const activeCount = Object.values(filters).filter(v => v.length > 0).length;
 
@@ -400,6 +408,19 @@ export default function MapaEntregasView() {
         borderBottom: filtersOpen ? "none" : "1px solid var(--separator)",
       }}>
 
+        {/* Search */}
+        <div style={{ position: "relative" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--label-tertiary)" strokeWidth="2.2" strokeLinecap="round"
+            style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar…"
+            style={{ fontSize: 12, padding: "5px 10px 5px 28px", borderRadius: 7, border: "1px solid var(--separator)",
+              background: "var(--bg-secondary)", color: "var(--label-primary)", outline: "none", width: 180 }} />
+        </div>
+
+        <div style={{ width: 1, height: 24, background: "var(--separator)" }} />
+
         <div style={{ display: "flex", background: "var(--bg-secondary)", borderRadius: 8, border: "1px solid var(--separator)", padding: 2, gap: 2 }}>
           {(["desenho", "foto"] as const).map(mode => (
             <button key={mode} onClick={() => setImageMode(mode)} style={{
@@ -431,8 +452,8 @@ export default function MapaEntregasView() {
           </svg>
         </button>
 
-        {activeCount > 0 && (
-          <button className="apple-btn-secondary" onClick={() => setFilters({})} style={{ fontSize: 12, padding: "5px 10px" }}>
+        {(activeCount > 0 || search) && (
+          <button className="apple-btn-secondary" onClick={() => { setFilters({}); setSearch(""); }} style={{ fontSize: 12, padding: "5px 10px" }}>
             Limpar tudo
           </button>
         )}

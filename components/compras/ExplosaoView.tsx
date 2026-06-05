@@ -15,6 +15,7 @@ function fmtBRL(v: number) {
 export default function ExplosaoView({ comprasRows, variantes }: Props) {
   const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [flFornProd, setFlFornProd] = useState("");
   const [flStatus, setFlStatus] = useState("");
   const [flColecao, setFlColecao] = useState("");
@@ -38,11 +39,12 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
   // filter produto rows first
   const filteredProd = useMemo(() => {
     let r = comprasRows;
+    if (search)     { const q = search.toLowerCase(); r = r.filter((x: any) => (`${x.ref} ${x.descricao}`).toLowerCase().includes(q)); }
     if (flFornProd) r = r.filter((x: any) => x.fornecedor === flFornProd);
     if (flStatus)   r = r.filter((x: any) => x.status === flStatus);
     if (flColecao)  r = r.filter((x: any) => x.colecao === flColecao);
     return r;
-  }, [comprasRows, flFornProd, flStatus, flColecao]);
+  }, [comprasRows, search, flFornProd, flStatus, flColecao]);
 
   const refSet = useMemo(() => new Set(filteredProd.map((r: any) => r.ref as string)), [filteredProd]);
 
@@ -222,9 +224,17 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
       <div className="apple-card p-4 mb-4 bg-[var(--bg-secondary)]">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Filtrar por</span>
-          {(flFornProd || flStatus || flColecao || flFornAvi) && (
-            <button onClick={() => { setFlFornProd(""); setFlStatus(""); setFlColecao(""); setFlFornAvi(""); }} className="text-[12px] text-[var(--system-blue)] font-medium">Limpar</button>
+          {(search || flFornProd || flStatus || flColecao || flFornAvi) && (
+            <button onClick={() => { setSearch(""); setFlFornProd(""); setFlStatus(""); setFlColecao(""); setFlFornAvi(""); }} className="text-[12px] text-[var(--system-blue)] font-medium">Limpar</button>
           )}
+        </div>
+        <div className="mb-2.5" style={{ position: "relative" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--label-tertiary)" strokeWidth="2.2" strokeLinecap="round"
+            style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar ref ou descrição…"
+            className="apple-input w-full text-[12px] py-1.5" style={{ paddingLeft: 28 }} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div>

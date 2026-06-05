@@ -173,6 +173,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
   // multi-select filters: key → selected values
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [search, setSearch]   = useState("");
 
   const setFilter = (key: string, vals: string[]) =>
     setFilters(prev => ({ ...prev, [key]: vals }));
@@ -203,14 +204,20 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
     Object.values(filters).filter(v => v.length > 0).length,
   [filters]);
 
-  const filtered = useMemo(() => items.filter(i => {
-    for (const [key, vals] of Object.entries(filters)) {
-      if (vals.length === 0) continue;
-      const v = i[key] || "";
-      if (!vals.includes(v)) return false;
-    }
-    return true;
-  }), [items, filters]);
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return items.filter(i => {
+      if (q) {
+        const hay = `${i.ref} ${i.desc} ${i.tecido} ${i.fornecedor} ${i.colecao} ${i.status}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      for (const [key, vals] of Object.entries(filters)) {
+        if (vals.length === 0) continue;
+        if (!vals.includes(i[key] || "")) return false;
+      }
+      return true;
+    });
+  }, [items, filters, search]);
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -220,7 +227,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
   const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_modelo || item.imagem_url) : item.imagem_url;
 
-  const clearAll = () => setFilters({});
+  const clearAll = () => { setFilters({}); setSearch(""); };
 
   const handleExport = async () => {
     setExporting(true);
@@ -325,6 +332,19 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
               {mode === "desenho" ? "✏️ Desenho" : "📷 Foto"}
             </button>
           ))}
+        </div>
+
+        <div style={{ width: 1, height: 24, background: "var(--separator)" }} />
+
+        {/* Search */}
+        <div style={{ position: "relative" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--label-tertiary)" strokeWidth="2.2" strokeLinecap="round"
+            style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar…"
+            style={{ fontSize: 12, padding: "5px 10px 5px 28px", borderRadius: 7, border: "1px solid var(--separator)",
+              background: "var(--bg-secondary)", color: "var(--label-primary)", outline: "none", width: 180 }} />
         </div>
 
         <div style={{ width: 1, height: 24, background: "var(--separator)" }} />
