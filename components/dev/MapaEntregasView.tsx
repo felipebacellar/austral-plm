@@ -5,13 +5,17 @@ import { exportMapaEntregasPDF } from "@/lib/export-pdf-entregas";
 
 /* ── Status ── */
 const STATUS_COLORS: Record<string, string> = {
-  DESENVOLVIMENTO: "#4464AF",
-  "MOSTRUÁRIO": "#EDCA35",
-  "MOSTRUÁRIO LIBERADO": "#EDCA35",
-  PRODUÇÃO: "#2DB564",
-  "PRODUÇÃO LIBERADA": "#2DB564",
-  "REPILOTANDO": "#F5820A",
   CANCELADO: "#EA2F46",
+  "REPILOTANDO": "#F5820A",
+  "PRODUÇÃO LIBERADA": "#2DB564",
+  "PRODUCAO LIBERADA": "#2DB564",
+  PRODUÇÃO: "#2DB564",
+  PRODUCAO: "#2DB564",
+  "MOSTRUÁRIO LIBERADO": "#EDCA35",
+  "MOSTRUARIO LIBERADO": "#EDCA35",
+  "MOSTRUÁRIO": "#EDCA35",
+  MOSTRUARIO: "#EDCA35",
+  DESENVOLVIMENTO: "#4464AF",
 };
 function statusColor(s: string) {
   const key = Object.keys(STATUS_COLORS).find(k => s.toUpperCase().includes(k));

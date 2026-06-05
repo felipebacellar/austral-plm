@@ -37,9 +37,9 @@ function addImageContained(doc: jsPDF, img: ImgResult, bx: number, by: number, b
 function statusRgb(status: string): [number, number, number] {
   const s = (status || "").toUpperCase();
   if (s.includes("CANCELADO"))                                               return [234, 47, 70];
+  if (s.includes("REPILOTANDO"))                                             return [245, 130, 10];
   if (s.includes("PRODUÇÃO LIBERADA") || s.includes("PRODUCAO LIBERADA"))   return [45, 181, 100];
   if (s.includes("PRODUÇÃO") || s.includes("PRODUCAO"))                     return [45, 181, 100];
-  if (s.includes("REPILOTANDO"))                                             return [245, 130, 10];
   if (s.includes("MOSTRUÁRIO LIBERADO") || s.includes("MOSTRUARIO LIBERADO")) return [237, 202, 53];
   if (s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO"))                 return [237, 202, 53];
   if (s.includes("DESENVOLVIMENTO"))                                         return [68, 100, 175];
