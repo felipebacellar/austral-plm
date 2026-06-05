@@ -322,21 +322,22 @@ const STYLES = `
   .etq-check-red { color: #cc0000; }
 }
 
-/* ════ PRINT — Pimaco 6083 (101.6 × 50.8 mm, 2 col × 5 row = 10/Carta 215.9×279.4mm) ════ */
+/* ════ PRINT — Pimaco 6083 (101.6 × 50.8 mm, 2 col × 5 row = 10/Carta 216×279mm) ════ */
 @media print {
-  @page { size: 215.9mm 279.4mm; margin: 0; }
+  @page { size: 216mm 279mm; margin: 0; }
   body > * { display: none !important; }
   #etq-print { display: block !important; }
   .etq-sheet {
-    width: 215.9mm;
-    height: 279.4mm;
+    width: 216mm;
+    height: 279mm;
     box-sizing: border-box;
     padding-top: 12.7mm;
-    padding-left: 4.76mm;
+    padding-left: 4mm;
     display: grid;
     grid-template-columns: 101.6mm 101.6mm;
-    column-gap: 3.175mm;
+    column-gap: 5.2mm;
     row-gap: 0mm;
+    align-content: start;
     page-break-after: always;
     break-after: page;
     overflow: hidden;
