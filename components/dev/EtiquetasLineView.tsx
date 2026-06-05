@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { fetchTecidos } from "@/lib/db";
 
 interface Props { rows: any[]; variantes: Record<string, string[]> }
@@ -578,32 +579,33 @@ setTecidoCompMap(map);
         )}
       </div>
 
-      {/* ── Print area ── */}
-      <div id="etq-print" style={{ display: "none" }}>
-        {(() => {
-          // Expand each item by its quantity
-          const expanded: any[] = [];
-          toGenerate.forEach(item => {
-            const qty = getQty(item.ref);
-            for (let i = 0; i < qty; i++)
-              expanded.push({ ...item, composicao: tecidoCompMap[item.tecido] || item.composicao || "" });
-          });
-          // Split into pages of 10
-          return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {
-            const page = expanded.slice(si * 10, si * 10 + 10);
-            if (page.length % 2 !== 0) page.push(null as any);
-            return (
-              <div key={si} className="etq-sheet">
-                {page.map((item, idx) =>
-                  item
-                    ? <Etiqueta key={item.ref + si + idx} item={item} cores={variantes[item.ref] || []} />
-                    : <div key={"pad" + idx} style={{ width: "99.1mm", height: "57mm" }} />
-                )}
-              </div>
-            );
-          });
-        })()}
-      </div>
+      {/* ── Print area — rendered via portal directly on body so print CSS works ── */}
+      {typeof document !== "undefined" && createPortal(
+        <div id="etq-print" style={{ display: "none" }}>
+          {(() => {
+            const expanded: any[] = [];
+            toGenerate.forEach(item => {
+              const qty = getQty(item.ref);
+              for (let i = 0; i < qty; i++)
+                expanded.push({ ...item, composicao: tecidoCompMap[item.tecido] || item.composicao || "" });
+            });
+            return Array.from({ length: Math.ceil(expanded.length / 10) }, (_, si) => {
+              const page = expanded.slice(si * 10, si * 10 + 10);
+              if (page.length % 2 !== 0) page.push(null as any);
+              return (
+                <div key={si} className="etq-sheet">
+                  {page.map((item, idx) =>
+                    item
+                      ? <Etiqueta key={item.ref + si + idx} item={item} cores={variantes[item.ref] || []} />
+                      : <div key={"pad" + idx} style={{ width: "99.1mm", height: "57mm" }} />
+                  )}
+                </div>
+              );
+            });
+          })()}
+        </div>,
+        document.body
+      )}
     </>
   );
 }
