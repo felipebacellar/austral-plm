@@ -207,7 +207,7 @@ function Etiqueta({ item, cores }: { item: any; cores: string[] }) {
           <input
             className="etq-preco-alvo-input"
             type="text"
-            placeholder="R$ 0,00"
+            placeholder=""
             value={precoAlvo}
             onChange={e => setPrecoAlvo(e.target.value)}
             onClick={e => e.stopPropagation()}
