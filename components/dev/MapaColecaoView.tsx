@@ -9,12 +9,26 @@ const STATUS_COLORS: Record<string, string> = {
   "MOSTRUÁRIO LIBERADO": "#EDCA35",
   PRODUÇÃO: "#2DB564",
   "PRODUÇÃO LIBERADA": "#2DB564",
+  "REPILOTANDO": "#F5820A",
   CANCELADO: "#EA2F46",
 };
 
 function statusColor(status: string): string {
   const key = Object.keys(STATUS_COLORS).find(k => status.toUpperCase().includes(k));
   return key ? STATUS_COLORS[key] : "#aaa";
+}
+
+function statusLabel(s: string): string {
+  if (!s) return "";
+  const u = s.toUpperCase();
+  if (u.includes("REPILOTANDO")) return "REPILOTANDO PROD.";
+  if (u.includes("PRODUÇÃO LIBERADA") || u.includes("PRODUCAO LIBERADA")) return "PROD. LIBERADA";
+  if (u.includes("MOSTRUÁRIO LIBERADO") || u.includes("MOSTRUARIO LIBERADO")) return "MOST. LIBERADO";
+  if (u.includes("MOSTRUÁRIO") || u.includes("MOSTRUARIO")) return "MOSTRUÁRIO";
+  if (u.includes("PRODUÇÃO") || u.includes("PRODUCAO")) return "PRODUÇÃO";
+  if (u.includes("DESENVOLVIMENTO")) return "DESENVOLVIMENTO";
+  if (u.includes("CANCELADO")) return "CANCELADO";
+  return s;
 }
 
 // Fields used in filter panel (order matches DevTable header, excluding ref/desc/composição/ficha/grade)
@@ -397,15 +411,14 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                   onClick={() => setZoom(item)}
                   style={{
                     background: "var(--bg-primary)", border: "1px solid var(--separator)",
-                    borderRadius: 12, overflow: "hidden", position: "relative",
+                    borderRadius: 12, overflow: "hidden",
                     cursor: "zoom-in", transition: "box-shadow .15s, transform .15s",
                     boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+                    borderTop: `3px solid ${statusColor(item.status)}`,
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 20px rgba(0,0,0,0.13)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.07)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; }}
                 >
-                  <div style={{ position: "absolute", top: 9, right: 9, width: 10, height: 10, borderRadius: "50%", background: statusColor(item.status), border: "1.5px solid rgba(255,255,255,0.9)", zIndex: 2 }} title={item.status} />
-
                   <div style={{ width: "100%", aspectRatio: "4/3", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -419,7 +432,14 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                   </div>
 
                   <div style={{ padding: "10px 12px 12px", borderTop: "1px solid var(--separator)" }}>
-                    <div style={{ fontWeight: 700, fontSize: 11, color: "var(--label-primary)", marginBottom: 2 }}>{item.ref}</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontWeight: 700, fontSize: 11, color: "var(--label-primary)" }}>{item.ref}</span>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 20,
+                        background: statusColor(item.status) + "22", color: statusColor(item.status),
+                        whiteSpace: "nowrap", flexShrink: 0,
+                      }}>{statusLabel(item.status)}</span>
+                    </div>
                     <div style={{ fontSize: 12, color: "var(--label-primary)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.35, marginBottom: 6 }}>{item.desc}</div>
                     {(item.tecido || item.composicao) && (
                       <div style={{ fontSize: 10, color: "var(--label-secondary)", marginBottom: 1, lineHeight: 1.4 }}>{[item.tecido, item.composicao].filter(Boolean).join("  ·  ")}</div>
