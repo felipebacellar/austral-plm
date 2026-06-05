@@ -415,8 +415,7 @@ export default function EtiquetasLineView({ rows, variantes }: Props) {
     fetchTecidos().then(tecidos => {
       const map: Record<string, string> = {};
       tecidos.forEach((t: any) => { if (t.comp) map[t.nome] = t.comp; });
-      console.log("[EtiquetasLineView] tecidos carregados:", tecidos.length, "com comp:", Object.keys(map).length, "sample:", Object.entries(map).slice(0,2));
-      setTecidoCompMap(map);
+setTecidoCompMap(map);
     });
   }, []);
 
