@@ -11,6 +11,7 @@ import UsersModal from "@/components/settings/UsersModal";
 import ExplosaoView from "@/components/compras/ExplosaoView";
 import ControleFluxoView from "@/components/dev/ControleFluxoView";
 import MapaColecaoView from "@/components/dev/MapaColecaoView";
+import MapaEntregasView from "@/components/dev/MapaEntregasView";
 import EtiquetasLineView from "@/components/dev/EtiquetasLineView";
 import { fetchProdutos, fetchAllVariantes } from "@/lib/db";
 import { subscribeRealtime } from "@/lib/realtime";
@@ -31,9 +32,10 @@ const COMPRAS_TABS = [
   { id: "compras_dev",       label: "Desenvolvimento", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
   { id: "compras_variantes", label: "Variantes",       icon: "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" },
   { id: "compras_explosao",  label: "Explosão",        icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
+  { id: "compras_entregas",  label: "Mapa de Entregas", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
 ];
 
-type Tab = (typeof TABS)[number]["id"] | "compras_dev" | "compras_variantes" | "compras_explosao" | "dev_fluxo" | "dev_mapa" | "dev_etiquetas";
+type Tab = (typeof TABS)[number]["id"] | "compras_dev" | "compras_variantes" | "compras_explosao" | "compras_entregas" | "dev_fluxo" | "dev_mapa" | "dev_etiquetas";
 
 export default function Home() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -231,6 +233,7 @@ export default function Home() {
           {!loading && tab === "compras_dev" && <DevTable rows={comprasRows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
           {!loading && tab === "compras_variantes" && <VariantesTable rows={comprasRows} variantes={variantes} onOpenFicha={setFichaRow} readOnly compras setRows={setRows} canEditOrders={isAdmin || perms["compras_pedidos"] === true} />}
           {!loading && tab === "compras_explosao" && <ExplosaoView comprasRows={comprasRows} variantes={variantes} />}
+          {!loading && tab === "compras_entregas" && <MapaEntregasView />}
           {!loading && tab === "dev_mapa" && <MapaColecaoView rows={rows} />}
           {!loading && tab === "dev_etiquetas" && <EtiquetasLineView rows={rows} variantes={variantes} />}
         </div>

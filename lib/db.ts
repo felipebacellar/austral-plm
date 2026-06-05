@@ -382,3 +382,57 @@ export async function fetchMapaColecao() {
     imagem_modelo: fotoMap[p.ref] || "",
   }));
 }
+
+// ══ MAPA DE ENTREGAS ══
+export async function fetchMapaEntregas() {
+  const [prodsRes, fichasRes, tecidosRes, varComprasRes] = await Promise.all([
+    sb().from("produtos").select("*"),
+    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo"),
+    sb().from("tecidos").select("nome, composicao"),
+    sb().from("produto_variante_compras").select("*"),
+  ]);
+
+  const imgMap: Record<string, string> = {};
+  const fotoMap: Record<string, string> = {};
+  (fichasRes.data || []).forEach((f: any) => {
+    if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
+    if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
+  });
+
+  const tecidoCompMap: Record<string, string> = {};
+  (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
+
+  const prodMap: Record<number, any> = {};
+  (prodsRes.data || []).forEach((p: any) => { prodMap[p.id] = p; });
+
+  const entryMap: Record<string, any> = {};
+
+  (varComprasRes.data || []).forEach((vc: any) => {
+    const prod = prodMap[vc.produto_id];
+    if (!prod) return;
+    const base = {
+      ref: prod.ref, desc: prod.descricao || "", status: prod.status || "",
+      tecido: prod.tecido || "", composicao: tecidoCompMap[prod.tecido] || "",
+      forn_tecido: prod.forn_tecido || "", fornecedor: prod.fornecedor || "",
+      colecao: prod.colecao || "", grupo: prod.grupo || "", subgrupo: prod.subgrupo || "",
+      operacao: prod.operacao || "", categoria: prod.categoria || "",
+      subcategoria: prod.subcategoria || "", tipo: prod.tipo || "",
+      linha: prod.linha || "", drop: prod.drop_num || "", estilista: prod.estilista || "",
+      imagem_url: imgMap[prod.ref] || "", imagem_modelo: fotoMap[prod.ref] || "",
+    };
+    if (vc.data_entrega1 && (vc.qtd_compra1 || 0) > 0) {
+      const key = `${prod.ref}|${vc.data_entrega1}|1`;
+      if (!entryMap[key]) entryMap[key] = { ...base, data_entrega: vc.data_entrega1, compra_num: 1, variantes: [] };
+      if (vc.cor) entryMap[key].variantes.push({ cor: vc.cor, qtd: vc.qtd_compra1 || 0, pedido: vc.pedido1 || "" });
+    }
+    if (vc.data_entrega2 && (vc.qtd_compra2 || 0) > 0) {
+      const key = `${prod.ref}|${vc.data_entrega2}|2`;
+      if (!entryMap[key]) entryMap[key] = { ...base, data_entrega: vc.data_entrega2, compra_num: 2, variantes: [] };
+      if (vc.cor) entryMap[key].variantes.push({ cor: vc.cor, qtd: vc.qtd_compra2 || 0, pedido: vc.pedido2 || "" });
+    }
+  });
+
+  return Object.values(entryMap).sort((a: any, b: any) =>
+    a.data_entrega.localeCompare(b.data_entrega) || a.ref.localeCompare(b.ref)
+  );
+}
