@@ -351,10 +351,11 @@ export async function upsertControleFluxo(produto_ref: string, field: string, va
 
 // ══ MAPA DE COLEÇÃO ══
 export async function fetchMapaColecao() {
-  const [prodsRes, fichasRes, tecidosRes] = await Promise.all([
+  const [prodsRes, fichasRes, tecidosRes, ficTecidosRes] = await Promise.all([
     sb().from("produtos").select("*").order("grupo").order("ref"),
     sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo"),
     sb().from("tecidos").select("nome, composicao"),
+    sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref)"),
   ]);
   if (prodsRes.error) console.error("fetchMapaColecao:", prodsRes.error);
 
@@ -368,6 +369,14 @@ export async function fetchMapaColecao() {
   const tecidoCompMap: Record<string, string> = {};
   (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
 
+  const coresMap: Record<string, string[]> = {};
+  (ficTecidosRes.data || []).forEach((t: any) => {
+    const ref = t.fichas_tecnicas?.produto_ref;
+    if (!ref || !t.cores?.length) return;
+    if (!coresMap[ref]) coresMap[ref] = [];
+    t.cores.forEach((c: string) => { if (c && !coresMap[ref].includes(c)) coresMap[ref].push(c); });
+  });
+
   return (prodsRes.data || []).map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "",
     tecido: p.tecido || "", forn_tecido: p.forn_tecido || "",
@@ -380,6 +389,7 @@ export async function fetchMapaColecao() {
     piloto_most: p.piloto_most || "", status: p.status || "",
     imagem_url: imgMap[p.ref] || "",
     imagem_modelo: fotoMap[p.ref] || "",
+    cores: coresMap[p.ref] || [],
   }));
 }
 
