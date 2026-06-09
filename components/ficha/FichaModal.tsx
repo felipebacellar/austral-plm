@@ -60,7 +60,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [gradEsp, setGradEsp] = useState<any[]>([]);
 
   /* Clássicos: seleção de temporada */
-  const isClassic = /cl[aá]ssic/i.test(row.colecao || "");
+  const isClassic = (row.ref || "").startsWith("11") || /cl.ssic/i.test(row.colecao || "");
   const [selectedColecao, setSelectedColecao] = useState<string | null>(null);
   const [colecaoOpts, setColecaoOpts] = useState<string[]>([]);
   const [newColecaoMode, setNewColecaoMode] = useState(false);
