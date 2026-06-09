@@ -64,13 +64,14 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [selectedColecao, setSelectedColecao] = useState<string | null>(null);
   const [colecaoOpts, setColecaoOpts] = useState<string[]>([]);
   const [newColecaoMode, setNewColecaoMode] = useState(false);
-  const [newColecaoInput, setNewColecaoInput] = useState("");
+  const [colecaoCadOpts, setColecaoCadOpts] = useState<string[]>([]);
 
-  /* Carrega temporadas disponíveis para refs clássicas */
+  /* Carrega temporadas disponíveis e opções de cadastro para refs clássicas */
   useEffect(() => {
     if (!isClassic) return;
-    fetchFichasColecoes(row.ref).then(opts => {
+    Promise.all([fetchFichasColecoes(row.ref), fetchCadastros()]).then(([opts, cad]) => {
       setColecaoOpts(opts);
+      setColecaoCadOpts(cad.colecao || []);
       if (opts.length > 0 && selectedColecao === null) setSelectedColecao(opts[0]);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -361,36 +362,28 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               {!newColecaoMode ? (
                 <button onClick={() => setNewColecaoMode(true)}
                   style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, border: "1.5px dashed var(--separator)", background: "transparent", color: "var(--system-blue)", cursor: "pointer" }}>
-                  + Nova temporada
+                  + Adicionar temporada
                 </button>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input
+                  <select
                     autoFocus
-                    value={newColecaoInput}
-                    onChange={e => setNewColecaoInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && newColecaoInput.trim()) {
-                        const v = newColecaoInput.trim();
-                        setColecaoOpts(prev => prev.includes(v) ? prev : [...prev, v]);
-                        setSelectedColecao(v);
-                        setNewColecaoMode(false);
-                        setNewColecaoInput("");
-                      }
-                      if (e.key === "Escape") { setNewColecaoMode(false); setNewColecaoInput(""); }
+                    defaultValue=""
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      setColecaoOpts(prev => prev.includes(v) ? prev : [...prev, v]);
+                      setSelectedColecao(v);
+                      setNewColecaoMode(false);
                     }}
-                    placeholder="Ex: Verao 28"
-                    style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--system-blue)", background: "var(--bg-primary)", color: "var(--label-primary)", outline: "none", width: 130 }}
-                  />
-                  <button onClick={() => {
-                    const v = newColecaoInput.trim();
-                    if (!v) return;
-                    setColecaoOpts(prev => prev.includes(v) ? prev : [...prev, v]);
-                    setSelectedColecao(v);
-                    setNewColecaoMode(false);
-                    setNewColecaoInput("");
-                  }} style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, background: "var(--system-blue)", color: "#fff", border: "none", cursor: "pointer" }}>OK</button>
-                  <button onClick={() => { setNewColecaoMode(false); setNewColecaoInput(""); }}
+                    style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--system-blue)", background: "var(--bg-primary)", color: "var(--label-primary)", outline: "none" }}
+                  >
+                    <option value="">Selecionar coleção…</option>
+                    {colecaoCadOpts.filter(c => !colecaoOpts.includes(c)).map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => setNewColecaoMode(false)}
                     style={{ fontSize: 11, padding: "4px 8px", borderRadius: 8, background: "var(--bg-tertiary)", color: "var(--label-secondary)", border: "1px solid var(--separator)", cursor: "pointer" }}>✕</button>
                 </div>
               )}
