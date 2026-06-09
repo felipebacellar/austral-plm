@@ -137,8 +137,16 @@ export async function upsertVarianteCompra(produtoId: number, cor: string, field
 }
 
 // ══ FICHAS TÉCNICAS ══
-export async function fetchFicha(ref: string) {
-  const { data, error } = await sb().from("fichas_tecnicas").select("*").eq("produto_ref", ref).maybeSingle();
+export async function fetchFichasColecoes(ref: string): Promise<string[]> {
+  const { data } = await sb().from("fichas_tecnicas").select("colecao").eq("produto_ref", ref).not("colecao", "is", null);
+  return (data || []).map((f: any) => f.colecao).filter(Boolean);
+}
+
+export async function fetchFicha(ref: string, colecao?: string | null) {
+  let q = sb().from("fichas_tecnicas").select("*").eq("produto_ref", ref);
+  if (colecao) q = q.eq("colecao", colecao);
+  else q = q.is("colecao", null);
+  const { data, error } = await q.maybeSingle();
   if (error || !data) return null;
   const fid = data.id;
   const [tec, avi, pil, prv, ant] = await Promise.all([
@@ -185,11 +193,11 @@ export async function saveFichaImagem(fichaId: number, field: string, url: strin
   if (error) console.error("saveFichaImagem:", error);
 }
 
-export async function upsertFicha(ref: string, f: any) {
+export async function upsertFicha(ref: string, f: any, colecao?: string | null) {
   let fid = f.id;
   if (!fid) {
     const { data, error } = await sb().from("fichas_tecnicas").insert({
-      produto_ref: ref, observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
+      produto_ref: ref, colecao: colecao || null, observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
       ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
       pantones: f.pantones || {}, estamparia: f.estamparia || {},
       status_liberacao: f.statusLiberacao || "",
@@ -355,7 +363,7 @@ export async function fetchMapaColecao() {
     sb().from("produtos").select("*").order("grupo").order("ref"),
     sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo"),
     sb().from("tecidos").select("nome, composicao"),
-    sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref)"),
+    sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)"),
   ]);
   if (prodsRes.error) console.error("fetchMapaColecao:", prodsRes.error);
 
@@ -370,11 +378,19 @@ export async function fetchMapaColecao() {
   (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
 
   const coresMap: Record<string, string[]> = {};
+  const fichasPorColecaoMap: Record<string, Record<string, string[]>> = {};
   (ficTecidosRes.data || []).forEach((t: any) => {
     const ref = t.fichas_tecnicas?.produto_ref;
+    const fichaColecao = t.fichas_tecnicas?.colecao;
     if (!ref || !t.cores?.length) return;
-    if (!coresMap[ref]) coresMap[ref] = [];
-    t.cores.forEach((c: string) => { if (c && !coresMap[ref].includes(c)) coresMap[ref].push(c); });
+    if (fichaColecao) {
+      if (!fichasPorColecaoMap[ref]) fichasPorColecaoMap[ref] = {};
+      if (!fichasPorColecaoMap[ref][fichaColecao]) fichasPorColecaoMap[ref][fichaColecao] = [];
+      t.cores.forEach((c: string) => { if (c && !fichasPorColecaoMap[ref][fichaColecao].includes(c)) fichasPorColecaoMap[ref][fichaColecao].push(c); });
+    } else {
+      if (!coresMap[ref]) coresMap[ref] = [];
+      t.cores.forEach((c: string) => { if (c && !coresMap[ref].includes(c)) coresMap[ref].push(c); });
+    }
   });
 
   return (prodsRes.data || []).map((p: any) => ({
@@ -390,6 +406,7 @@ export async function fetchMapaColecao() {
     imagem_url: imgMap[p.ref] || "",
     imagem_modelo: fotoMap[p.ref] || "",
     cores: coresMap[p.ref] || [],
+    fichas_por_colecao: fichasPorColecaoMap[p.ref] || {},
   }));
 }
 

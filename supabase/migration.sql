@@ -60,10 +60,12 @@ CREATE TABLE produtos (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Fichas técnicas (1 por referência, não por SKU)
+-- Fichas técnicas (1 por referência para produtos normais; N para clássicos, uma por temporada)
+-- Para bancos existentes: ALTER TABLE fichas_tecnicas ADD COLUMN IF NOT EXISTS colecao TEXT;
 CREATE TABLE fichas_tecnicas (
   id BIGSERIAL PRIMARY KEY,
   produto_ref TEXT NOT NULL,
+  colecao TEXT DEFAULT NULL, -- NULL = ficha única (normal); valor = temporada da ref clássica (ex: "Verao 27")
   tabela_medidas TEXT DEFAULT '',
   observacoes TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()

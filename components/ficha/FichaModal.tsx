@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras } from "@/lib/db";
+import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
@@ -59,9 +59,29 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [ptsEsp, setPtsEsp] = useState<any[]>([]);
   const [gradEsp, setGradEsp] = useState<any[]>([]);
 
+  /* Clássicos: seleção de temporada */
+  const isClassic = /cl[aá]ssic/i.test(row.colecao || "");
+  const [selectedColecao, setSelectedColecao] = useState<string | null>(null);
+  const [colecaoOpts, setColecaoOpts] = useState<string[]>([]);
+  const [newColecaoMode, setNewColecaoMode] = useState(false);
+  const [newColecaoInput, setNewColecaoInput] = useState("");
+
+  /* Carrega temporadas disponíveis para refs clássicas */
   useEffect(() => {
+    if (!isClassic) return;
+    fetchFichasColecoes(row.ref).then(opts => {
+      setColecaoOpts(opts);
+      if (opts.length > 0 && selectedColecao === null) setSelectedColecao(opts[0]);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row.ref, isClassic]);
+
+  useEffect(() => {
+    if (isClassic && selectedColecao === null) return;
     (async () => {
-      const [ficha, cadastros, aviCad, tecs, vcAll] = await Promise.all([fetchFicha(row.ref), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras()]);
+      const fichaColecao = isClassic ? selectedColecao : null;
+      setFichaId(null);
+      const [ficha, cadastros, aviCad, tecs, vcAll] = await Promise.all([fetchFicha(row.ref, fichaColecao), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras()]);
       setVcCompras(vcAll);
       setCorOpts(cadastros.cor || []);
       setTingimentoOpts(cadastros.tingimento || []);
@@ -124,7 +144,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
     })();
-  }, [row.ref, row.tab_medidas]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row.ref, row.tab_medidas, selectedColecao, isClassic]);
 
   const hi = async (e: any, fd: string, s: (u: string) => void) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); } setUp(false); };
   const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
@@ -133,7 +154,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const save = async () => {
     setSaving(true);
     const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
-    const newId = await upsertFicha(row.ref, fichaData);
+    const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
     if (newId) setFichaId(newId);
     // Auto-atualiza status do produto com base no resultado da liberação
     let autoStatus: string | null = null;
@@ -322,6 +343,62 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full whitespace-nowrap">{(s => s.includes("REPILOTANDO") ? "REPILOTANDO PRODUÇÃO" : s.includes("PRODUÇÃO") || s.includes("PRODUCAO") ? "PRODUÇÃO" : s.includes("MOSTRUÁRIO") || s.includes("MOSTRUARIO") ? "MOSTRUÁRIO" : s.includes("CANCELADO") ? "CANCELADO" : "DESENVOLVIMENTO")((row.status || "").toUpperCase())}</span>
             <span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
           </div>
+
+          {/* Seletor de temporada — apenas para refs clássicas */}
+          {isClassic && (
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--separator)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--label-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Temporada:</span>
+              {colecaoOpts.map(c => (
+                <button key={c} onClick={() => { setSelectedColecao(c); setNewColecaoMode(false); }}
+                  style={{
+                    fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, border: "1.5px solid",
+                    cursor: "pointer", transition: "all .15s",
+                    background: selectedColecao === c ? "var(--system-blue)" : "var(--bg-primary)",
+                    borderColor: selectedColecao === c ? "var(--system-blue)" : "var(--separator)",
+                    color: selectedColecao === c ? "#fff" : "var(--label-primary)",
+                  }}>{c}</button>
+              ))}
+              {!newColecaoMode ? (
+                <button onClick={() => setNewColecaoMode(true)}
+                  style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, border: "1.5px dashed var(--separator)", background: "transparent", color: "var(--system-blue)", cursor: "pointer" }}>
+                  + Nova temporada
+                </button>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    autoFocus
+                    value={newColecaoInput}
+                    onChange={e => setNewColecaoInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newColecaoInput.trim()) {
+                        const v = newColecaoInput.trim();
+                        setColecaoOpts(prev => prev.includes(v) ? prev : [...prev, v]);
+                        setSelectedColecao(v);
+                        setNewColecaoMode(false);
+                        setNewColecaoInput("");
+                      }
+                      if (e.key === "Escape") { setNewColecaoMode(false); setNewColecaoInput(""); }
+                    }}
+                    placeholder="Ex: Verao 28"
+                    style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--system-blue)", background: "var(--bg-primary)", color: "var(--label-primary)", outline: "none", width: 130 }}
+                  />
+                  <button onClick={() => {
+                    const v = newColecaoInput.trim();
+                    if (!v) return;
+                    setColecaoOpts(prev => prev.includes(v) ? prev : [...prev, v]);
+                    setSelectedColecao(v);
+                    setNewColecaoMode(false);
+                    setNewColecaoInput("");
+                  }} style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, background: "var(--system-blue)", color: "#fff", border: "none", cursor: "pointer" }}>OK</button>
+                  <button onClick={() => { setNewColecaoMode(false); setNewColecaoInput(""); }}
+                    style={{ fontSize: 11, padding: "4px 8px", borderRadius: 8, background: "var(--bg-tertiary)", color: "var(--label-secondary)", border: "1px solid var(--separator)", cursor: "pointer" }}>✕</button>
+                </div>
+              )}
+              {colecaoOpts.length === 0 && !newColecaoMode && (
+                <span style={{ fontSize: 11, color: "var(--label-tertiary)", fontStyle: "italic" }}>Nenhuma temporada criada ainda</span>
+              )}
+            </div>
+          )}
           <div className="apple-card">
             <div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tecido", row.tecido], ["Forn. tecido", row.forn_tecido], ["Composição", compOf(row.tecido)], ["Operação", row.operacao], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Tab. medidas", row.tab_medidas]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>
             <div className="grid grid-cols-2 sm:grid-cols-4">{([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div>

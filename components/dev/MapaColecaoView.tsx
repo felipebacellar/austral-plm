@@ -213,11 +213,34 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
       }
       for (const [key, vals] of Object.entries(filters)) {
         if (vals.length === 0) continue;
-        if (!vals.includes(i[key] || "")) return false;
+        if (key === "colecao") {
+          // Clássicos aparecem quando têm ficha em alguma das coleções selecionadas
+          const hasClassicMatch = vals.some((v: string) => i.fichas_por_colecao?.[v]);
+          if (!vals.includes(i.colecao || "") && !hasClassicMatch) return false;
+        } else {
+          if (!vals.includes(i[key] || "")) return false;
+        }
       }
       return true;
     });
   }, [items, filters, search]);
+
+  /* Retorna as cores corretas para o item considerando o filtro de coleção ativo */
+  const coresDoItem = (item: any): string[] => {
+    const activeColecoes: string[] = filters["colecao"] || [];
+    if (item.fichas_por_colecao && Object.keys(item.fichas_por_colecao).length > 0) {
+      if (activeColecoes.length === 1 && item.fichas_por_colecao[activeColecoes[0]]) {
+        return item.fichas_por_colecao[activeColecoes[0]];
+      }
+      const matching = activeColecoes.filter((c: string) => item.fichas_por_colecao[c]);
+      if (matching.length > 0) {
+        return Array.from(new Set(matching.flatMap((c: string) => item.fichas_por_colecao[c])));
+      }
+      // Sem filtro ou clássico sem match: une todas as temporadas
+      return Array.from(new Set(Object.values(item.fichas_por_colecao).flat() as string[]));
+    }
+    return item.cores || [];
+  };
 
   const groups = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -293,11 +316,11 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                 {zoom.linha      && <div><span style={{ color: "var(--label-tertiary)" }}>Linha: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.linha}</span></div>}
                 {zoom.estilista  && <div><span style={{ color: "var(--label-tertiary)" }}>Estilista: </span><span style={{ color: "var(--label-secondary)" }}>{zoom.estilista}</span></div>}
               </div>
-              {zoom.cores?.length > 0 && (
+              {coresDoItem(zoom).length > 0 && (
                 <div style={{ marginTop: 12, borderTop: "1px solid var(--separator)", paddingTop: 10 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--label-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 7 }}>Variantes</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {zoom.cores.map((cor: string) => (
+                    {coresDoItem(zoom).map((cor: string) => (
                       <span key={cor} style={{
                         padding: "4px 10px", borderRadius: 6,
                         background: "var(--bg-secondary)", border: "1px solid var(--separator)",
@@ -469,9 +492,9 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                       <div style={{ fontSize: 10, color: "var(--label-secondary)", marginBottom: 1, lineHeight: 1.4 }}>{[item.tecido, item.composicao].filter(Boolean).join("  ·  ")}</div>
                     )}
                     {item.forn_tecido && <div style={{ fontSize: 10, color: "var(--label-tertiary)", marginBottom: 1 }}>{item.forn_tecido}</div>}
-                    {item.cores?.length > 0 && (
+                    {coresDoItem(item).length > 0 && (
                       <div style={{ marginTop: 5, display: "flex", flexWrap: "wrap", gap: 3 }}>
-                        {item.cores.map((cor: string) => (
+                        {coresDoItem(item).map((cor: string) => (
                           <span key={cor} style={{
                             fontSize: 9, padding: "1px 5px", borderRadius: 3,
                             border: "1px solid var(--separator)",
