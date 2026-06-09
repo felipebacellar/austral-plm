@@ -131,9 +131,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.ncm) setNcm(ficha.ncm);
         if (ficha.tabelaEspecialAtiva) { setTEsp(true); setPtsEsp(ficha.pontosEspeciais || []); setGradEsp(ficha.gradEspecial || []); }
       }
-      /* Se não há ficha e o produto tem tecido, cria linha inicial */
-      if (!ficha && row.tecido) {
-        setTec([{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }]);
+      /* Se não há ficha, cria linha inicial de tecido */
+      if (!ficha) {
+        setTec([{ artigo: row.tecido || "", forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }]);
       }
       if (row.tab_medidas) {
         const [p, g] = await Promise.all([
