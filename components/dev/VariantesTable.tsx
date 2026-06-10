@@ -156,7 +156,18 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
 
   const filtered = useMemo(() => {
     let r = vr;
-    Object.entries(fl).forEach(([k,v]) => { if(v) r = r.filter(x => x[k]===v); });
+    Object.entries(fl).forEach(([k,v]) => {
+      if (!v) return;
+      if (k === "colecao") {
+        // Clássicos: incluir se têm cores cadastradas para essa temporada
+        r = r.filter(x => x[k] === v || (
+          ((x.ref||"").startsWith("11") || /cl.ssic/i.test(x.colecao||"")) &&
+          (variantesPorColecao[x.ref]?.[v]?.length ?? 0) > 0
+        ));
+      } else {
+        r = r.filter(x => x[k] === v);
+      }
+    });
     if(q){ const s=q.toLowerCase(); r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.fornecedor).toLowerCase().includes(s)); }
     if (sort) {
       r = [...r].sort((a, b) => {
