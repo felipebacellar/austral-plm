@@ -78,8 +78,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   }, [row.ref, isClassic]);
 
   useEffect(() => {
-    if (isClassic && selectedColecao === null) return;
     (async () => {
+      // Para clássicos: carrega a ficha da temporada selecionada (ou null se nenhuma ainda)
       const fichaColecao = isClassic ? selectedColecao : null;
       setFichaId(null);
       const [ficha, cadastros, aviCad, tecs, vcAll] = await Promise.all([fetchFicha(row.ref, fichaColecao), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras()]);
