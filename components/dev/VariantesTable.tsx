@@ -43,6 +43,7 @@ const SC_STYLE:Record<string,{bg:string;color:string}>={
 type Props={
   rows:any[];
   variantes:Record<string,string[]>;
+  variantesPorColecao?:Record<string,Record<string,string[]>>;
   onOpenFicha:(r:any)=>void;
   readOnly?:boolean;
   compras?:boolean;
@@ -50,7 +51,7 @@ type Props={
   canEditOrders?:boolean;
 };
 
-export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=false, compras=false, setRows, canEditOrders=false}:Props){
+export default function VariantesTable({rows, variantes, variantesPorColecao={}, onOpenFicha, readOnly=false, compras=false, setRows, canEditOrders=false}:Props){
   const COLS = compras ? VC_COMPRAS : VC;
 
   // ── Compra data: fetched per-variant, stored locally ──────────────────
@@ -118,8 +119,12 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
   // Build variant rows, merging per-variant compra data from vcMap
   const vr = useMemo(() => {
     const o: any[] = [];
+    // Se filtro de coleção ativo, clássicos usam cores da temporada correspondente
+    const colecaoFiltro = fl["colecao"] || "";
     rows.forEach((p: any) => {
-      const cores = variantes[p.ref] || [];
+      const isClassic = (p.ref || "").startsWith("11") || /cl.ssic/i.test(p.colecao || "");
+      const coresTemporada = colecaoFiltro && isClassic ? (variantesPorColecao[p.ref]?.[colecaoFiltro] || []) : null;
+      const cores = coresTemporada ?? variantes[p.ref] ?? [];
       if (!cores.length) {
         const vc = vcMap[`${p.id}:—`] ?? {};
         o.push({
@@ -147,7 +152,7 @@ export default function VariantesTable({rows, variantes, onOpenFicha, readOnly=f
       }
     });
     return o;
-  }, [rows, variantes, vcMap]);
+  }, [rows, variantes, variantesPorColecao, vcMap, fl]);
 
   const filtered = useMemo(() => {
     let r = vr;

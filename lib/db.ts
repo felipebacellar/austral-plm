@@ -328,17 +328,28 @@ export async function fetchTabelasComPontos() {
 
 // Fetch all product variants (ref -> cores[]) from ficha_tecidos
 export async function fetchAllVariantes(): Promise<Record<string, string[]>> {
-  const { data: fichas } = await sb().from("fichas_tecnicas").select("produto_ref");
-  if (!fichas?.length) return {};
-
-  const { data: tecidos } = await sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref)").order("id");
-  
+  const { data: tecidos } = await sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id");
   const result: Record<string, string[]> = {};
   (tecidos || []).forEach((t: any) => {
-    const ref = (t as any).fichas_tecnicas?.produto_ref;
+    const ref = t.fichas_tecnicas?.produto_ref;
     if (!ref || !t.cores?.length) return;
     if (!result[ref]) result[ref] = [];
     t.cores.forEach((c: string) => { if (c && !result[ref].includes(c)) result[ref].push(c); });
+  });
+  return result;
+}
+
+// Fetch season-specific variants for classic refs: ref -> colecao -> cores[]
+export async function fetchVariantesPorColecao(): Promise<Record<string, Record<string, string[]>>> {
+  const { data: tecidos } = await sb().from("ficha_tecidos").select("cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id");
+  const result: Record<string, Record<string, string[]>> = {};
+  (tecidos || []).forEach((t: any) => {
+    const ref = t.fichas_tecnicas?.produto_ref;
+    const col = t.fichas_tecnicas?.colecao;
+    if (!ref || !col || !t.cores?.length) return;
+    if (!result[ref]) result[ref] = {};
+    if (!result[ref][col]) result[ref][col] = [];
+    t.cores.forEach((c: string) => { if (c && !result[ref][col].includes(c)) result[ref][col].push(c); });
   });
   return result;
 }
