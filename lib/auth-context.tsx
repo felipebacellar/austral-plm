@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getSupabase().auth.getUser().then(({ data: { user } }) => {
       setUser(user ?? null);
       setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
     // Ouvir mudanças (login, logout, refresh de token)
     const { data: { subscription } } = getSupabase().auth.onAuthStateChange(
