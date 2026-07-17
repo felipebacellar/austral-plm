@@ -42,6 +42,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [tingimentoOpts, setTingimentoOpts] = useState<string[]>([]);
   const [statusLib, setStatusLib] = useState("");
   const [numVars, setNumVars] = useState(4);
+  const [pendingSave, setPendingSave] = useState(false);
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
@@ -152,15 +153,24 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
   const deleteImgModelo = async () => { if (imgModelo) await deleteImage(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
 
-  const save = async () => {
+  const autoStatusFor = (lib: string) => {
+    if (lib === "REPROVADO") return "REPILOTANDO PRODUÇÃO";
+    if (lib === "APROVADO" || lib === "APROVADO COM RESTRIÇÃO") return "PRODUÇÃO LIBERADA";
+    return null;
+  };
+
+  const save = async (confirmed = false) => {
+    const autoStatus = autoStatusFor(statusLib);
+    // Se vai mudar o status do produto automaticamente, pedir confirmação antes
+    if (autoStatus && autoStatus !== row.status && !confirmed) {
+      setPendingSave(true);
+      return;
+    }
     setSaving(true);
+    setPendingSave(false);
     const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
     if (newId) setFichaId(newId);
-    // Auto-atualiza status do produto com base no resultado da liberação
-    let autoStatus: string | null = null;
-    if (statusLib === "REPROVADO") autoStatus = "REPILOTANDO PRODUÇÃO";
-    else if (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") autoStatus = "PRODUÇÃO LIBERADA";
     if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
     onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } });
     setSaving(false);
@@ -303,7 +313,21 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <svg className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span className="hidden sm:inline">Exportar </span>PDF
             </button>
-            <button onClick={save} className="apple-btn-primary text-[12px] sm:text-[13px] !px-3 sm:!px-5">Salvar</button>
+            {pendingSave && (
+              <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setPendingSave(false)}>
+                <div className="apple-card" style={{width:360,padding:"24px"}} onClick={e=>e.stopPropagation()}>
+                  <div style={{fontSize:15,fontWeight:700,marginBottom:8}}>Confirmar mudança de status</div>
+                  <div style={{fontSize:13,color:"var(--label-secondary)",marginBottom:18,lineHeight:1.55}}>
+                    Ao salvar com liberação <strong>"{statusLib}"</strong>, o status do produto <strong>{row.ref}</strong> será alterado automaticamente para <strong>"{autoStatusFor(statusLib)}"</strong>.
+                  </div>
+                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button className="apple-btn-secondary" onClick={()=>setPendingSave(false)}>Cancelar</button>
+                    <button className="apple-btn-primary" onClick={()=>save(true)}>Confirmar e salvar</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <button onClick={()=>save()} className="apple-btn-primary text-[12px] sm:text-[13px] !px-3 sm:!px-5">Salvar</button>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
