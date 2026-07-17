@@ -105,7 +105,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-              {([["Tecido", row.tecido, false], ["Forn. Tecido", row.forn_tecido, false], ["Composição", compOf(row.tecido), false], ["Operação", row.operacao, false], ["Fornecedor", row.fornecedor, false], ["Estilista", row.estilista, false], ["Tab. Medidas", row.tab_medidas, false], ["NCM", ncm || "", true]] as [string, string, boolean][]).map(([l, v, mono], i) => (
+              {([["Tecido", row.tecido, false], ["Forn. Tecido", row.forn_tecido, false], ["Composição", row.composicao || compOf(row.tecido), false], ["Operação", row.operacao, false], ["Fornecedor", row.fornecedor, false], ["Estilista", row.estilista, false], ["Tab. Medidas", row.tab_medidas, false], ["NCM", ncm || "", true]] as [string, string, boolean][]).map(([l, v, mono], i) => (
                 <div key={l} style={{ padding: "4px 10px", borderBottom: `0.5px solid ${line}`, borderRight: i % 2 === 0 ? `0.5px solid ${line}` : "none" }}>
                   <div style={{ fontSize: "6px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em" }}>{l}</div>
                   <div style={{ fontSize: "8.5px", fontWeight: 700, color: navy, ...(mono ? { fontFamily: "monospace" } : {}) }}>{v || "—"}</div>
@@ -144,7 +144,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
                     <td style={{ ...td, fontWeight: 700 }}>{t.artigo}</td>
                     <td style={{ ...td, color: muted }}>{t.forn}</td>
-                    <td style={{ ...td, fontSize: "7.5px", color: muted }}>{compOf(t.artigo) || "—"}</td>
+                    <td style={{ ...td, fontSize: "7.5px", color: muted }}>{(i === 0 ? (row.composicao || compOf(t.artigo)) : compOf(t.artigo)) || "—"}</td>
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{t.preco > 0 ? `R$ ${t.preco.toFixed(2)}` : "—"}</td>
                     {Array.from({length: numVars}, (_, j) => { const cor = cs[j]; const pal = cor ? COR_PALETTE[cor] : null; return (<td key={j} style={{ ...td, textAlign: "center", padding: "3px 4px" }}>{cor ? <span style={{ display: "inline-block", padding: "2px 5px", borderRadius: "3px", fontSize: "7.5px", fontWeight: 700, background: pal?.bg || "#eee", color: pal?.text || "#333", whiteSpace: "nowrap" }}>{cor}</span> : <span style={{ color: lineDark }}>—</span>}</td>); })}
                   </tr>

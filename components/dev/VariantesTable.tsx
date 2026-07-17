@@ -7,7 +7,7 @@ import { updateProdutoField, fetchVarianteCompras, upsertVarianteCompra } from "
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 
 // Colunas ESTILO
-const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
+const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"composicao",label:"Composição",w:160},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
 // Colunas COMPRAS
 const VC_COMPRAS=[
   {key:"ref",           label:"Referência",     w:120},
