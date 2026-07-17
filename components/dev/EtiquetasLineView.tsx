@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fetchTecidos } from "@/lib/db";
+import { fmtBRL } from "@/lib/utils";
 
 interface Props { rows: any[]; variantes: Record<string, string[]> }
 
@@ -11,10 +12,7 @@ const isMostOrProd = (s: string) => {
   return u.includes("MOSTRUÁRIO") || u.includes("MOSTRUARIO") ||
          u.includes("PRODUÇÃO")   || u.includes("PRODUCAO")   || u.includes("REPILOTANDO");
 };
-const fmtBrl = (v: number | null | undefined) =>
-  v != null && v > 0
-    ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-    : "—";
+const fmtBrl = (v: number | null | undefined) => v != null && v > 0 ? fmtBRL(v) : "—";
 const fmtMkp = (v: number | null | undefined) =>
   v != null && v > 0 ? `${v.toFixed(2)}x` : "—";
 

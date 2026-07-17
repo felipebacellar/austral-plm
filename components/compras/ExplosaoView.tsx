@@ -3,14 +3,11 @@ import { useState, useEffect, useMemo } from "react";
 import { fetchExplosaoData } from "@/lib/db";
 import { exportToExcel } from "@/lib/export-excel";
 import { exportExplosaoPDF } from "@/lib/export-pdf-explosao";
+import { fmtBRL } from "@/lib/utils";
 
 type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 
 const QTD_MOST_KEYS = ["qtd_most_var01","qtd_most_var02","qtd_most_var03","qtd_most_var04","qtd_most_var05","qtd_most_var06"] as const;
-
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 export default function ExplosaoView({ comprasRows, variantes }: Props) {
   const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[] } | null>(null);

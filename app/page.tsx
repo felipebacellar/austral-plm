@@ -14,6 +14,7 @@ import MapaColecaoView from "@/components/dev/MapaColecaoView";
 import MapaEntregasView from "@/components/dev/MapaEntregasView";
 import EtiquetasLineView from "@/components/dev/EtiquetasLineView";
 import { fetchProdutos, fetchAllVariantes, fetchVariantesPorColecao } from "@/lib/db";
+import { COMPRAS_STATUS_ALLOW } from "@/lib/constants";
 import { subscribeRealtime } from "@/lib/realtime";
 import { useAuth } from "@/lib/auth-context";
 
@@ -46,7 +47,6 @@ export default function Home() {
   const [rows, setRows] = useState<any[]>([]);
   const [variantes, setVariantes] = useState<Record<string, string[]>>({});
   const [variantesPorColecao, setVariantesPorColecao] = useState<Record<string, Record<string, string[]>>>({});
-  const COMPRAS_STATUS_ALLOW = ["DESENVOLVIMENTO", "MOSTRUÁRIO LIBERADO", "PRODUÇÃO LIBERADA", "REPILOTANDO PRODUÇÃO"];
   const comprasRows = rows.filter(r => COMPRAS_STATUS_ALLOW.includes(r.status));
   const [fichaRow, setFichaRow] = useState<any>(null);
   const [loading, setLoading] = useState(true);

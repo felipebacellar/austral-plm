@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { fetchControleFluxo } from "@/lib/db";
+import { fmtBRL as _fmtBRL } from "@/lib/utils";
+const fmtBrl = (v: number) => _fmtBRL(v, { decimals: 0 });
 
 type Props = { rows: any[]; variantes: Record<string, string[]> };
 
@@ -166,7 +168,7 @@ export default function DashboardView({ rows, variantes }: Props) {
     if (r.varejo_final && r.custo_final && r.custo_final > 0) return r.varejo_final / r.custo_final;
     return null;
   };
-  const fmtBrl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
   const fmtMkp = (v: number) => `${v.toFixed(2)}x`;
 
   const withPreco = comprasFiltered.filter((r: any) => r.varejo_final && r.varejo_final > 0);

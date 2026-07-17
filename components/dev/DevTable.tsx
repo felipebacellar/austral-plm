@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto, cloneProduto, bulkUpdateStatus } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
+import { STATUS_ESTILO, STATUS_COMPRAS_OPTS } from "@/lib/constants";
+import { fmtBRL } from "@/lib/utils";
 
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string; hiddenColumns?: string[] };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
@@ -12,7 +14,6 @@ const ALWAYS_VISIBLE = ["ref"];
 
 // ── Colunas de status exclusivas de Compras ───────────────────────────────
 const STATUS_PRECO_OPTS = ["SEM CUSTO","CUSTO SOLICITADO","EM NEGOCIAÇÃO","CUSTO FECHADO"];
-const STATUS_COMPRAS_OPTS = ["PEDIDO MOST. COLOCADO","MOSTRUÁRIO ENTREGUE","PED. DE PRODUÇÃO COLOCADO","PRODUÇÃO ENTREGUE"];
 const SP_PRECO_STYLE: Record<string,{bg:string;color:string}> = {
   "SEM CUSTO":         {bg:"rgba(142,142,147,0.15)",color:"var(--label-secondary)"},
   "CUSTO SOLICITADO":  {bg:"rgba(255,149,0,0.15)",  color:"#b86a00"},
@@ -49,11 +50,6 @@ function getPriceVal(key: string, row: any): number | null {
   if (key === "_markup_target") { const t = n("preco_target"),   c = n("custo_inicial");  return t !== null && c !== null && c > 0 ? t / c : null; }
   if (key === "_markup_final")  { const v = n("varejo_final"),   c = n("custo_final");    return v !== null && c !== null && c > 0 ? v / c : null; }
   return n(key);
-}
-function fmtBRL(v: number | null, isMult = false): string {
-  if (v === null) return "—";
-  const s = v.toFixed(2).replace(".", ",");
-  return isMult ? s + "×" : "R$ " + s;
 }
 
 export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "", hiddenColumns = [] }: Props) {
@@ -188,7 +184,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const add = async () => {
     const blank: any = {};
     COLUMNS.forEach(c => { if(c.type!=="action") blank[c.key] = ""; });
-    blank.status = "DESENVOLVIMENTO";
+    blank.status = STATUS_ESTILO.DESENVOLVIMENTO;
     const { data: result, error } = await insertProduto(blank);
     if (error) { alert(`Erro ao criar SKU: ${error}`); return; }
     if (result) {
@@ -211,7 +207,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     const { data, error } = await cloneProduto(cloneSource.id, cloneRef.trim());
     if (error) { alert(`Erro ao clonar: ${error}`); return; }
     if (data) {
-      const newRow = { ...cloneSource, id: data.id, ref: data.ref, status: "DESENVOLVIMENTO" };
+      const newRow = { ...cloneSource, id: data.id, ref: data.ref, status: STATUS_ESTILO.DESENVOLVIMENTO };
       setRows((p:any) => [...p, newRow]);
     }
     setCloneSource(null);
@@ -376,7 +372,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           <span style={{fontSize:13,fontWeight:600,color:"#fff"}}>{selected.size} SKU{selected.size!==1?"s":""} selecionado{selected.size!==1?"s":""}</span>
           <select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)} style={{fontSize:12,padding:"4px 10px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",flex:1,minWidth:160,maxWidth:260}}>
             <option value="">Alterar status para…</option>
-            {(opts("status")||["DESENVOLVIMENTO","MOSTRUÁRIO LIBERADO","PRODUÇÃO LIBERADA","CANCELADO"]).map((s:string)=><option key={s} value={s} style={{color:"#000"}}>{s}</option>)}
+            {(opts("status")||[STATUS_ESTILO.DESENVOLVIMENTO,STATUS_ESTILO.MOSTARIO_LIBERADO,STATUS_ESTILO.PRODUCAO_LIBERADA,STATUS_ESTILO.CANCELADO]).map((s:string)=><option key={s} value={s} style={{color:"#000"}}>{s}</option>)}
           </select>
           <button onClick={handleBulkStatus} disabled={!bulkStatus} style={{fontSize:12,fontWeight:600,padding:"5px 14px",borderRadius:6,background:bulkStatus?"#fff":"rgba(255,255,255,0.3)",color:bulkStatus?"var(--system-blue)":"rgba(255,255,255,0.6)",border:"none",cursor:bulkStatus?"pointer":"default"}}>Aplicar</button>
           <button onClick={()=>setSelected(new Set())} style={{fontSize:12,color:"rgba(255,255,255,0.8)",background:"none",border:"none",cursor:"pointer",marginLeft:"auto"}}>Cancelar</button>
@@ -446,7 +442,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           const isMult = MULT_KEYS.has(c.key);
           if (c.computed) {
             const val = getPriceVal(c.key, row);
-            return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}><span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-tertiary)] italic tabnum">{fmtBRL(val,isMult)}</span></td>;
+            return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}><span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-tertiary)] italic tabnum">{fmtBRL(val,{mult:isMult})}</span></td>;
           }
           const rawVal = row[c.key];
           const canEditPrice = isAdmin || perms["compras_precos"] === true;
@@ -456,7 +452,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           return <td key={c.key} style={{width:c.width,minWidth:c.width,textAlign:"right"}}>
             {canEditPrice
               ? <InlineCell value={rawVal ?? ""} type="number" displayFn={dispFn} onChange={v => upd(row.id, c.key, v)} />
-              : <span className="text-[13px] px-2.5 py-1.5 block tabnum">{fmtBRL(rawVal != null && rawVal !== "" ? Number(rawVal) : null, isMult)}</span>
+              : <span className="text-[13px] px-2.5 py-1.5 block tabnum">{fmtBRL(rawVal != null && rawVal !== "" ? Number(rawVal) : null, {mult:isMult})}</span>
             }
           </td>;
         })}
