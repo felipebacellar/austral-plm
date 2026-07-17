@@ -10,7 +10,13 @@ DELETE FROM produtos a
   USING produtos b
   WHERE a.id > b.id AND a.ref = b.ref;
 
-ALTER TABLE produtos ADD CONSTRAINT IF NOT EXISTS produtos_ref_unique UNIQUE (ref);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'produtos_ref_unique'
+  ) THEN
+    ALTER TABLE produtos ADD CONSTRAINT produtos_ref_unique UNIQUE (ref);
+  END IF;
+END $$;
 
 -- ── 2. Índices de performance ─────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_fichas_ref_colecao
