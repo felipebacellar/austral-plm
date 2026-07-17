@@ -1274,7 +1274,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     </div>
                     <div>
                       <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Data de Prova</div>
-                      <div className="apple-input w-full text-[12px] text-[var(--label-secondary)]">{provaInfo[k]?.data || "—"}</div>
+                      <div className="apple-input w-full text-[12px] text-[var(--label-secondary)]">{provaInfo[k]?.data ? provaInfo[k].data.split('-').reverse().join('/') : "—"}</div>
                     </div>
                     <div>
                       <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Status</div>
