@@ -388,14 +388,19 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           if (s.includes("APROV") || s.includes("LIBER")) return success;
           return muted;
         };
-        // Most recent prova with photos
-        const latestPhotoProva = (["p3","p2","p1"] as const).find(pk => {
+        // Prova mais recente com fotos — ordena por data desc; sem data usa última com foto
+        const provasComFoto = (["p1","p2","p3"] as const).filter(pk => {
           const pi = provaInfo?.[pk];
           return pi && (pi.fotoFrente || pi.fotoLado || pi.fotoCostas);
         });
-        // Derive modelo: frente + costas from latest prova
-        const modeloFrenteUrl = provaInfo?.p3?.fotoFrente || provaInfo?.p2?.fotoFrente || provaInfo?.p1?.fotoFrente || imgModelo || null;
-        const modeloCostasUrl = provaInfo?.p3?.fotoCostas || provaInfo?.p2?.fotoCostas || provaInfo?.p1?.fotoCostas || null;
+        provasComFoto.sort((a, b) => {
+          const da = provaInfo?.[a]?.data || ""; const db = provaInfo?.[b]?.data || "";
+          if (da && db) return db.localeCompare(da);
+          if (da) return -1; if (db) return 1; return 0;
+        });
+        const latestPhotoProva = provasComFoto[0] || null;
+        const modeloFrenteUrl = (latestPhotoProva ? provaInfo?.[latestPhotoProva]?.fotoFrente : null) || imgModelo || null;
+        const modeloCostasUrl = (latestPhotoProva ? provaInfo?.[latestPhotoProva]?.fotoCostas : null) || null;
         const latestProvaIdx = latestPhotoProva ? parseInt(latestPhotoProva.slice(1)) : null;
         return (
         <div className="print-page" style={pb()}>
@@ -439,11 +444,16 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
 
           {/* Tabela de Medidas — apenas prova mais recente */}
           {(() => {
-            // Detecta qual é a prova mais recente com dados medidos
-            const latestPk = (["p3","p2","p1"] as const).find(pk => {
-              const v = pv[pts[0]?.cod];
-              return v && v[pk];
-            }) || "p1";
+            // Prova mais recente com medidas: ordena por data desc; sem data usa última com valor
+            const provasComMedida = (["p1","p2","p3"] as const).filter(pk =>
+              pts.some((p: any) => pv[p.cod]?.[pk])
+            );
+            provasComMedida.sort((a, b) => {
+              const da = provaInfo?.[a]?.data || ""; const db = provaInfo?.[b]?.data || "";
+              if (da && db) return db.localeCompare(da);
+              if (da) return -1; if (db) return 1; return 0;
+            });
+            const latestPk = provasComMedida[0] || "p1";
             const pi = provaInfo?.[latestPk];
             const st = pi?.status || "";
             const col = piColor(st);
@@ -515,12 +525,23 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
 
       {/* ══════════ LIBERAÇÃO — Pág 2: Fotos + Comentários da prova mais recente ══════════ */}
       {sec.liberacao && (() => {
-        const latestKey = (["p3","p2","p1"] as const).find(pk => {
+        // Filtra provas com conteúdo real, depois ordena pela data mais recente
+        const provasComDados = (["p1","p2","p3"] as const).filter(pk => {
           const pi = provaInfo?.[pk];
           const a = an[pk];
           const pilRow = pil[parseInt(pk.slice(1))-1];
           return pi?.fotoFrente || pi?.fotoLado || pi?.fotoCostas || a?.texto || a?.video || pi?.link || pilRow?.num || pilRow?.lacre;
         });
+        // Ordena por data desc (mais recente primeiro); sem data, mantém ordem natural
+        provasComDados.sort((a, b) => {
+          const da = provaInfo?.[a]?.data || "";
+          const db = provaInfo?.[b]?.data || "";
+          if (da && db) return db.localeCompare(da);
+          if (da) return -1;
+          if (db) return 1;
+          return 0;
+        });
+        const latestKey = provasComDados[0];
         if (!latestKey) return null;
         const latestN = latestKey === "p3" ? 3 : latestKey === "p2" ? 2 : 1;
         const pi = provaInfo?.[latestKey];
