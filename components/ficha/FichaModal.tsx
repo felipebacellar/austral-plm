@@ -1009,9 +1009,18 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                       <div className="flex flex-col items-center gap-1.5 px-3 py-2.5">
                         <span className="text-[11px] font-bold tracking-[0.08em]">Prova {pi + 1}</span>
                         <input
-                          type="date"
-                          value={info.data}
-                          onChange={e => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, data: e.target.value } }))}
+                          type="text"
+                          value={info.data ? info.data.split('-').reverse().join('/') : ""}
+                          onChange={e => {
+                            // aceita DD/MM/AAAA e converte para YYYY-MM-DD internamente
+                            const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
+                            let display = raw;
+                            if (raw.length > 4) display = raw.slice(0,2) + '/' + raw.slice(2,4) + '/' + raw.slice(4);
+                            else if (raw.length > 2) display = raw.slice(0,2) + '/' + raw.slice(2);
+                            const iso = raw.length === 8 ? `${raw.slice(4)}-${raw.slice(2,4)}-${raw.slice(0,2)}` : raw.length === 0 ? "" : info.data;
+                            setProvaInfo(prev => ({ ...prev, [pk]: { ...info, data: iso || "" } }));
+                          }}
+                          placeholder="DD/MM/AAAA"
                           className="w-full text-[11px] tabnum border border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--system-blue)] text-center bg-[var(--bg-primary)] font-normal"
                         />
                         <select
@@ -1129,7 +1138,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     const hasAny = (info as any).fotoFrente || (info as any).fotoLado || (info as any).fotoCostas;
                     return (
                       <div key={pk}>
-                        <div className="text-[11px] font-bold text-[var(--label-tertiary)] mb-2">Prova {pi+1}{provaInfo[pk]?.data ? ` — ${provaInfo[pk].data}` : ""}</div>
+                        <div className="text-[11px] font-bold text-[var(--label-tertiary)] mb-2">Prova {pi+1}{provaInfo[pk]?.data ? ` — ${provaInfo[pk].data.split('-').reverse().join('/')}` : ""}</div>
                         <div className="grid grid-cols-3 gap-3">
                           {sides.map(({ key, label, side }) => {
                             const url = (info as any)[key] || "";
