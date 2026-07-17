@@ -6,7 +6,6 @@ export type Produto = {
   id: number;
   ref: string;
   desc: string;
-  tecido_id: number | null;
   tecido: string;
   composicao: string;
   forn_tecido: string;

@@ -64,7 +64,6 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
     loadedRef.current = true;
     let active = true;
     fetchVarianteCompras().then(data => {
-      console.warn("[VariantesTable v2] vcMap carregado:", Object.keys(data).length, "entradas", data);
       if (active) setVcMap(prev => ({ ...data, ...prev }));
     });
     return () => { active = false; };
@@ -73,7 +72,6 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
   const updOrder = async (r: any, field: string, value: any) => {
     if (COMPRA_FIELDS.has(field)) {
       const key = `${r.id}:${r.cor}`;
-      console.log("[VariantesTable v2] COMPRA salva — key:", key, "| campo:", field, "| valor:", value);
       // Optimistic update
       setVcMap(prev => ({
         ...prev,
@@ -168,7 +166,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
         r = r.filter(x => x[k] === v);
       }
     });
-    if(q){ const s=q.toLowerCase(); r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.fornecedor).toLowerCase().includes(s)); }
+    if(q){ const s=q.toLowerCase(); r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.composicao+x.fornecedor).toLowerCase().includes(s)); }
     if (sort) {
       r = [...r].sort((a, b) => {
         const av = a[sort.key] ?? "", bv = b[sort.key] ?? "";

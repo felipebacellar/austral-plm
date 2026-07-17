@@ -143,7 +143,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     let r = rows;
     if (colecaoAtiva) r = r.filter((x: any) => x.colecao === colecaoAtiva);
     Object.entries(fl).forEach(([k,v]) => { if(v) r = r.filter((x:any) => x[k]===v); });
-    if(q) { const s=q.toLowerCase(); r = r.filter((x:any) => (x.ref+x.desc+x.tecido+x.fornecedor+x.forn_tecido+x.estilista+x.tab_medidas).toLowerCase().includes(s)); }
+    if(q) { const s=q.toLowerCase(); r = r.filter((x:any) => (x.ref+x.desc+x.tecido+x.composicao+x.fornecedor+x.forn_tecido+x.estilista+x.tab_medidas).toLowerCase().includes(s)); }
     if (sort) {
       const col = COLUMNS.find(c => c.key === sort.key);
       const isNum = col?.type === "number";
