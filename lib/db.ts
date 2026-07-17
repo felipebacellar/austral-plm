@@ -147,6 +147,19 @@ export async function deleteProduto(id: number): Promise<string | null> {
   if (error) { console.error("deleteProduto:", error); return error.message || "Erro ao excluir"; }
   return null;
 }
+export async function cloneProduto(sourceId: number, newRef: string): Promise<{ data: any; error: string | null }> {
+  const { data: src, error: fetchErr } = await sb().from("produtos").select("*").eq("id", sourceId).single();
+  if (fetchErr || !src) return { data: null, error: "Produto original não encontrado" };
+  const { id: _id, ref: _ref, created_at: _ca, updated_at: _ua, ...rest } = src;
+  const { data, error } = await sb().from("produtos").insert({ ...rest, ref: newRef, status: "DESENVOLVIMENTO" }).select().single();
+  if (error) { console.error("cloneProduto:", error); return { data: null, error: error.message || "Erro ao clonar" }; }
+  return { data, error: null };
+}
+export async function bulkUpdateStatus(ids: number[], status: string): Promise<string | null> {
+  const { error } = await sb().from("produtos").update({ status }).in("id", ids);
+  if (error) { console.error("bulkUpdateStatus:", error); return error.message || "Erro ao atualizar status"; }
+  return null;
+}
 
 // ══ COMPRAS POR VARIANTE ══
 export async function fetchVarianteCompras(): Promise<Record<string, any>> {

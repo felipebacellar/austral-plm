@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import InlineCell from "@/components/ui/InlineCell";
 import COLUMNS from "@/lib/columns";
-import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto } from "@/lib/db";
+import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto, cloneProduto, bulkUpdateStatus } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 
@@ -87,6 +87,10 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   });
   const [showColMenu, setShowColMenu] = useState(false);
   const colMenuRef = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState("");
+  const [cloneSource, setCloneSource] = useState<any>(null);
+  const [cloneRef, setCloneRef] = useState("");
   const ac = Object.values(fl).filter(Boolean).length;
 
   // Column visibility helpers
@@ -199,6 +203,33 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     const error = await deleteProduto(id);
     if (error) { alert(`Erro ao excluir: ${error}`); setRows((p:any[]) => [...p]); }
   };
+
+  const handleClone = async () => {
+    if (!cloneSource || !cloneRef.trim()) return;
+    const dup = rows.find((r:any) => r.ref === cloneRef.trim());
+    if (dup) { alert(`Referência "${cloneRef.trim()}" já existe.`); return; }
+    const { data, error } = await cloneProduto(cloneSource.id, cloneRef.trim());
+    if (error) { alert(`Erro ao clonar: ${error}`); return; }
+    if (data) {
+      const newRow = { ...cloneSource, id: data.id, ref: data.ref, status: "DESENVOLVIMENTO" };
+      setRows((p:any) => [...p, newRow]);
+    }
+    setCloneSource(null);
+    setCloneRef("");
+  };
+
+  const handleBulkStatus = async () => {
+    if (!bulkStatus || selected.size === 0) return;
+    const ids = [...selected];
+    setRows((p:any[]) => p.map((r:any) => ids.includes(r.id) ? { ...r, status: bulkStatus } : r));
+    const error = await bulkUpdateStatus(ids, bulkStatus);
+    if (error) alert(`Erro: ${error}`);
+    setSelected(new Set());
+    setBulkStatus("");
+  };
+
+  const toggleSelect = (id: number) => setSelected(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleSelectAll = () => setSelected(selected.size === filtered.length ? new Set() : new Set(filtered.map((r:any) => r.id)));
 
   const opts = (k:string):string[] => cad[k] || [];
   const uv = (k:string):string[] => [...new Set(rows.map((r:any)=>r[k]).filter(Boolean))].sort();
@@ -323,9 +354,40 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
       {ac>0&&!sf&&(<div className="flex flex-wrap gap-1.5 mb-3">{Object.entries(fl).map(([k,v])=>{if(!v)return null;const c=COLUMNS.find(x=>x.key===k);return(<span key={k} className="inline-flex items-center gap-1 bg-blue-50 text-[var(--system-blue)] rounded-lg px-2.5 py-1 text-[12px] font-medium"><span className="text-blue-300">{c?.label}:</span>{v}<button onClick={()=>sf2(k,"")} className="ml-0.5 text-blue-300 hover:text-[var(--system-blue)]">×</button></span>);})} <button onClick={()=>{setFl({});setQ("");}} className="text-[12px] text-[var(--label-tertiary)] px-2 py-1">Limpar</button></div>)}
 
+      {/* Clone modal */}
+      {cloneSource && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setCloneSource(null)}>
+          <div className="apple-card" style={{width:360,padding:"28px 24px"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:16,fontWeight:700,marginBottom:4}}>Clonar SKU</div>
+            <div style={{fontSize:13,color:"var(--label-secondary)",marginBottom:16}}>Copiando <strong>{cloneSource.ref}</strong> — {cloneSource.desc}</div>
+            <label style={{fontSize:12,fontWeight:600,color:"var(--label-secondary)",textTransform:"uppercase",letterSpacing:"0.04em",display:"block",marginBottom:6}}>Nova referência</label>
+            <input autoFocus className="apple-input" style={{width:"100%",marginBottom:16}} placeholder="Ex: 1234" value={cloneRef} onChange={e=>setCloneRef(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleClone()}/>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="apple-btn-secondary" onClick={()=>setCloneSource(null)}>Cancelar</button>
+              <button className="apple-btn-primary" onClick={handleClone} disabled={!cloneRef.trim()}>Clonar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {selected.size > 0 && !readOnly && (
+        <div style={{display:"flex",alignItems:"center",gap:10,background:"var(--system-blue)",borderRadius:10,padding:"10px 16px",marginBottom:12,flexWrap:"wrap"}}>
+          <span style={{fontSize:13,fontWeight:600,color:"#fff"}}>{selected.size} SKU{selected.size!==1?"s":""} selecionado{selected.size!==1?"s":""}</span>
+          <select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)} style={{fontSize:12,padding:"4px 10px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",flex:1,minWidth:160,maxWidth:260}}>
+            <option value="">Alterar status para…</option>
+            {(opts("status")||["DESENVOLVIMENTO","MOSTRUÁRIO LIBERADO","PRODUÇÃO LIBERADA","CANCELADO"]).map((s:string)=><option key={s} value={s} style={{color:"#000"}}>{s}</option>)}
+          </select>
+          <button onClick={handleBulkStatus} disabled={!bulkStatus} style={{fontSize:12,fontWeight:600,padding:"5px 14px",borderRadius:6,background:bulkStatus?"#fff":"rgba(255,255,255,0.3)",color:bulkStatus?"var(--system-blue)":"rgba(255,255,255,0.6)",border:"none",cursor:bulkStatus?"pointer":"default"}}>Aplicar</button>
+          <button onClick={()=>setSelected(new Set())} style={{fontSize:12,color:"rgba(255,255,255,0.8)",background:"none",border:"none",cursor:"pointer",marginLeft:"auto"}}>Cancelar</button>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
+      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>
+        {!readOnly && canAdd && <th style={{width:36,padding:"0 8px"}}><input type="checkbox" checked={selected.size===filtered.length&&filtered.length>0} onChange={toggleSelectAll} style={{cursor:"pointer"}}/></th>}
+        {COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
         const sortable = c.type !== "action";
         const isActive = sort?.key === c.key;
         const isSticky = c.key === "ref";
@@ -361,9 +423,11 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
         </th>
       ))}
       <th style={{width:36}}/></tr></thead><tbody>
-        {filtered.map((row:any)=>(<tr key={row.id}>{COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
+        {filtered.map((row:any)=>(<tr key={row.id} style={selected.has(row.id)?{background:"rgba(0,122,255,0.06)"}:{}}>
+          {!readOnly && canAdd && <td style={{width:36,padding:"0 8px"}}><input type="checkbox" checked={selected.has(row.id)} onChange={()=>toggleSelect(row.id)} style={{cursor:"pointer"}}/></td>}
+          {COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
           const isSticky = c.key === "ref";
-          const mainTd = <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:(readOnly||permPrefix==="compras_")?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
+          const mainTd = <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<div style={{display:"flex",gap:4}}><button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>{!readOnly&&canAdd&&<button onClick={()=>{setCloneSource(row);setCloneRef("");}} title="Clonar SKU" className="apple-btn-secondary text-[12px] py-1 px-2" style={{color:"var(--system-blue)"}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>}</div>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:(readOnly||permPrefix==="compras_")?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
           if (c.key === "ref" && permPrefix === "compras_") {
             return [mainTd, ...COMPRAS_STATUS_COLS.filter(sc => isColVisible(sc.key)).map(sc => {
               const sv = row[sc.key] || "";
