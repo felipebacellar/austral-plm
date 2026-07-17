@@ -4,7 +4,7 @@ import { uploadImage } from "@/lib/storage";
 import {
   fetchTabelasMedidas, fetchTabelaPontos, fetchGraduacoes,
   createTabelaMedidas, deleteTabelaMedidas,
-  upsertPontos, upsertGraduacoes,
+  upsertPontos, upsertGraduacoes, saveTabelaImagemModoMedir,
 } from "@/lib/db";
 import { subscribeRealtime } from "@/lib/realtime";
 
@@ -95,7 +95,7 @@ export default function MedidasView() {
   const selectTable = async (t: Tabela) => {
     setSel(t);
     setSec("base");
-    setIm1(null);
+    setIm1((t as any).imagem_modo_medir || null);
     const [pts, grd] = await Promise.all([fetchTabelaPontos(t.id), fetchGraduacoes(t.id)]);
     setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })));
     setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })));
@@ -173,7 +173,10 @@ export default function MedidasView() {
     const file = e.target.files?.[0];
     if (!file || !sel) return;
     const url = await uploadImage(file, `medidas/${sel.nome}/modo_de_medir`);
-    if (url) setIm1(url);
+    if (url) {
+      setIm1(url);
+      await saveTabelaImagemModoMedir(sel.id, url);
+    }
   };
 
   const filteredTabelas = search ? tabelas.filter(t => t.nome.toLowerCase().includes(search.toLowerCase())) : tabelas;
