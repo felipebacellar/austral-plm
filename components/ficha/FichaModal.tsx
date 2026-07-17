@@ -48,7 +48,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [grad, setGrad] = useState<any[]>([]);
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
-  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string }>>({ p1: { data: "", status: "" }, p2: { data: "", status: "" }, p3: { data: "", status: "" } });
+  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; foto: string }>>({ p1: { data: "", status: "", link: "", foto: "" }, p2: { data: "", status: "", link: "", foto: "" }, p3: { data: "", status: "", link: "", foto: "" } });
+  const [custoDet, setCustoDet] = useState({ mp: "", mo: "" });
+  const [obsCusto, setObsCusto] = useState("");
+  const fotoProvaRef = useRef<HTMLInputElement>(null);
+  const [fotoProvaTarget, setFotoProvaTarget] = useState<"p1"|"p2"|"p3"|null>(null);
 
   /* NCM */
   const [ncm, setNcm] = useState("");
@@ -138,6 +142,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.qtdMost) setQtdMost(prev => ({ ...prev, ...ficha.qtdMost }));
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
         if (ficha.provaInfo) setProvaInfo(prev => ({ ...prev, ...ficha.provaInfo }));
+        if (ficha.custoDet) setCustoDet(ficha.custoDet);
+        if (ficha.obsCusto) setObsCusto(ficha.obsCusto);
         if (ficha.ncm) setNcm(ficha.ncm);
         if (ficha.tabelaEspecialAtiva) { setTEsp(true); setPtsEsp(ficha.pontosEspeciais || []); setGradEsp(ficha.gradEspecial || []); }
       }
@@ -161,6 +167,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const hi = async (e: any, fd: string, s: (u: string) => void) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); } setUp(false); };
   const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
   const deleteImgModelo = async () => { if (imgModelo) await deleteImage(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
+  const handleFotoProva = async (e: any) => { const file = e.target.files?.[0]; if (!file || !fotoProvaTarget) return; setUp(true); const url = await uploadImage(file, `${row.ref}/foto_prova_${fotoProvaTarget}`); if (url) setProvaInfo(prev => ({ ...prev, [fotoProvaTarget]: { ...prev[fotoProvaTarget], foto: url } })); setUp(false); if (fotoProvaRef.current) fotoProvaRef.current.value = ""; };
 
   const autoStatusFor = (lib: string) => {
     if (lib === "REPROVADO") return "REPILOTANDO PRODUÇÃO";
@@ -177,7 +184,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     }
     setSaving(true);
     setPendingSave(false);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
     if (newId) setFichaId(newId);
     if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
@@ -657,6 +664,63 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             )}
           </div>
 
+          {/* ── Custo Detalhado ── */}
+          <div className="apple-card p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-tertiary)] mb-3">Detalhamento de Custo</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--label-secondary)] mb-2">Mão de Obra</div>
+                <table className="w-full text-[12px]">
+                  <tbody>
+                    <tr className="border-b border-[var(--separator)]">
+                      <td className="py-1.5 text-[var(--label-secondary)]">M.P.</td>
+                      <td className="py-1.5 text-right"><input type="text" value={custoDet.mp} onChange={e => setCustoDet(p => ({ ...p, mp: e.target.value }))} placeholder="R$ —" className="w-24 text-right text-[12px] tabnum border border-[var(--separator-opaque)] rounded-lg px-2 py-1 outline-none focus:border-[var(--system-blue)]" /></td>
+                    </tr>
+                    <tr className="border-b border-[var(--separator)]">
+                      <td className="py-1.5 text-[var(--label-secondary)]">M.O.</td>
+                      <td className="py-1.5 text-right"><input type="text" value={custoDet.mo} onChange={e => setCustoDet(p => ({ ...p, mo: e.target.value }))} placeholder="R$ —" className="w-24 text-right text-[12px] tabnum border border-[var(--separator-opaque)] rounded-lg px-2 py-1 outline-none focus:border-[var(--system-blue)]" /></td>
+                    </tr>
+                    <tr className="border-b border-[var(--separator)]">
+                      <td className="py-1.5 text-[var(--label-secondary)]">Avios.</td>
+                      <td className="py-1.5 text-right tabnum text-[var(--label-secondary)]">R$ {avT.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 font-bold">Total M.O.</td>
+                      <td className="py-1.5 text-right tabnum font-bold">
+                        {(() => { const mp = parseFloat(custoDet.mp.replace(",",".")) || 0; const mo = parseFloat(custoDet.mo.replace(",",".")) || 0; return `R$ ${(mp + mo + avT).toFixed(2)}`; })()}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--label-secondary)] mb-2">Produto Acabado</div>
+                <table className="w-full text-[12px]">
+                  <tbody>
+                    <tr className="border-b border-[var(--separator)]">
+                      <td className="py-1.5 text-[var(--label-secondary)]">Custo Forn.</td>
+                      <td className="py-1.5 text-right tabnum text-[var(--label-secondary)]">{row.custo_forn ? `R$ ${Number(row.custo_forn).toFixed(2)}` : "—"}</td>
+                    </tr>
+                    <tr className="border-b border-[var(--separator)]">
+                      <td className="py-1.5 text-[var(--label-secondary)]">Avios.</td>
+                      <td className="py-1.5 text-right tabnum text-[var(--label-secondary)]">R$ {avT.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 font-bold">Total P.A.</td>
+                      <td className="py-1.5 text-right tabnum font-bold">
+                        {row.custo_forn ? `R$ ${(Number(row.custo_forn) + avT).toFixed(2)}` : "—"}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--label-secondary)] mb-1.5">Observações de fechamento de custo</div>
+              <textarea value={obsCusto} onChange={e => setObsCusto(e.target.value)} placeholder="Observações sobre o fechamento de custo..." rows={2} className="apple-input w-full resize-none text-[12px]" />
+            </div>
+          </div>
+
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Observações</div>
             <textarea value={obs} onChange={e => setObs(e.target.value)} placeholder="Observações técnicas, instruções especiais..." rows={3} className="apple-input w-full resize-none" />
@@ -765,6 +829,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                           ["LIBERADA DIRETO MOSTRUÁRIO", "Liberada", "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
                           ["LIBERADA COM AJUSTE", "c/ Ajuste", "bg-[rgba(255,204,0,0.18)] text-[#856500] border-[rgba(255,204,0,0.35)]"],
                           ["REPROVADA", "Reprovada", "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
+                          ["APROVADA IDEM MOSTRUÁRIO", "Idem Mostruário", "bg-[rgba(90,110,220,0.14)] text-[#3344aa] border-[rgba(90,110,220,0.3)]"],
                         ] as [string, string, string][]).map(([val, label, cls]) => (
                           <button key={val} onClick={() => updSim(vk, "status", sim.status === val ? "" : val)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${sim.status === val ? cls : "border-[var(--separator-opaque)] text-[var(--label-quaternary)] bg-transparent hover:border-[var(--label-tertiary)]"}`}>{label}</button>
                         ))}
@@ -871,6 +936,21 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                           <option value="LIBERADO C/ RESTRIÇÃO">Liberado c/ restrição</option>
                           <option value="REPROVADO">Reprovado</option>
                         </select>
+                        <input
+                          type="url"
+                          value={info.link || ""}
+                          onChange={e => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, link: e.target.value } }))}
+                          placeholder="Link vídeo..."
+                          className="w-full text-[10px] border border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--system-blue)] bg-[var(--bg-primary)] font-normal"
+                        />
+                        {info.foto ? (
+                          <div className="relative w-full">
+                            <img src={info.foto} alt={`Foto prova ${pi+1}`} className="w-full rounded-lg object-contain border border-[var(--separator)] max-h-28" />
+                            <button onClick={() => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, foto: "" } }))} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setFotoProvaTarget(pk); fotoProvaRef.current?.click(); }} className="w-full text-[10px] border border-dashed border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 text-[var(--label-tertiary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors">+ Foto da prova</button>
+                        )}
                       </div>
                     </th>
                   );
@@ -951,6 +1031,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           </>)}
         </div>)}
       </div>
+      {/* Hidden file input for prova photos (outside tabs so always mounted) */}
+      <input ref={fotoProvaRef} type="file" accept="image/*" className="hidden" onChange={handleFotoProva} />
     </div>
   );
 }
