@@ -269,16 +269,19 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     const dd = String(today.getDate()).padStart(2, '0');
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const yyyy = today.getFullYear();
+    const pdfName = `${row.ref} - ${dd}-${mm}-${yyyy}`;
     const prevTitle = document.title;
-    document.title = `${row.ref} - ${dd}-${mm}-${yyyy}`;
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        document.title = prevTitle;
-        setShowPrint(false);
-        document.body.classList.remove("printing-pdf");
-      }, 500);
-    }, 200);
+    const onBefore = () => { document.title = pdfName; };
+    const onAfter = () => {
+      document.title = prevTitle;
+      window.removeEventListener('beforeprint', onBefore);
+      window.removeEventListener('afterprint', onAfter);
+      setTimeout(() => { setShowPrint(false); document.body.classList.remove("printing-pdf"); }, 300);
+    };
+    window.addEventListener('beforeprint', onBefore);
+    window.addEventListener('afterprint', onAfter);
+    document.title = pdfName;
+    setTimeout(() => { window.print(); }, 300);
   };
 
   const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
