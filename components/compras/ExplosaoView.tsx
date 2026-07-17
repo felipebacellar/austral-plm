@@ -4,6 +4,7 @@ import { fetchExplosaoData } from "@/lib/db";
 import { exportToExcel } from "@/lib/export-excel";
 import { exportExplosaoPDF } from "@/lib/export-pdf-explosao";
 import { fmtBRL } from "@/lib/utils";
+import ScrollTable from "@/components/ui/ScrollTable";
 
 type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 
@@ -287,7 +288,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
       </div>
 
       {/* Table */}
-      <div className="apple-card-scroll">
+      <ScrollTable>
         <table className="plm-table" style={{ width: "max-content", minWidth: "100%" }}>
           <thead>
             <tr>
@@ -339,7 +340,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollTable>
     </div>
   );
 }

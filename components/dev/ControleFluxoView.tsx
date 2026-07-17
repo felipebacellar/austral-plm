@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchControleFluxo, upsertControleFluxo } from "@/lib/db";
+import ScrollTable from "@/components/ui/ScrollTable";
 
 const PILOTAGEM_COLS = [
   { field: "data_desenvolvimento",  label: "Data Desenv.",         type: "date", width: 140 },
@@ -93,8 +94,8 @@ export default function ControleFluxoView({ rows }: Props) {
   );
 
   return (
-    <div className="apple-card-scroll" style={{ overflow: "auto", maxHeight: "calc(100vh - 140px)" }}>
-      <div style={{ padding: "12px 16px 8px", display: "flex", alignItems: "center", gap: 12 }}>
+    <div>
+      <div style={{ padding: "0 0 12px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ position: "relative", flexShrink: 0 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--label-tertiary)" strokeWidth="2.2" strokeLinecap="round"
             style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
@@ -112,6 +113,7 @@ export default function ControleFluxoView({ rows }: Props) {
         </div>
         <span style={{ fontSize: 12, color: "var(--label-secondary)", fontWeight: 500 }}>{sorted.length} produto(s)</span>
       </div>
+      <ScrollTable maxHeight="calc(100vh - 180px)">
       <table className="plm-table" style={{ minWidth: 2200, borderCollapse: "collapse" }}>
         <thead>
           {/* Group header row */}
@@ -194,6 +196,7 @@ export default function ControleFluxoView({ rows }: Props) {
           ))}
         </tbody>
       </table>
+      </ScrollTable>
     </div>
   );
 }

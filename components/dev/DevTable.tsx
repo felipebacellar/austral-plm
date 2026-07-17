@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 import { STATUS_ESTILO, STATUS_COMPRAS_OPTS } from "@/lib/constants";
 import { fmtBRL } from "@/lib/utils";
+import ScrollTable from "@/components/ui/ScrollTable";
 
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string; hiddenColumns?: string[] };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
@@ -381,7 +382,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>
+      <ScrollTable><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>
         {!readOnly && canAdd && <th style={{width:36,padding:"0 8px"}}><input type="checkbox" checked={selected.size===filtered.length&&filtered.length>0} onChange={toggleSelectAll} style={{cursor:"pointer"}}/></th>}
         {COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
         const sortable = c.type !== "action";
@@ -458,7 +459,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
         })}
         <td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
-      </tbody></table></div>
+      </tbody></table></ScrollTable>
     </div>
   );
 }

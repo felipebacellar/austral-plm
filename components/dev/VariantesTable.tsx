@@ -5,6 +5,7 @@ import InlineCell from "@/components/ui/InlineCell";
 import StatusPill from "@/components/ui/StatusPill";
 import { updateProdutoField, fetchVarianteCompras, upsertVarianteCompra } from "@/lib/db";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
+import ScrollTable from "@/components/ui/ScrollTable";
 
 // Colunas ESTILO
 const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"composicao",label:"Composição",w:160},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
@@ -195,7 +196,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
 
       <div className="flex items-baseline gap-3 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">variante{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {vr.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto">Cores cadastradas na ficha técnica</span></div>
 
-      <div className="apple-card-scroll"><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLS.map(c=>{
+      <ScrollTable><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>{COLS.map(c=>{
         const sortable = c.key !== "_ficha";
         const isActive = sort?.key === c.key;
         return (
@@ -227,7 +228,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
           :<span className={`text-[13px] px-2.5 py-1 block ${r[c.key]?"":"text-[var(--label-quaternary)]"}`}>{r[c.key]||"—"}</span>}
         </td>))}</tr>))}
         {filtered.length===0&&<tr><td colSpan={COLS.length} className="py-16 text-center text-[var(--label-tertiary)]">Nenhuma variante</td></tr>}
-      </tbody></table></div>
+      </tbody></table></ScrollTable>
     </div>
   );
 }
