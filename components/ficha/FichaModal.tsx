@@ -335,7 +335,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} imgModoMedir={imgModoMedir} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} provaInfo={provaInfo} />
       </div>
     );
   }

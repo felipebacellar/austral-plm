@@ -5,12 +5,13 @@ type Props = {
   row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[];
   pv: Record<string, { p1: string; p2: string; p3: string }>;
   an: Record<string, { texto: string; video: string }>;
-  img: string | null; imgModelo: string | null;
+  img: string | null; imgModelo: string | null; imgModoMedir?: string | null;
   hasEstamparia: boolean; estamparia?: any; pantones?: Record<string, string>;
   obs?: string; statusLib?: string; tecCad?: any[]; tabelaEspecial?: boolean;
   sections?: { ficha: boolean; estamparia: boolean; liberacao: boolean; graduacao: boolean };
   ncm?: string;
   vcCompras?: Record<string, any>;
+  provaInfo?: Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string }>;
 };
 
 /* ── Design tokens ── */
@@ -26,7 +27,7 @@ const warn = "#D97706";
 const danger = "#DC2626";
 const white = "#FFFFFF";
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras, provaInfo }: Props) {
   const sec = sections || { ficha: true, estamparia: true, liberacao: true, graduacao: true };
   const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s, a) => s + (a.valor * a.qtd), 0);
@@ -374,118 +375,243 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         ))}
       </>)}
 
-      {/* ══════════ LIBERAÇÃO ══════════ */}
-      {sec.liberacao && tm && pts.length > 0 && (
+      {/* ══════════ LIBERAÇÃO — Pág 1: Tabela de Medidas + Fotos ══════════ */}
+      {sec.liberacao && tm && pts.length > 0 && (() => {
+        const libTitle = fichaType === 'producao' ? 'TABELA DE PRODUÇÃO' : fichaType === 'mostruario' ? 'TABELA DE MOSTRUÁRIO' : 'TABELA DE DESENVOLVIMENTO';
+        const provaTitles = ["PROVA 1", "PROVA 2", "PROVA 3"] as const;
+        const provaKeys = ["p1", "p2", "p3"] as const;
+        const piColor = (st: string) => {
+          if (!st) return muted;
+          const s = st.toUpperCase();
+          if (s.includes("REPROV")) return danger;
+          if (s.includes("RESTR")) return warn;
+          if (s.includes("APROV") || s.includes("LIBER")) return success;
+          return muted;
+        };
+        // Most recent prova with photos
+        const latestPhotoProva = (["p3","p2","p1"] as const).find(pk => {
+          const pi = provaInfo?.[pk];
+          return pi && (pi.fotoFrente || pi.fotoLado || pi.fotoCostas);
+        });
+        // Derive modelo: frente + costas from latest prova
+        const modeloFrenteUrl = provaInfo?.p3?.fotoFrente || provaInfo?.p2?.fotoFrente || provaInfo?.p1?.fotoFrente || imgModelo || null;
+        const modeloCostasUrl = provaInfo?.p3?.fotoCostas || provaInfo?.p2?.fotoCostas || provaInfo?.p1?.fotoCostas || null;
+        const latestProvaIdx = latestPhotoProva ? parseInt(latestPhotoProva.slice(1)) : null;
+        return (
         <div className="print-page" style={pb()}>
-          <PageHead title={`Liberação de ${fichaType === 'producao' ? 'Produção' : fichaType === 'mostruario' ? 'Mostruário' : 'Desenvolvimento'}`} sub={statusLib ? undefined : "Pendente"} bg={modelagemColor} />
+          <PageHead title={libTitle} sub={statusLib || "Pendente"} bg={modelagemColor} />
 
-          {/* Status */}
-          {statusLib && (
-            <div style={{ marginBottom: "12px" }}>
-              <Badge text={statusLib} color={statusLib === "APROVADO" ? success : statusLib === "REPROVADO" ? danger : warn} />
+          {/* Aviso de Restrição */}
+          {statusLib === "APROVADO COM RESTRIÇÃO" && (
+            <div style={{ background: "#FFFBEB", border: `1px solid ${warn}`, borderRadius: "6px", padding: "8px 14px", marginBottom: "10px" }}>
+              <div style={{ fontSize: "8px", fontWeight: 800, color: "#92400E", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ⚠ ATENÇÃO: SE AS ALTERAÇÕES SOLICITADAS NÃO FOREM FEITAS, A PEÇA PODE SER DEVOLVIDA
+              </div>
+            </div>
+          )}
+          {statusLib === "REPROVADO" && (
+            <div style={{ background: "#FEF2F2", border: `1px solid ${danger}`, borderRadius: "6px", padding: "8px 14px", marginBottom: "10px" }}>
+              <div style={{ fontSize: "8px", fontWeight: 800, color: danger, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ✗ PEÇA REPROVADA — FAVOR CORRIGIR CONFORME ANOTAÇÕES DE PROVA
+              </div>
             </div>
           )}
 
-          {/* Info compacta */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 20px", marginBottom: "14px" }}>
-            <Field label="Tabela" value={tm} />
-            <Field label="Tamanho Base" value="M" />
-            <Field label="Tecido" value={row.tecido} />
-            <Field label="Fornecedor" value={row.fornecedor} />
+          {/* Info */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0 16px", marginBottom: "8px" }}>
+            <Field label="Referência" value={row.ref} />
+            <Field label="Descrição" value={row.desc} />
+            <Field label="Operação" value={row.operacao} />
             <Field label="Estilista" value={row.estilista} />
+            <Field label="Fornecedor" value={row.fornecedor} />
+            <Field label="Drop" value={row.drop} />
+            <Field label="Coleção" value={row.colecao} />
             <Field label="Grade" value={row.grade} />
           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0 16px", marginBottom: "10px", borderTop: `0.5px solid ${line}`, paddingTop: "6px" }}>
+            <Field label="Grupo" value={row.grupo} />
+            <Field label="Tabela Base" value={tm} />
+            <Field label="Padrão" value="M" />
+            <Field label="Tamanho" value="M" />
+            <Field label="Tecido" value={row.tecido} />
+            <Field label="Composição" value={compOf(row.tecido)} />
+          </div>
 
-          {/* Medidas */}
+          {/* Tabela de Medidas */}
           <table style={tbl}>
-            <thead><tr style={headRow}>
-              <th style={{ ...th, textAlign: "center", width: "26px" }}>Cód</th>
-              <th style={th}>Descrição</th>
-              <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800 }}>Tab.</th>
-              <th style={{ ...th, textAlign: "center", width: "36px", background: "#EFF6FF", color: accent }}>P1</th>
-              <th style={{ ...th, textAlign: "center", width: "28px", background: "#EFF6FF", color: accent }}>Dif</th>
-              <th style={{ ...th, textAlign: "center", width: "36px" }}>P2</th>
-              <th style={{ ...th, textAlign: "center", width: "28px" }}>Dif</th>
-              <th style={{ ...th, textAlign: "center", width: "36px" }}>P3</th>
-              <th style={{ ...th, textAlign: "center", width: "28px" }}>Dif</th>
-              <th style={{ ...th, textAlign: "center", width: "46px" }}>Tol.</th>
-            </tr></thead>
+            <thead>
+              <tr>
+                <th style={{ ...th, textAlign: "center", width: "26px", rowSpan: 2 }} rowSpan={2}>Cód</th>
+                <th style={{ ...th, rowSpan: 2 }} rowSpan={2}>Descrição</th>
+                <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800, rowSpan: 2 }} rowSpan={2}>Tab.</th>
+                {provaKeys.map((pk, i) => {
+                  const pi = provaInfo?.[pk];
+                  const st = pi?.status || "";
+                  const dt = pi?.data || "";
+                  const col = piColor(st);
+                  return (
+                    <th key={pk} colSpan={2} style={{ ...th, textAlign: "center", background: `${col}18`, borderBottom: `2px solid ${col}`, padding: "3px 4px" }}>
+                      <div style={{ fontWeight: 800, color: col, fontSize: "7.5px", letterSpacing: "0.06em" }}>{provaTitles[i]}</div>
+                      {st && <div style={{ fontSize: "7px", color: col, fontWeight: 600 }}>{st}</div>}
+                      {dt && <div style={{ fontSize: "6.5px", color: muted, fontWeight: 500 }}>{dt}</div>}
+                    </th>
+                  );
+                })}
+                <th style={{ ...th, textAlign: "center", width: "42px", rowSpan: 2, fontSize: "7px" }} rowSpan={2}>Tol.</th>
+              </tr>
+              <tr style={headRow}>
+                {provaKeys.map(pk => [
+                  <th key={pk + "m"} style={{ ...th, textAlign: "center", width: "34px", fontSize: "7px" }}>MED.</th>,
+                  <th key={pk + "d"} style={{ ...th, textAlign: "center", width: "26px", fontSize: "7px" }}>DIF</th>
+                ])}
+              </tr>
+            </thead>
             <tbody>{pts.map((p: any, pi: number) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (
               <tr key={p.cod} style={pi % 2 ? { background: bg } : {}}>
-                <td style={{ ...td, textAlign: "center", fontWeight: 800, color: light, fontSize: "8px" }}>{p.cod}</td>
+                <td style={{ ...td, textAlign: "center", fontWeight: 800, color: light, fontSize: "7.5px" }}>{p.cod}</td>
                 <td style={{ ...td, fontWeight: 600 }}>{p.desc}</td>
                 <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{p.tabela}</td>
                 {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const absD = Math.abs(parseFloat(d) || 0); const isOk = d === "0"; const isBad = d && !isOk && absD > 1; const isWarn = d && !isOk && !isBad; return [
                   <td key={pk} style={{ ...td, textAlign: "center", fontWeight: val ? 700 : 400, fontVariantNumeric: "tabular-nums" }}>{val || "—"}</td>,
-                  <td key={pk + "d"} style={{ ...td, textAlign: "center", fontSize: "8px", fontWeight: 800, fontVariantNumeric: "tabular-nums", color: isOk ? success : isBad ? danger : isWarn ? warn : lineDark }}>{d || "—"}</td>
+                  <td key={pk + "d"} style={{ ...td, textAlign: "center", fontSize: "7.5px", fontWeight: 800, fontVariantNumeric: "tabular-nums", color: isOk ? success : isBad ? danger : isWarn ? warn : lineDark }}>{d || "—"}</td>
                 ]; })}
-                <td style={{ ...td, textAlign: "center", fontSize: "7.5px", color: light }}>{p.tol}</td>
+                <td style={{ ...td, textAlign: "center", fontSize: "7px", color: light }}>{p.tol}</td>
               </tr>
             ); })}</tbody>
           </table>
 
-          {/* Graduação — só para produção com liberação aprovada */}
-          {grad.length > 0 && fichaType === 'producao' && (statusLib === 'APROVADO' || statusLib === 'APROVADO COM RESTRIÇÃO') && (() => {
-            const xppOf = (g: any) => {
-              if (g.xpp) return g.xpp;
-              const pp = parseFloat(String(g.pp || "").replace(",", "."));
-              const a1 = parseFloat(String(g.a1 || "").replace(",", "."));
-              if (!isNaN(pp) && !isNaN(a1)) { const v = pp - a1; return v % 1 === 0 ? v.toString() : v.toFixed(1).replace(/\.0$/, ""); }
-              return "";
-            };
-            return (
-              <div style={{ marginTop: "16px" }}>
-                <div style={secTitle}>Graduação — {tm}</div>
-                <table style={tbl}>
-                  <thead><tr style={headRow}>
-                    <th style={th}>Descrição</th>
-                    <th style={{ ...th, textAlign: "center", width: "32px" }}>XPP</th>
-                    <th style={{ ...th, textAlign: "center", width: "32px" }}>PP</th>
-                    <th style={{ ...th, textAlign: "center", width: "32px" }}>P</th>
-                    <th style={{ ...th, textAlign: "center", width: "32px", background: "#EFF6FF", color: accent, fontWeight: 800 }}>M</th>
-                    <th style={{ ...th, textAlign: "center", width: "32px" }}>G</th>
-                    <th style={{ ...th, textAlign: "center", width: "32px" }}>GG</th>
-                    <th style={{ ...th, textAlign: "center", width: "26px" }}>←</th>
-                    <th style={{ ...th, textAlign: "center", width: "26px" }}>→</th>
-                    <th style={{ ...th, textAlign: "center", width: "40px" }}>Tol.</th>
-                  </tr></thead>
-                  <tbody>{grad.map((g: any, i: number) => (
-                    <tr key={i} style={i % 2 ? { background: bg } : {}}>
-                      <td style={{ ...td, fontWeight: 600 }}>{g.desc}</td>
-                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{xppOf(g)}</td>
-                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.pp}</td>
-                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.p}</td>
-                      <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: "#FAFCFF" }}>{g.m}</td>
-                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.g}</td>
-                      <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{g.gg}</td>
-                      <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a1}</td>
-                      <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a2}</td>
-                      <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{g.tol}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            );
-          })()}
-
-          {/* Modelo */}
-          {imgModelo && (
-            <div style={{ marginTop: "16px", textAlign: "center" }}>
-              <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>Modelo</div>
-              <img src={imgModelo} alt="Modelo" style={{ maxHeight: "180px", objectFit: "contain" }} />
+          {/* Modo de Medir + Modelo lado a lado */}
+          {(imgModoMedir || modeloFrenteUrl) && (
+            <div style={{ display: "flex", gap: "14px", marginTop: "14px", alignItems: "flex-start" }}>
+              {imgModoMedir && (
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Modo de Medir</div>
+                  <img src={imgModoMedir} alt="Modo de Medir" style={{ maxWidth: "100%", maxHeight: "160px", objectFit: "contain", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
+                </div>
+              )}
+              {(modeloFrenteUrl || modeloCostasUrl) && (
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Modelo</div>
+                  <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                    {modeloFrenteUrl && <img src={modeloFrenteUrl} alt="Frente" style={{ maxHeight: "150px", objectFit: "contain", borderRadius: "4px" }} />}
+                    {modeloCostasUrl && <img src={modeloCostasUrl} alt="Costas" style={{ maxHeight: "150px", objectFit: "contain", borderRadius: "4px" }} />}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Anotações */}
-          {[1, 2, 3].map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k]; if (!a?.texto && !a?.video) return null; return (
-            <div key={n} style={{ marginTop: "10px", background: bg, borderRadius: "6px", padding: "10px 14px", border: `0.5px solid ${line}` }}>
-              <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>Anotações — Prova {n}</div>
-              {a?.texto && <div style={{ fontSize: "8.5px", color: navy }}>{a.texto}</div>}
-              {a?.video && <div style={{ fontSize: "8px", color: accent, marginTop: "2px" }}>Vídeo: {a.video}</div>}
-            </div>
-          ); })}
+          {/* Fotos da Prova (prova mais recente com fotos) */}
+          {latestPhotoProva && (() => {
+            const pi = provaInfo![latestPhotoProva];
+            const fotos = [
+              { label: "FRENTE", url: pi.fotoFrente },
+              { label: "LADO", url: pi.fotoLado },
+              { label: "COSTAS", url: pi.fotoCostas },
+            ].filter(f => f.url);
+            if (!fotos.length) return null;
+            return (
+              <div style={{ marginTop: "14px" }}>
+                <div style={{ fontSize: "7px", fontWeight: 800, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px", borderBottom: `1px solid ${lineDark}`, paddingBottom: "3px" }}>
+                  Fotos da Prova {latestProvaIdx}
+                </div>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  {fotos.map(f => (
+                    <div key={f.label} style={{ textAlign: "center" }}>
+                      <img src={f.url} alt={f.label} style={{ maxHeight: "180px", maxWidth: "30%", objectFit: "contain", borderRadius: "4px", border: `0.5px solid ${line}` }} />
+                      <div style={{ fontSize: "6.5px", color: muted, marginTop: "3px", fontWeight: 600 }}>{f.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
-      )}
+        );
+      })()}
+
+      {/* ══════════ LIBERAÇÃO — Pág 2: Comentários de Prova ══════════ */}
+      {sec.liberacao && (() => {
+        const hasComments = [1,2,3].some(n => {
+          const k = `p${n}` as "p1"|"p2"|"p3";
+          const a = an[k];
+          const pi = provaInfo?.[k];
+          return (a?.texto || a?.video || pi?.link || (pil[n-1] && (pil[n-1].num || pil[n-1].lacre)));
+        });
+        if (!hasComments) return null;
+        const libTitle = fichaType === 'producao' ? 'TABELA DE PRODUÇÃO' : fichaType === 'mostruario' ? 'TABELA DE MOSTRUÁRIO' : 'TABELA DE DESENVOLVIMENTO';
+        return (
+        <div className="print-page" style={pb()}>
+          <PageHead title="COMENTÁRIOS DE PROVA" sub={statusLib || "Pendente"} bg={modelagemColor} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0 16px", marginBottom: "10px" }}>
+            <Field label="Referência" value={row.ref} />
+            <Field label="Descrição" value={row.desc} />
+            <Field label="Estilista" value={row.estilista} />
+            <Field label="Fornecedor" value={row.fornecedor} />
+          </div>
+          {[1,2,3].map(n => {
+            const k = `p${n}` as "p1"|"p2"|"p3";
+            const a = an[k];
+            const pi = provaInfo?.[k];
+            const pilRow = pil[n-1];
+            if (!a?.texto && !a?.video && !pi?.link && !(pilRow?.num || pilRow?.lacre)) return null;
+            const piSt = pi?.status || "";
+            const piCol = piSt.includes("REPROV") ? danger : piSt.includes("RESTR") ? warn : piSt.includes("APROV") || piSt.includes("LIBER") ? success : muted;
+            return (
+              <div key={n} style={{ marginBottom: "14px", border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
+                {/* Cabeçalho da prova */}
+                <div style={{ background: `${piCol}18`, borderBottom: `1px solid ${piCol}44`, padding: "6px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ fontSize: "8px", fontWeight: 800, color: piCol, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Anotações da Prova {n}
+                  </div>
+                  {piSt && <div style={{ fontSize: "7.5px", color: piCol, fontWeight: 700 }}>— {piSt}</div>}
+                  {pi?.data && <div style={{ fontSize: "7px", color: muted, marginLeft: "auto" }}>{pi.data}</div>}
+                </div>
+                <div style={{ padding: "8px 12px" }}>
+                  {/* Anotações texto */}
+                  {a?.texto && (
+                    <div style={{ fontSize: "8.5px", color: navy, marginBottom: "6px", lineHeight: "1.5" }}>{a.texto}</div>
+                  )}
+                  {/* Link do Vídeo */}
+                  {(a?.video || pi?.link) && (
+                    <div style={{ fontSize: "8px", color: accent, marginBottom: "6px" }}>
+                      <span style={{ fontWeight: 700, color: muted, marginRight: "4px" }}>LINK DO VÍDEO:</span>
+                      {a?.video || pi?.link}
+                    </div>
+                  )}
+                  {/* Liberação de Pilotagem */}
+                  {pilRow && (pilRow.num || pilRow.lacre || pilRow.envio || pilRow.receb || pilRow.prova) && (
+                    <div style={{ marginTop: "6px" }}>
+                      <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Liberação de Pilotagem</div>
+                      <table style={{ ...tbl, marginTop: 0 }}>
+                        <thead><tr style={headRow}>
+                          <th style={th}>Nº Piloto</th>
+                          <th style={th}>Lacre</th>
+                          <th style={th}>Data de Envio</th>
+                          <th style={th}>Data de Receb.</th>
+                          <th style={th}>Data de Prova</th>
+                          <th style={th}>Status</th>
+                        </tr></thead>
+                        <tbody>
+                          <tr>
+                            <td style={td}>{pilRow.num || "—"}</td>
+                            <td style={td}>{pilRow.lacre || "—"}</td>
+                            <td style={td}>{pilRow.envio || "—"}</td>
+                            <td style={td}>{pilRow.receb || "—"}</td>
+                            <td style={td}>{pilRow.prova || "—"}</td>
+                            <td style={{ ...td, fontWeight: 700, color: piCol }}>{pilRow.status || "—"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        );
+      })()}
 
       {/* ══════════ GRADUAÇÃO DE PRODUÇÃO ══════════ */}
       {sec.graduacao && grad.length > 0 && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (fichaType === "producao") && (() => {
