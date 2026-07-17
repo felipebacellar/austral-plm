@@ -45,6 +45,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [statusLib, setStatusLib] = useState("");
   const [numVars, setNumVars] = useState(4);
   const [pendingSave, setPendingSave] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
+  const autoSaveTimer = useRef<any>(null);
+  const isLoaded = useRef(false);
+  const saveRef = useRef<(confirmed?: boolean) => Promise<void>>();
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
@@ -166,6 +170,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         setGrad(g);
         if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
+      // Marca como carregado para habilitar auto-save
+      setTimeout(() => { isLoaded.current = true; }, 500);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.ref, row.tab_medidas, selectedColecao, isClassic]);
@@ -203,20 +209,43 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const save = async (confirmed = false) => {
     const autoStatus = autoStatusFor(statusLib);
-    // Se vai mudar o status do produto automaticamente, pedir confirmação antes
+    // Se vai mudar o status do produto automaticamente, pedir confirmação (só no save manual)
     if (autoStatus && autoStatus !== row.status && !confirmed) {
       setPendingSave(true);
       return;
     }
     setSaving(true);
     setPendingSave(false);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
-    const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
-    if (newId) setFichaId(newId);
-    if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
-    onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } });
+    setAutoSaveStatus("saving");
+    try {
+      const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+      const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
+      if (newId) setFichaId(newId);
+      if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
+      onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } });
+      setAutoSaveStatus("saved");
+      setTimeout(() => setAutoSaveStatus("idle"), 2000);
+    } catch {
+      setAutoSaveStatus("error");
+      setTimeout(() => setAutoSaveStatus("idle"), 3000);
+    }
     setSaving(false);
   };
+
+  // Mantém saveRef sempre atualizado (evita closures stale no auto-save)
+  saveRef.current = save;
+
+  // Auto-save: debounce de 1.5s após qualquer alteração
+  useEffect(() => {
+    if (!isLoaded.current) return;
+    setAutoSaveStatus("pending");
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      saveRef.current?.(true);
+    }, 1500);
+    return () => clearTimeout(autoSaveTimer.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tec, avi, pil, obs, pv, an, provaInfo, estamparia, varCodigos, varTingimento, qtdMost, statusLib, ncm, numVars, custoDet, obsCusto, tEsp, img, imgModelo, imgModoMedir]);
 
   const exportPDF = () => { setShowExportDlg(true); };
   const doExport = () => { setShowExportDlg(false); setShowPrint(true); document.body.classList.add("printing-pdf"); setTimeout(() => { window.print(); setTimeout(() => { setShowPrint(false); document.body.classList.remove("printing-pdf"); }, 500); }, 200); };
@@ -355,26 +384,21 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             ))}
           </div>
           <div className="flex gap-2 sm:gap-2.5 items-center justify-end flex-shrink-0">
-            {(up || saving) && <span className="text-[12px] text-[var(--system-blue)] animate-pulse font-medium">{saving ? "Salvando..." : "Enviando..."}</span>}
+            {/* Indicador de auto-save */}
+            {up && <span className="text-[12px] text-[var(--system-blue)] animate-pulse font-medium">Enviando...</span>}
+            {!up && autoSaveStatus === "pending" && <span className="text-[11px] text-[var(--label-tertiary)]">Aguardando...</span>}
+            {!up && autoSaveStatus === "saving" && <span className="text-[11px] text-[var(--system-blue)] animate-pulse font-medium">Salvando...</span>}
+            {!up && autoSaveStatus === "saved" && (
+              <span className="text-[11px] text-[#2DB564] font-medium flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Salvo
+              </span>
+            )}
+            {!up && autoSaveStatus === "error" && <span className="text-[11px] text-red-500 font-medium">Erro ao salvar</span>}
             <button onClick={exportPDF} className="text-[12px] sm:text-[13px] font-medium text-[var(--system-blue)] hover:bg-blue-50 px-2 sm:px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
               <svg className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span className="hidden sm:inline">Exportar </span>PDF
             </button>
-            {pendingSave && (
-              <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setPendingSave(false)}>
-                <div className="apple-card" style={{width:360,padding:"24px"}} onClick={e=>e.stopPropagation()}>
-                  <div style={{fontSize:15,fontWeight:700,marginBottom:8}}>Confirmar mudança de status</div>
-                  <div style={{fontSize:13,color:"var(--label-secondary)",marginBottom:18,lineHeight:1.55}}>
-                    Ao salvar com liberação <strong>"{statusLib}"</strong>, o status do produto <strong>{row.ref}</strong> será alterado automaticamente para <strong>"{autoStatusFor(statusLib)}"</strong>.
-                  </div>
-                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                    <button className="apple-btn-secondary" onClick={()=>setPendingSave(false)}>Cancelar</button>
-                    <button className="apple-btn-primary" onClick={()=>save(true)}>Confirmar e salvar</button>
-                  </div>
-                </div>
-              </div>
-            )}
-            <button onClick={()=>save()} className="apple-btn-primary text-[12px] sm:text-[13px] !px-3 sm:!px-5">Salvar</button>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
