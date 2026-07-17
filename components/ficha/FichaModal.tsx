@@ -48,11 +48,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [grad, setGrad] = useState<any[]>([]);
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
-  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; foto: string }>>({ p1: { data: "", status: "", link: "", foto: "" }, p2: { data: "", status: "", link: "", foto: "" }, p3: { data: "", status: "", link: "", foto: "" } });
+  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string }>>({ p1: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "" }, p2: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "" }, p3: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "" } });
   const [custoDet, setCustoDet] = useState({ mp: "", mo: "" });
   const [obsCusto, setObsCusto] = useState("");
   const fotoProvaRef = useRef<HTMLInputElement>(null);
-  const [fotoProvaTarget, setFotoProvaTarget] = useState<"p1"|"p2"|"p3"|null>(null);
+  const [fotoProvaTarget, setFotoProvaTarget] = useState<{ prova: "p1"|"p2"|"p3"; side: "frente"|"lado"|"costas" } | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   /* NCM */
   const [ncm, setNcm] = useState("");
@@ -141,7 +142,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.tingimento) setVarTingimento(prev => ({ ...prev, ...ficha.tingimento }));
         if (ficha.qtdMost) setQtdMost(prev => ({ ...prev, ...ficha.qtdMost }));
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
-        if (ficha.provaInfo) setProvaInfo(prev => ({ ...prev, ...ficha.provaInfo }));
+        if (ficha.provaInfo) {
+          const migrated = Object.fromEntries(Object.entries(ficha.provaInfo).map(([k, v]: [string, any]) => [k, { data: v.data || "", status: v.status || "", link: v.link || "", fotoFrente: v.fotoFrente || v.foto || "", fotoLado: v.fotoLado || "", fotoCostas: v.fotoCostas || "" }]));
+          setProvaInfo(prev => ({ ...prev, ...migrated }));
+        }
         if (ficha.custoDet) setCustoDet(ficha.custoDet);
         if (ficha.obsCusto) setObsCusto(ficha.obsCusto);
         if (ficha.ncm) setNcm(ficha.ncm);
@@ -167,7 +171,26 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const hi = async (e: any, fd: string, s: (u: string) => void) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); } setUp(false); };
   const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
   const deleteImgModelo = async () => { if (imgModelo) await deleteImage(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
-  const handleFotoProva = async (e: any) => { const file = e.target.files?.[0]; if (!file || !fotoProvaTarget) return; setUp(true); const url = await uploadImage(file, `${row.ref}/foto_prova_${fotoProvaTarget}`); if (url) setProvaInfo(prev => ({ ...prev, [fotoProvaTarget]: { ...prev[fotoProvaTarget], foto: url } })); setUp(false); if (fotoProvaRef.current) fotoProvaRef.current.value = ""; };
+  const uploadFotoProva = async (file: File, prova: "p1"|"p2"|"p3", side: "frente"|"lado"|"costas") => {
+    if (!file.type.startsWith("image/")) return;
+    setUp(true);
+    const field = side === "frente" ? "fotoFrente" : side === "lado" ? "fotoLado" : "fotoCostas";
+    const url = await uploadImage(file, `${row.ref}/prova_${prova}_${side}`);
+    if (url) setProvaInfo(prev => ({ ...prev, [prova]: { ...prev[prova], [field]: url } }));
+    setUp(false);
+  };
+  const handleFotoProva = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file || !fotoProvaTarget) return;
+    await uploadFotoProva(file, fotoProvaTarget.prova, fotoProvaTarget.side);
+    if (fotoProvaRef.current) fotoProvaRef.current.value = "";
+  };
+  const handleDropProva = async (e: React.DragEvent, prova: "p1"|"p2"|"p3", side: "frente"|"lado"|"costas") => {
+    e.preventDefault();
+    setDragOver(null);
+    const file = e.dataTransfer.files[0];
+    if (file) await uploadFotoProva(file, prova, side);
+  };
 
   const autoStatusFor = (lib: string) => {
     if (lib === "REPROVADO") return "REPILOTANDO PRODUÇÃO";
@@ -953,14 +976,6 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                           placeholder="Link vídeo..."
                           className="w-full text-[10px] border border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--system-blue)] bg-[var(--bg-primary)] font-normal"
                         />
-                        {info.foto ? (
-                          <div className="relative w-full">
-                            <img src={info.foto} alt={`Foto prova ${pi+1}`} className="w-full rounded-lg object-contain border border-[var(--separator)] max-h-28" />
-                            <button onClick={() => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, foto: "" } }))} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setFotoProvaTarget(pk); fotoProvaRef.current?.click(); }} className="w-full text-[10px] border border-dashed border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 text-[var(--label-tertiary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors">+ Foto da prova</button>
-                        )}
                       </div>
                     </th>
                   );
@@ -1033,10 +1048,91 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? "XPP, PP, P, G, GG são calculados automaticamente a partir de M e das ampliações. As tabelas originais nos cadastros não são afetadas." : "Ampliação: diferença entre tamanhos (←M / M→) — XPP calculado como PP − Ampl. ←"}</p>
               </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
-              <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modelo</div><div className="relative"><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden" onClick={() => mrr.current?.click()}>{imgModelo ? <img src={imgModelo} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique para enviar</p></div>}</div>{imgModelo && <button onClick={e => { e.stopPropagation(); deleteImgModelo(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</div><input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} /></div>
-            </div>
+            {/* Fotos das Provas — 3 por prova */}
+            {(() => {
+              const sides: { key: "fotoFrente"|"fotoLado"|"fotoCostas"; label: string; side: "frente"|"lado"|"costas" }[] = [
+                { key: "fotoFrente", label: "Frente", side: "frente" },
+                { key: "fotoLado",   label: "Lado",   side: "lado"   },
+                { key: "fotoCostas", label: "Costas", side: "costas" },
+              ];
+              return (
+                <div className="apple-card p-4 space-y-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Fotos das Provas</div>
+                  {(["p1","p2","p3"] as const).map((pk, pi) => {
+                    const info = provaInfo[pk] || {};
+                    const hasAny = (info as any).fotoFrente || (info as any).fotoLado || (info as any).fotoCostas;
+                    return (
+                      <div key={pk}>
+                        <div className="text-[11px] font-bold text-[var(--label-tertiary)] mb-2">Prova {pi+1}{provaInfo[pk]?.data ? ` — ${provaInfo[pk].data}` : ""}</div>
+                        <div className="grid grid-cols-3 gap-3">
+                          {sides.map(({ key, label, side }) => {
+                            const url = (info as any)[key] || "";
+                            const dragKey = `${pk}_${side}`;
+                            const isDragging = dragOver === dragKey;
+                            return (
+                              <div key={side} className="space-y-1">
+                                <div className="text-[10px] font-semibold text-center text-[var(--label-tertiary)] uppercase tracking-[0.05em]">{label}</div>
+                                <div
+                                  className={`apple-card bg-[var(--bg-secondary)] aspect-square flex items-center justify-center cursor-pointer overflow-hidden relative transition-all ${isDragging ? "border-[var(--system-blue)] bg-[rgba(0,122,255,0.06)]" : "hover:border-[var(--system-blue)]"}`}
+                                  onClick={() => { setFotoProvaTarget({ prova: pk, side }); fotoProvaRef.current?.click(); }}
+                                  onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }}
+                                  onDragLeave={() => setDragOver(null)}
+                                  onDrop={e => handleDropProva(e, pk, side)}
+                                >
+                                  {url ? (
+                                    <>
+                                      <img src={url} alt={`Prova ${pi+1} ${label}`} className="w-full h-full object-cover" />
+                                      <button onClick={e => { e.stopPropagation(); setProvaInfo(prev => ({ ...prev, [pk]: { ...prev[pk], [key]: "" } })); }} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center">
+                                        <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <div className="text-center p-2">
+                                      <svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                      <p className="text-[9px] text-[var(--label-quaternary)] leading-tight">Clique ou<br/>arraste</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Modelo — auto-popula da última prova com foto, ou upload manual */}
+            {(() => {
+              const autoFoto = provaInfo.p3?.fotoFrente || provaInfo.p2?.fotoFrente || provaInfo.p1?.fotoFrente || provaInfo.p3?.fotoLado || provaInfo.p2?.fotoLado || provaInfo.p1?.fotoLado || null;
+              const modeloSrc = imgModelo || autoFoto;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">
+                      Modelo
+                      {autoFoto && !imgModelo && <span className="ml-2 text-[10px] font-normal text-[var(--label-tertiary)] normal-case">(da última prova)</span>}
+                    </div>
+                    <div className="relative">
+                      <div
+                        className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden"
+                        onClick={() => mrr.current?.click()}
+                        onDragOver={e => { e.preventDefault(); setDragOver("modelo"); }}
+                        onDragLeave={() => setDragOver(null)}
+                        onDrop={e => { e.preventDefault(); setDragOver(null); const f = e.dataTransfer.files[0]; if (f) hi({ target: { files: [f] } }, "imagem_modelo", setImgModelo); }}
+                      >
+                        {modeloSrc ? <img src={modeloSrc} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique ou arraste</p></div>}
+                      </div>
+                      {imgModelo && <button onClick={e => { e.stopPropagation(); deleteImgModelo(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                    </div>
+                    <input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} />
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-3">{([1, 2, 3] as const).map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k] || { texto: "", video: "" }; return (<div key={n} className="apple-card p-4"><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Anotações — Prova {n}</div><textarea value={a.texto} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, texto: e.target.value } }))} placeholder="Anotações..." className="apple-input w-full resize-none h-14 mb-2" /><div className="flex items-center gap-2"><span className="text-[11px] text-[var(--label-tertiary)]">Vídeo:</span><input type="text" value={a.video} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, video: e.target.value } }))} placeholder="https://..." className="apple-input flex-1 text-[12px]" /></div></div>); })}</div>
           </>)}
         </div>)}
