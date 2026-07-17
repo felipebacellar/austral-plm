@@ -293,8 +293,14 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
   // Pilotagem
   await sb().from("ficha_pilotagem").delete().eq("ficha_id", fid);
   if (f.pilotagem?.length) await sb().from("ficha_pilotagem").insert(f.pilotagem.map((p: any) => ({ ficha_id: fid, num: p.num || "", lacre: p.lacre || "", data_envio: p.envio || null, data_recebimento: p.receb || null, data_prova: p.prova || null, status: p.status || "" })));
-  // Provas
-  if (f.provas) for (const [cod, v] of Object.entries(f.provas) as any) await sb().from("ficha_provas").upsert({ ficha_id: fid, ponto_cod: cod, prova1: v.p1 || "", prova2: v.p2 || "", prova3: v.p3 || "" }, { onConflict: "ficha_id,ponto_cod" });
+  // Provas — delete+insert (mais confiável que upsert com onConflict)
+  await sb().from("ficha_provas").delete().eq("ficha_id", fid);
+  if (f.provas && Object.keys(f.provas).length > 0) {
+    const provasRows = Object.entries(f.provas)
+      .filter(([, v]: any) => v.p1 || v.p2 || v.p3)
+      .map(([cod, v]: any) => ({ ficha_id: fid, ponto_cod: cod, prova1: v.p1 || "", prova2: v.p2 || "", prova3: v.p3 || "" }));
+    if (provasRows.length) await sb().from("ficha_provas").insert(provasRows);
+  }
   // Anotações
   if (f.anotacoes) for (const [k, v] of Object.entries(f.anotacoes) as any) { const n = parseInt(k.replace("p", "")); if (!isNaN(n)) await sb().from("ficha_anotacoes").upsert({ ficha_id: fid, prova_num: n, anotacao: v.texto || "", video_link: v.video || "" }, { onConflict: "ficha_id,prova_num" }); }
   // Tabela especial

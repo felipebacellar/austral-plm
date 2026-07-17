@@ -382,8 +382,15 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     );
   }
 
+  const handleClose = () => {
+    if (autoSaveStatus === "pending" || autoSaveStatus === "saving") {
+      if (!window.confirm("Existem alterações ainda sendo salvas. Deseja fechar mesmo assim?")) return;
+    }
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={handleClose}>
       <div className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[var(--separator)] gap-2.5">
           <div className="seg-control overflow-x-auto">
@@ -399,7 +406,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           <div className="flex gap-2 sm:gap-2.5 items-center justify-end flex-shrink-0">
             {/* Indicador de auto-save */}
             {up && <span className="text-[12px] text-[var(--system-blue)] animate-pulse font-medium">Enviando...</span>}
-            {!up && autoSaveStatus === "pending" && <span className="text-[11px] text-[var(--label-tertiary)]">Aguardando...</span>}
+            {!up && autoSaveStatus === "pending" && (
+              <span className="text-[11px] font-semibold text-[#B45309] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-full flex items-center gap-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Alterações não salvas
+              </span>
+            )}
             {!up && autoSaveStatus === "saving" && <span className="text-[11px] text-[var(--system-blue)] animate-pulse font-medium">Salvando...</span>}
             {!up && autoSaveStatus === "saved" && (
               <span className="text-[11px] text-[#2DB564] font-medium flex items-center gap-1">
@@ -407,12 +419,17 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 Salvo
               </span>
             )}
-            {!up && autoSaveStatus === "error" && <span className="text-[11px] text-red-500 font-medium">Erro ao salvar</span>}
+            {!up && autoSaveStatus === "error" && (
+              <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer" onClick={() => saveRef.current?.(true)}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Erro — clique para tentar novamente
+              </span>
+            )}
             <button onClick={exportPDF} className="text-[12px] sm:text-[13px] font-medium text-[var(--system-blue)] hover:bg-blue-50 px-2 sm:px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
               <svg className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span className="hidden sm:inline">Exportar </span>PDF
             </button>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
+            <button onClick={handleClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
@@ -1257,7 +1274,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     </div>
                     <div>
                       <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Data de Prova</div>
-                      <input type="date" value={pilRow.prova || ""} onChange={e => setPil(prev => prev.map((r, i) => i === n - 1 ? { ...r, prova: e.target.value } : r))} className="apple-input w-full text-[12px]" />
+                      <div className="apple-input w-full text-[12px] text-[var(--label-secondary)]">{provaInfo[k]?.data || "—"}</div>
                     </div>
                     <div>
                       <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Status</div>
