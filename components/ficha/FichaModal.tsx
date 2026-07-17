@@ -9,7 +9,7 @@ import FichaPDF from "./FichaPDF";
 type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
 
 export default function FichaModal({ row, onClose, onSave }: Props) {
-  const [tab, setTab] = useState<"ficha" | "estamparia" | "liberacao">("ficha");
+  const [tab, setTab] = useState<"ficha" | "estamparia" | "liberacao" | "graduacao">("ficha");
   const [img, setImg] = useState<string | null>(null);
   const [imgModelo, setImgModelo] = useState<string | null>(null);
   const [up, setUp] = useState(false);
@@ -17,7 +17,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [fichaId, setFichaId] = useState<number | null>(null);
   const [showPrint, setShowPrint] = useState(false);
   const [showExportDlg, setShowExportDlg] = useState(false);
-  const [exportSections, setExportSections] = useState<{ ficha: boolean; estamparia: boolean; liberacao: boolean }>({ ficha: true, estamparia: true, liberacao: true });
+  const [exportSections, setExportSections] = useState<{ ficha: boolean; estamparia: boolean; liberacao: boolean; graduacao: boolean }>({ ficha: true, estamparia: true, liberacao: true, graduacao: true });
   const fr = useRef<HTMLInputElement>(null);
   const mrr = useRef<HTMLInputElement>(null);
   const estImgRef = useRef<HTMLInputElement>(null);
@@ -319,8 +319,13 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       <div className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[var(--separator)] gap-2.5">
           <div className="seg-control overflow-x-auto">
-            {([["ficha", "Ficha técnica"], ["estamparia", "Estamparia"], ["liberacao", "Liberação"]] as [string, string][]).map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id as any)} className={`seg-btn whitespace-nowrap ${tab === id ? "active" : ""}`}>{l}</button>
+            {([
+              ["ficha", "Ficha técnica"],
+              ["estamparia", "Estamparia"],
+              ["liberacao", "Liberação"],
+              ...(isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") ? [["graduacao", "Graduação Prod."]] : []),
+            ] as [string, string][]).map(([id, l]) => (
+              <button key={id} onClick={() => setTab(id as any)} className={`seg-btn whitespace-nowrap ${tab === id ? "active" : ""}${id === "graduacao" ? " !text-[#2DB564] font-bold" : ""}`}>{l}</button>
             ))}
           </div>
           <div className="flex gap-2 sm:gap-2.5 items-center justify-end flex-shrink-0">
@@ -359,7 +364,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 <p className="text-[12px] text-[var(--label-secondary)] mt-1">Selecione as seções para exportar:</p>
               </div>
               <div className="px-6 py-4 space-y-3">
-                {([["ficha", "Ficha Técnica", "Dados do produto, tecidos, aviamentos, pilotagem"], ["estamparia", "Estamparia", "Artes, técnicas, simulações e fotos"], ["liberacao", "Liberação", "Tabela de medidas, provas e graduação"]] as [string, string, string][]).map(([key, label, desc]) => (
+                {([
+                  ["ficha", "Ficha Técnica", "Dados do produto, tecidos, aviamentos, pilotagem"],
+                  ["estamparia", "Estamparia", "Artes, técnicas, simulações e fotos"],
+                  ["liberacao", "Liberação", "Tabela de medidas, provas e graduação"],
+                  ...(isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") ? [["graduacao", "Graduação de Produção", "Tabela graduada com medidas aprovadas para envio ao fornecedor"]] : []),
+                ] as [string, string, string][]).map(([key, label, desc]) => (
                   <label key={key} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(exportSections as any)[key] ? "border-[var(--system-blue)] bg-[rgba(0,122,255,0.04)]" : "border-[var(--separator-opaque)] hover:border-[var(--label-tertiary)]"}`}>
                     <input type="checkbox" checked={(exportSections as any)[key]} onChange={e => setExportSections(prev => ({ ...prev, [key]: e.target.checked }))} className="mt-0.5 w-4 h-4 accent-[var(--system-blue)]" />
                     <div>
@@ -1030,6 +1040,111 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div className="space-y-3">{([1, 2, 3] as const).map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k] || { texto: "", video: "" }; return (<div key={n} className="apple-card p-4"><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Anotações — Prova {n}</div><textarea value={a.texto} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, texto: e.target.value } }))} placeholder="Anotações..." className="apple-input w-full resize-none h-14 mb-2" /><div className="flex items-center gap-2"><span className="text-[11px] text-[var(--label-tertiary)]">Vídeo:</span><input type="text" value={a.video} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, video: e.target.value } }))} placeholder="https://..." className="apple-input flex-1 text-[12px]" /></div></div>); })}</div>
           </>)}
         </div>)}
+
+        {/* ═══ GRADUAÇÃO DE PRODUÇÃO ═══ */}
+        {tab === "graduacao" && isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (() => {
+          const getMeasuredM = (g: any): string => {
+            const pt = ptsAtivo.find((p: any) => p.desc?.toUpperCase() === g.desc?.toUpperCase());
+            if (!pt) return g.m || "";
+            const vals = pv[pt.cod];
+            if (!vals) return g.m || "";
+            return vals.p3 || vals.p2 || vals.p1 || g.m || "";
+          };
+          const calcRow = (g: any) => {
+            const mStr = getMeasuredM(g);
+            const m = parseFloat(String(mStr).replace(",", "."));
+            const a1 = parseFloat(String(g.a1).replace(",", "."));
+            const a2 = parseFloat(String(g.a2).replace(",", "."));
+            if (isNaN(m) || isNaN(a1) || isNaN(a2)) return { xpp: g.xpp, pp: g.pp, p: g.p, mVal: mStr, g: g.g, gg: g.gg };
+            return { xpp: fmtN(m - 3 * a1), pp: fmtN(m - 2 * a1), p: fmtN(m - a1), mVal: mStr, g: fmtN(m + a2), gg: fmtN(m + 2 * a2) };
+          };
+          const isOutsideTol = (val: string, base: string, tol: string) => {
+            const v = parseFloat(val), b = parseFloat(base), t = parseFloat(tol);
+            if (isNaN(v) || isNaN(b) || isNaN(t)) return false;
+            return Math.abs(v - b) > t;
+          };
+          const gradColor = statusLib === "APROVADO COM RESTRIÇÃO" ? "#f97316" : "#2DB564";
+          return (
+          <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
+            {/* Header */}
+            <div style={{ background: gradColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[13px] font-bold tracking-[0.04em]">GRADUAÇÃO DE PRODUÇÃO</span>
+              <span className="text-[11px] font-semibold bg-white/15 px-3 py-0.5 rounded-full">{statusLib}</span>
+              <span className="text-[12px]"><span className="text-white/60">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span>
+            </div>
+
+            {/* Info */}
+            <div className="apple-card">
+              <div className="grid grid-cols-2 sm:grid-cols-3">
+                {([
+                  ["Referência", row.ref],
+                  ["Descrição", row.desc],
+                  ["Operação", row.operacao],
+                  ["Fornecedor", row.fornecedor],
+                  ["Estilista", row.estilista],
+                  ["Grade", row.grade],
+                  ["Grupo", row.grupo],
+                  ["Tabela Base", tm],
+                  ["Tamanho", "M"],
+                  ["Tecido", row.tecido],
+                  ["Composição", row.composicao],
+                ] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}
+              </div>
+            </div>
+
+            {/* Tabela de Graduação */}
+            {gradAtivo.length === 0 ? (
+              <div className="apple-card p-16 text-center"><p className="text-[15px] font-medium text-[var(--label-secondary)]">Nenhuma graduação cadastrada para esta tabela</p></div>
+            ) : (
+              <div className="apple-card overflow-x-auto">
+                <table className="plm-table">
+                  <thead>
+                    <tr>
+                      <th rowSpan={2} className="text-left min-w-[180px]">Descrição</th>
+                      <th colSpan={6} className="text-center bg-[rgba(45,181,100,0.08)] text-[#2a7a4a]" style={{ borderBottom: "2px solid #2DB56444" }}>GRADUAÇÃO</th>
+                      <th colSpan={2} className="text-center" style={{ borderBottom: "2px solid var(--separator)" }}>Ampliação</th>
+                      <th rowSpan={2} className="text-center w-24">Tolerância</th>
+                    </tr>
+                    <tr>
+                      {(["XPP","PP","P"] as const).map(s => <th key={s} className="text-center w-16 bg-[rgba(45,181,100,0.04)] text-[#2a7a4a]">{s}</th>)}
+                      <th className="text-center w-16 bg-[rgba(255,204,0,0.18)] text-[#856500] font-bold">M</th>
+                      {(["G","GG"] as const).map(s => <th key={s} className="text-center w-16 bg-[rgba(45,181,100,0.04)] text-[#2a7a4a]">{s}</th>)}
+                      <th className="text-center w-14 text-[var(--label-secondary)]">←</th>
+                      <th className="text-center w-14 text-[var(--label-secondary)]">→</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradAtivo.map((g: any, i: number) => {
+                      const calc = calcRow(g);
+                      const mOutside = isOutsideTol(calc.mVal, g.m, g.tol);
+                      return (
+                        <tr key={i}>
+                          <td className="font-medium px-3">{g.desc}</td>
+                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.xpp || "—"}</td>
+                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.pp || "—"}</td>
+                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.p || "—"}</td>
+                          <td className={`text-center tabnum text-[13px] font-bold px-2 ${mOutside ? "bg-red-100 text-red-600" : "bg-[rgba(255,204,0,0.14)] text-[#856500]"}`}>{calc.mVal || g.m || "—"}</td>
+                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.g || "—"}</td>
+                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.gg || "—"}</td>
+                          <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-2">{g.a1 || "—"}</td>
+                          <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-2">{g.a2 || "—"}</td>
+                          <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{g.tol ? `${g.tol} OU -` : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <p className="text-[11px] text-[var(--label-tertiary)]">
+              Coluna M = medida real da prova aprovada. Demais tamanhos calculados a partir de M ± ampliação.
+              {statusLib === "APROVADO COM RESTRIÇÃO" && <span className="ml-1 text-orange-500 font-semibold">Liberado com restrição — verificar pontos em vermelho antes de produção.</span>}
+            </p>
+          </div>
+          );
+        })()}
+
       </div>
       {/* Hidden file input for prova photos (outside tabs so always mounted) */}
       <input ref={fotoProvaRef} type="file" accept="image/*" className="hidden" onChange={handleFotoProva} />
