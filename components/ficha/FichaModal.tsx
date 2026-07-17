@@ -825,11 +825,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {([
-                          ["PENDENTE", "Pendente", "border-[var(--separator-opaque)] text-[var(--label-tertiary)] bg-transparent"],
-                          ["LIBERADA DIRETO MOSTRUÁRIO", "Liberada", "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
-                          ["LIBERADA COM AJUSTE", "c/ Ajuste", "bg-[rgba(255,204,0,0.18)] text-[#856500] border-[rgba(255,204,0,0.35)]"],
-                          ["REPROVADA", "Reprovada", "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
-                          ["APROVADA IDEM MOSTRUÁRIO", "Idem Mostruário", "bg-[rgba(90,110,220,0.14)] text-[#3344aa] border-[rgba(90,110,220,0.3)]"],
+                          ["APROVADA IDEM PILOTO",             "Aprov. Idem Piloto",  "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
+                          ["LIBERADA DIRETO MOSTRUÁRIO",       "Liberada Direto",     "bg-[rgba(255,149,0,0.15)] text-[#9a5000] border-[rgba(255,149,0,0.35)]"],
+                          ["APROVADA IDEM MOSTRUÁRIO",         "Aprov. Idem Mostr.",  "bg-[rgba(52,199,89,0.14)] text-[#248a3d] border-[rgba(52,199,89,0.25)]"],
+                          ["COR NOVA - ENVIAR BANDEIRA",       "Cor Nova",            "bg-[rgba(255,149,0,0.15)] text-[#9a5000] border-[rgba(255,149,0,0.35)]"],
+                          ["REPROVADA - ENVIAR BANDEIRA CORRIGIDA", "Reprovada",      "bg-[rgba(255,59,48,0.12)] text-[#d70015] border-[rgba(255,59,48,0.25)]"],
                         ] as [string, string, string][]).map(([val, label, cls]) => (
                           <button key={val} onClick={() => updSim(vk, "status", sim.status === val ? "" : val)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${sim.status === val ? cls : "border-[var(--separator-opaque)] text-[var(--label-quaternary)] bg-transparent hover:border-[var(--label-tertiary)]"}`}>{label}</button>
                         ))}
