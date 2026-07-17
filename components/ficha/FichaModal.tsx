@@ -1104,32 +1104,40 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               );
             })()}
 
-            {/* Modelo — auto-popula da última prova com foto, ou upload manual */}
+            {/* Modelo — Frente e Costas da última prova */}
             {(() => {
-              const autoFoto = provaInfo.p3?.fotoFrente || provaInfo.p2?.fotoFrente || provaInfo.p1?.fotoFrente || provaInfo.p3?.fotoLado || provaInfo.p2?.fotoLado || provaInfo.p1?.fotoLado || null;
-              const modeloSrc = imgModelo || autoFoto;
+              const frenteAuto = provaInfo.p3?.fotoFrente || provaInfo.p2?.fotoFrente || provaInfo.p1?.fotoFrente || null;
+              const costasAuto = provaInfo.p3?.fotoCostas || provaInfo.p2?.fotoCostas || provaInfo.p1?.fotoCostas || null;
+              const isAuto = !imgModelo && (frenteAuto || costasAuto);
               return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div><div className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center"><div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Cadastrado na tabela</p></div></div></div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">
-                      Modelo
-                      {autoFoto && !imgModelo && <span className="ml-2 text-[10px] font-normal text-[var(--label-tertiary)] normal-case">(da última prova)</span>}
-                    </div>
-                    <div className="relative">
-                      <div
-                        className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden"
-                        onClick={() => mrr.current?.click()}
-                        onDragOver={e => { e.preventDefault(); setDragOver("modelo"); }}
-                        onDragLeave={() => setDragOver(null)}
-                        onDrop={e => { e.preventDefault(); setDragOver(null); const f = e.dataTransfer.files[0]; if (f) hi({ target: { files: [f] } }, "imagem_modelo", setImgModelo); }}
-                      >
-                        {modeloSrc ? <img src={modeloSrc} alt="Modelo" className="w-full h-full object-contain p-1" /> : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique ou arraste</p></div>}
-                      </div>
-                      {imgModelo && <button onClick={e => { e.stopPropagation(); deleteImgModelo(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
-                    </div>
-                    <input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} />
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">
+                    Modelo
+                    {isAuto && <span className="ml-2 text-[10px] font-normal text-[var(--label-tertiary)] normal-case">(da última prova)</span>}
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Frente */}
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-semibold text-center text-[var(--label-tertiary)] uppercase tracking-[0.05em]">Frente</div>
+                      <div className="apple-card bg-[var(--bg-secondary)] aspect-[3/4] flex items-center justify-center overflow-hidden">
+                        {frenteAuto
+                          ? <img src={frenteAuto} alt="Modelo Frente" className="w-full h-full object-contain p-1" />
+                          : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p className="text-[10px] text-[var(--label-quaternary)]">Sem foto</p></div>
+                        }
+                      </div>
+                    </div>
+                    {/* Costas */}
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-semibold text-center text-[var(--label-tertiary)] uppercase tracking-[0.05em]">Costas</div>
+                      <div className="apple-card bg-[var(--bg-secondary)] aspect-[3/4] flex items-center justify-center overflow-hidden">
+                        {costasAuto
+                          ? <img src={costasAuto} alt="Modelo Costas" className="w-full h-full object-contain p-1" />
+                          : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p className="text-[10px] text-[var(--label-quaternary)]">Sem foto</p></div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo)} />
                 </div>
               );
             })()}
