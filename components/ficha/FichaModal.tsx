@@ -12,6 +12,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [tab, setTab] = useState<"ficha" | "estamparia" | "liberacao" | "graduacao">("ficha");
   const [img, setImg] = useState<string | null>(null);
   const [imgModelo, setImgModelo] = useState<string | null>(null);
+  const [imgModoMedir, setImgModoMedir] = useState<string | null>(null);
+  const mmmRef = useRef<HTMLInputElement>(null);
   const [up, setUp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fichaId, setFichaId] = useState<number | null>(null);
@@ -121,7 +123,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         return { ...a, ...varPatch, imagem: cat?.imagem || "", cores_disponiveis: cores, fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" };
       }));
       if (ficha) {
-        setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
+        setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo); if (ficha.imagem_modo_medir) setImgModoMedir(ficha.imagem_modo_medir);
         const ficTec = ficha.tecidos || [];
         if (ficTec.length > 0) {
           // Se o primeiro tecido da ficha está vazio mas o produto tem tecido, preenche
@@ -171,6 +173,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const hi = async (e: any, fd: string, s: (u: string) => void) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); } setUp(false); };
   const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
   const deleteImgModelo = async () => { if (imgModelo) await deleteImage(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
+  const deleteImgModoMedir = async () => { if (imgModoMedir) await deleteImage(imgModoMedir); setImgModoMedir(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modo_medir", ""); };
   const uploadFotoProva = async (file: File, prova: "p1"|"p2"|"p3", side: "frente"|"lado"|"costas") => {
     if (!file.type.startsWith("image/")) return;
     setUp(true);
@@ -207,7 +210,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     }
     setSaving(true);
     setPendingSave(false);
-    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+    const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
     const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
     if (newId) setFichaId(newId);
     if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
@@ -1103,6 +1106,26 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 </div>
               );
             })()}
+
+            {/* Modo de medir */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">Modo de medir</div>
+              <div className="relative">
+                <div
+                  className="apple-card bg-[var(--bg-secondary)] aspect-[4/3] flex items-center justify-center cursor-pointer hover:border-[var(--system-blue)] overflow-hidden"
+                  onClick={() => mmmRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); setDragOver("modoMedir"); }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={e => { e.preventDefault(); setDragOver(null); const f = e.dataTransfer.files[0]; if (f) hi({ target: { files: [f] } }, "imagem_modo_medir", setImgModoMedir); }}
+                >
+                  {imgModoMedir
+                    ? <img src={imgModoMedir} alt="Modo de medir" className="w-full h-full object-contain p-1" />
+                    : <div className="text-center"><svg className="mx-auto mb-1 text-[var(--label-quaternary)]" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[12px] text-[var(--label-tertiary)]">Clique ou arraste</p></div>}
+                </div>
+                {imgModoMedir && <button onClick={e => { e.stopPropagation(); deleteImgModoMedir(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+              </div>
+              <input ref={mmmRef} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modo_medir", setImgModoMedir)} />
+            </div>
 
             {/* Modelo — Frente e Costas da última prova */}
             {(() => {
