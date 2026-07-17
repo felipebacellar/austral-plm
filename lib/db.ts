@@ -247,30 +247,42 @@ export async function saveFichaImagem(fichaId: number, field: string, url: strin
 }
 
 export async function upsertFicha(ref: string, f: any, colecao?: string | null) {
-  const fichaRow = {
+  // Campos base (sempre existem)
+  const fichaBase = {
     observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
     ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
-    imagem_modo_medir: f.imagem_modo_medir || "",
     pantones: f.pantones || {}, estamparia: f.estamparia || {},
     status_liberacao: f.statusLiberacao || "",
-    prova_info: f.provaInfo || null,
-    custo_det: f.custoDet || null,
-    obs_custo: f.obsCusto || "",
-    tingimento: f.tingimento || null,
     qtd_most_var01: f.qtdMost?.var01 ?? null, qtd_most_var02: f.qtdMost?.var02 ?? null,
     qtd_most_var03: f.qtdMost?.var03 ?? null, qtd_most_var04: f.qtdMost?.var04 ?? null,
     qtd_most_var05: f.qtdMost?.var05 ?? null, qtd_most_var06: f.qtdMost?.var06 ?? null,
   };
+  // Campos extras (requerem migration SQL)
+  const fichaExtras = {
+    imagem_modo_medir: f.imagem_modo_medir || "",
+    prova_info: f.provaInfo || null,
+    custo_det: f.custoDet || null,
+    obs_custo: f.obsCusto || "",
+    tingimento: f.tingimento || null,
+  };
   let fid = f.id;
   if (!fid) {
-    const { data, error } = await sb().from("fichas_tecnicas").insert({
-      produto_ref: ref, colecao: colecao || null, ...fichaRow,
+    // Tenta inserir com todos os campos; se falhar por coluna ausente, insere sem extras
+    let result = await sb().from("fichas_tecnicas").insert({
+      produto_ref: ref, colecao: colecao || null, ...fichaBase, ...fichaExtras,
     }).select().single();
-    if (error) { console.error("upsertFicha insert:", error); return null; }
-    fid = data.id;
+    if (result.error) {
+      result = await sb().from("fichas_tecnicas").insert({
+        produto_ref: ref, colecao: colecao || null, ...fichaBase,
+      }).select().single();
+    }
+    if (result.error) { console.error("upsertFicha insert:", result.error); return null; }
+    fid = result.data.id;
   } else {
-    const { error } = await sb().from("fichas_tecnicas").update(fichaRow).eq("id", fid);
-    if (error) console.error("upsertFicha update:", error);
+    // Update com todos os campos
+    let { error } = await sb().from("fichas_tecnicas").update({ ...fichaBase, ...fichaExtras }).eq("id", fid);
+    // Se falhou (coluna não existe), tenta só com campos base
+    if (error) await sb().from("fichas_tecnicas").update(fichaBase).eq("id", fid);
   }
   // Tecidos
   await sb().from("ficha_tecidos").delete().eq("ficha_id", fid);
@@ -320,13 +332,17 @@ export async function fetchExplosaoData() {
 
 // ══ TABELAS DE MEDIDAS ══
 export async function fetchTabelasMedidas() {
+  // Tenta buscar com imagem_modo_medir; se a coluna não existir, busca só id e nome
   const { data, error } = await sb().from("tabelas_medidas").select("id, nome, imagem_modo_medir").order("nome");
-  if (error) console.error("fetchTabelasMedidas:", error);
+  if (error) {
+    const { data: fallback } = await sb().from("tabelas_medidas").select("id, nome").order("nome");
+    return fallback || [];
+  }
   return data || [];
 }
 export async function saveTabelaImagemModoMedir(id: number, url: string) {
   const { error } = await sb().from("tabelas_medidas").update({ imagem_modo_medir: url }).eq("id", id);
-  if (error) console.error("saveTabelaImagemModoMedir:", error);
+  if (error) console.error("saveTabelaImagemModoMedir (coluna pode não existir ainda):", error);
 }
 export async function fetchTabelaPontos(tabelaId: number) {
   const { data, error } = await sb().from("tabela_medida_pontos").select("*").eq("tabela_id", tabelaId).order("ordem");
