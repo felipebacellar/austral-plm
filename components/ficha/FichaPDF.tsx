@@ -452,6 +452,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                   return (
                     <th key={pk} colSpan={2} style={{ ...th, textAlign: "center", background: `${col}18`, borderBottom: `2px solid ${col}`, padding: "3px 4px" }}>
                       <div style={{ fontWeight: 800, color: col, fontSize: "7.5px", letterSpacing: "0.06em" }}>{provaTitles[i]}</div>
+                      {pi?.tipo && <div style={{ fontSize: "7px", color: col, fontWeight: 700, textTransform: "uppercase" }}>{pi.tipo}</div>}
                       {st && <div style={{ fontSize: "7px", color: col, fontWeight: 600 }}>{st}</div>}
                       {dt && <div style={{ fontSize: "6.5px", color: muted, fontWeight: 500 }}>{dt}</div>}
                     </th>
@@ -562,7 +563,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 {/* Cabeçalho da prova */}
                 <div style={{ background: `${piCol}18`, borderBottom: `1px solid ${piCol}44`, padding: "6px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
                   <div style={{ fontSize: "8px", fontWeight: 800, color: piCol, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                    Anotações da Prova {n}
+                    Anotações da Prova {n}{pi?.tipo ? ` — ${pi.tipo}` : ""}
                   </div>
                   {piSt && <div style={{ fontSize: "7.5px", color: piCol, fontWeight: 700 }}>— {piSt}</div>}
                   {pi?.data && <div style={{ fontSize: "7px", color: muted, marginLeft: "auto" }}>{pi.data}</div>}

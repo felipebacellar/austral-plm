@@ -50,7 +50,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [grad, setGrad] = useState<any[]>([]);
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
-  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string }>>({ p1: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "" }, p2: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "" }, p3: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "" } });
+  const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string; tipo: string }>>({ p1: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" }, p2: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" }, p3: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" } });
   const [custoDet, setCustoDet] = useState({ mp: "", mo: "" });
   const [obsCusto, setObsCusto] = useState("");
   const fotoProvaRef = useRef<HTMLInputElement>(null);
@@ -145,7 +145,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         if (ficha.qtdMost) setQtdMost(prev => ({ ...prev, ...ficha.qtdMost }));
         if (ficha.statusLiberacao) setStatusLib(ficha.statusLiberacao);
         if (ficha.provaInfo) {
-          const migrated = Object.fromEntries(Object.entries(ficha.provaInfo).map(([k, v]: [string, any]) => [k, { data: v.data || "", status: v.status || "", link: v.link || "", fotoFrente: v.fotoFrente || v.foto || "", fotoLado: v.fotoLado || "", fotoCostas: v.fotoCostas || "" }]));
+          const migrated = Object.fromEntries(Object.entries(ficha.provaInfo).map(([k, v]: [string, any]) => [k, { data: v.data || "", status: v.status || "", link: v.link || "", fotoFrente: v.fotoFrente || v.foto || "", fotoLado: v.fotoLado || "", fotoCostas: v.fotoCostas || "", tipo: v.tipo || "" }]));
           setProvaInfo(prev => ({ ...prev, ...migrated }));
         }
         if (ficha.custoDet) setCustoDet(ficha.custoDet);
@@ -971,6 +971,15 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                           <option value="LIBERADO">Liberado</option>
                           <option value="LIBERADO C/ RESTRIÇÃO">Liberado c/ restrição</option>
                           <option value="REPROVADO">Reprovado</option>
+                        </select>
+                        <select
+                          value={(info as any).tipo || ""}
+                          onChange={e => setProvaInfo(prev => ({ ...prev, [pk]: { ...info, tipo: e.target.value } }))}
+                          className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none border border-[var(--separator-opaque)] cursor-pointer bg-[var(--bg-primary)] text-[var(--label-primary)]"
+                        >
+                          <option value="">Tipo de prova...</option>
+                          <option value="MOSTRUÁRIO">Mostruário</option>
+                          <option value="PRODUÇÃO">Produção</option>
                         </select>
                         <input
                           type="url"
