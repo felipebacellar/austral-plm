@@ -437,49 +437,57 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <Field label="Composição" value={compOf(row.tecido)} />
           </div>
 
-          {/* Tabela de Medidas */}
-          <table style={tbl}>
-            <thead>
-              <tr>
-                <th style={{ ...th, textAlign: "center", width: "26px", rowSpan: 2 }} rowSpan={2}>Cód</th>
-                <th style={{ ...th, rowSpan: 2 }} rowSpan={2}>Descrição</th>
-                <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800, rowSpan: 2 }} rowSpan={2}>Tab.</th>
-                {provaKeys.map((pk, i) => {
-                  const pi = provaInfo?.[pk];
-                  const st = pi?.status || "";
-                  const dt = pi?.data || "";
-                  const col = piColor(st);
-                  return (
-                    <th key={pk} colSpan={2} style={{ ...th, textAlign: "center", background: `${col}18`, borderBottom: `2px solid ${col}`, padding: "3px 4px" }}>
-                      <div style={{ fontWeight: 800, color: col, fontSize: "7.5px", letterSpacing: "0.06em" }}>{provaTitles[i]}</div>
+          {/* Tabela de Medidas — apenas prova mais recente */}
+          {(() => {
+            // Detecta qual é a prova mais recente com dados medidos
+            const latestPk = (["p3","p2","p1"] as const).find(pk => {
+              const v = pv[pts[0]?.cod];
+              return v && v[pk];
+            }) || "p1";
+            const pi = provaInfo?.[latestPk];
+            const st = pi?.status || "";
+            const col = piColor(st);
+            const latestN = latestPk === "p3" ? 3 : latestPk === "p2" ? 2 : 1;
+            return (
+              <table style={tbl}>
+                <thead>
+                  <tr>
+                    <th style={{ ...th, textAlign: "center", width: "26px" }} rowSpan={2}>Cód</th>
+                    <th style={{ ...th }} rowSpan={2}>Descrição</th>
+                    <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800 }} rowSpan={2}>Tab.</th>
+                    <th colSpan={2} style={{ ...th, textAlign: "center", background: `${col}18`, borderBottom: `2px solid ${col}`, padding: "3px 4px" }}>
+                      <div style={{ fontWeight: 800, color: col, fontSize: "7.5px", letterSpacing: "0.06em" }}>PROVA {latestN}</div>
                       {pi?.tipo && <div style={{ fontSize: "7px", color: col, fontWeight: 700, textTransform: "uppercase" }}>{pi.tipo}</div>}
                       {st && <div style={{ fontSize: "7px", color: col, fontWeight: 600 }}>{st}</div>}
-                      {dt && <div style={{ fontSize: "6.5px", color: muted, fontWeight: 500 }}>{dt}</div>}
+                      {pi?.data && <div style={{ fontSize: "6.5px", color: muted, fontWeight: 500 }}>{pi.data}</div>}
                     </th>
+                    <th style={{ ...th, textAlign: "center", width: "42px", fontSize: "7px" }} rowSpan={2}>Tol.</th>
+                  </tr>
+                  <tr style={headRow}>
+                    <th style={{ ...th, textAlign: "center", width: "42px", fontSize: "7px" }}>MED.</th>
+                    <th style={{ ...th, textAlign: "center", width: "34px", fontSize: "7px" }}>DIF</th>
+                  </tr>
+                </thead>
+                <tbody>{pts.map((p: any, pi2: number) => {
+                  const v = pv[p.cod] || { p1: "", p2: "", p3: "" };
+                  const val = v[latestPk];
+                  const d = gd(p.tabela, val);
+                  const absD = Math.abs(parseFloat(d) || 0);
+                  const isOk = d === "0"; const isBad = d && !isOk && absD > 1; const isWarn = d && !isOk && !isBad;
+                  return (
+                    <tr key={p.cod} style={pi2 % 2 ? { background: bg } : {}}>
+                      <td style={{ ...td, textAlign: "center", fontWeight: 800, color: light, fontSize: "7.5px" }}>{p.cod}</td>
+                      <td style={{ ...td, fontWeight: 600 }}>{p.desc}</td>
+                      <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{p.tabela}</td>
+                      <td style={{ ...td, textAlign: "center", fontWeight: val ? 700 : 400, fontVariantNumeric: "tabular-nums" }}>{val || "—"}</td>
+                      <td style={{ ...td, textAlign: "center", fontSize: "7.5px", fontWeight: 800, fontVariantNumeric: "tabular-nums", color: isOk ? success : isBad ? danger : isWarn ? warn : lineDark }}>{d || "—"}</td>
+                      <td style={{ ...td, textAlign: "center", fontSize: "7px", color: light }}>{p.tol}</td>
+                    </tr>
                   );
-                })}
-                <th style={{ ...th, textAlign: "center", width: "42px", rowSpan: 2, fontSize: "7px" }} rowSpan={2}>Tol.</th>
-              </tr>
-              <tr style={headRow}>
-                {provaKeys.map(pk => [
-                  <th key={pk + "m"} style={{ ...th, textAlign: "center", width: "34px", fontSize: "7px" }}>MED.</th>,
-                  <th key={pk + "d"} style={{ ...th, textAlign: "center", width: "26px", fontSize: "7px" }}>DIF</th>
-                ])}
-              </tr>
-            </thead>
-            <tbody>{pts.map((p: any, pi: number) => { const v = pv[p.cod] || { p1: "", p2: "", p3: "" }; return (
-              <tr key={p.cod} style={pi % 2 ? { background: bg } : {}}>
-                <td style={{ ...td, textAlign: "center", fontWeight: 800, color: light, fontSize: "7.5px" }}>{p.cod}</td>
-                <td style={{ ...td, fontWeight: 600 }}>{p.desc}</td>
-                <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{p.tabela}</td>
-                {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const absD = Math.abs(parseFloat(d) || 0); const isOk = d === "0"; const isBad = d && !isOk && absD > 1; const isWarn = d && !isOk && !isBad; return [
-                  <td key={pk} style={{ ...td, textAlign: "center", fontWeight: val ? 700 : 400, fontVariantNumeric: "tabular-nums" }}>{val || "—"}</td>,
-                  <td key={pk + "d"} style={{ ...td, textAlign: "center", fontSize: "7.5px", fontWeight: 800, fontVariantNumeric: "tabular-nums", color: isOk ? success : isBad ? danger : isWarn ? warn : lineDark }}>{d || "—"}</td>
-                ]; })}
-                <td style={{ ...td, textAlign: "center", fontSize: "7px", color: light }}>{p.tol}</td>
-              </tr>
-            ); })}</tbody>
-          </table>
+                })}</tbody>
+              </table>
+            );
+          })()}
 
           {/* Modo de Medir + Modelo lado a lado */}
           {(imgModoMedir || modeloFrenteUrl) && (
@@ -487,60 +495,44 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               {imgModoMedir && (
                 <div style={{ flex: 1, textAlign: "center" }}>
                   <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Modo de Medir</div>
-                  <img src={imgModoMedir} alt="Modo de Medir" style={{ maxWidth: "100%", maxHeight: "160px", objectFit: "contain", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
+                  <img src={imgModoMedir} alt="Modo de Medir" style={{ maxWidth: "100%", maxHeight: "180px", objectFit: "contain", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
                 </div>
               )}
               {(modeloFrenteUrl || modeloCostasUrl) && (
                 <div style={{ flex: 1, textAlign: "center" }}>
                   <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Modelo</div>
                   <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
-                    {modeloFrenteUrl && <img src={modeloFrenteUrl} alt="Frente" style={{ maxHeight: "150px", objectFit: "contain", borderRadius: "4px" }} />}
-                    {modeloCostasUrl && <img src={modeloCostasUrl} alt="Costas" style={{ maxHeight: "150px", objectFit: "contain", borderRadius: "4px" }} />}
+                    {modeloFrenteUrl && <img src={modeloFrenteUrl} alt="Frente" style={{ maxHeight: "180px", objectFit: "contain", borderRadius: "4px" }} />}
+                    {modeloCostasUrl && <img src={modeloCostasUrl} alt="Costas" style={{ maxHeight: "180px", objectFit: "contain", borderRadius: "4px" }} />}
                   </div>
                 </div>
               )}
             </div>
           )}
-
-          {/* Fotos da Prova (prova mais recente com fotos) */}
-          {latestPhotoProva && (() => {
-            const pi = provaInfo![latestPhotoProva];
-            const fotos = [
-              { label: "FRENTE", url: pi.fotoFrente },
-              { label: "LADO", url: pi.fotoLado },
-              { label: "COSTAS", url: pi.fotoCostas },
-            ].filter(f => f.url);
-            if (!fotos.length) return null;
-            return (
-              <div style={{ marginTop: "14px" }}>
-                <div style={{ fontSize: "7px", fontWeight: 800, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px", borderBottom: `1px solid ${lineDark}`, paddingBottom: "3px" }}>
-                  Fotos da Prova {latestProvaIdx}
-                </div>
-                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                  {fotos.map(f => (
-                    <div key={f.label} style={{ textAlign: "center" }}>
-                      <img src={f.url} alt={f.label} style={{ maxHeight: "180px", maxWidth: "30%", objectFit: "contain", borderRadius: "4px", border: `0.5px solid ${line}` }} />
-                      <div style={{ fontSize: "6.5px", color: muted, marginTop: "3px", fontWeight: 600 }}>{f.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
         </div>
         );
       })()}
 
-      {/* ══════════ LIBERAÇÃO — Pág 2: Comentários de Prova ══════════ */}
+      {/* ══════════ LIBERAÇÃO — Pág 2: Fotos + Comentários da prova mais recente ══════════ */}
       {sec.liberacao && (() => {
-        const hasComments = [1,2,3].some(n => {
-          const k = `p${n}` as "p1"|"p2"|"p3";
-          const a = an[k];
-          const pi = provaInfo?.[k];
-          return (a?.texto || a?.video || pi?.link || (pil[n-1] && (pil[n-1].num || pil[n-1].lacre)));
+        const latestKey = (["p3","p2","p1"] as const).find(pk => {
+          const pi = provaInfo?.[pk];
+          const a = an[pk];
+          const pilRow = pil[parseInt(pk.slice(1))-1];
+          return pi?.fotoFrente || pi?.fotoLado || pi?.fotoCostas || a?.texto || a?.video || pi?.link || pilRow?.num || pilRow?.lacre;
         });
-        if (!hasComments) return null;
-        const libTitle = fichaType === 'producao' ? 'TABELA DE PRODUÇÃO' : fichaType === 'mostruario' ? 'TABELA DE MOSTRUÁRIO' : 'TABELA DE DESENVOLVIMENTO';
+        if (!latestKey) return null;
+        const latestN = latestKey === "p3" ? 3 : latestKey === "p2" ? 2 : 1;
+        const pi = provaInfo?.[latestKey];
+        const a = an[latestKey];
+        const pilRow = pil[latestN - 1];
+        const piSt = pi?.status || "";
+        const piCol = piSt.includes("REPROV") ? danger : piSt.includes("RESTR") ? warn : piSt.includes("APROV") || piSt.includes("LIBER") ? success : muted;
+        const fotos = [
+          { label: "FRENTE", url: pi?.fotoFrente },
+          { label: "LADO", url: pi?.fotoLado },
+          { label: "COSTAS", url: pi?.fotoCostas },
+        ].filter(f => f.url);
         return (
         <div className="print-page" style={pb()}>
           <PageHead title="COMENTÁRIOS DE PROVA" sub={statusLib || "Pendente"} bg={modelagemColor} />
@@ -550,66 +542,68 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <Field label="Estilista" value={row.estilista} />
             <Field label="Fornecedor" value={row.fornecedor} />
           </div>
-          {[1,2,3].map(n => {
-            const k = `p${n}` as "p1"|"p2"|"p3";
-            const a = an[k];
-            const pi = provaInfo?.[k];
-            const pilRow = pil[n-1];
-            if (!a?.texto && !a?.video && !pi?.link && !(pilRow?.num || pilRow?.lacre)) return null;
-            const piSt = pi?.status || "";
-            const piCol = piSt.includes("REPROV") ? danger : piSt.includes("RESTR") ? warn : piSt.includes("APROV") || piSt.includes("LIBER") ? success : muted;
-            return (
-              <div key={n} style={{ marginBottom: "14px", border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
-                {/* Cabeçalho da prova */}
-                <div style={{ background: `${piCol}18`, borderBottom: `1px solid ${piCol}44`, padding: "6px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ fontSize: "8px", fontWeight: 800, color: piCol, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                    Anotações da Prova {n}{pi?.tipo ? ` — ${pi.tipo}` : ""}
-                  </div>
-                  {piSt && <div style={{ fontSize: "7.5px", color: piCol, fontWeight: 700 }}>— {piSt}</div>}
-                  {pi?.data && <div style={{ fontSize: "7px", color: muted, marginLeft: "auto" }}>{pi.data}</div>}
-                </div>
-                <div style={{ padding: "8px 12px" }}>
-                  {/* Anotações texto */}
-                  {a?.texto && (
-                    <div style={{ fontSize: "8.5px", color: navy, marginBottom: "6px", lineHeight: "1.5" }}>{a.texto}</div>
-                  )}
-                  {/* Link do Vídeo */}
-                  {(a?.video || pi?.link) && (
-                    <div style={{ fontSize: "8px", color: accent, marginBottom: "6px" }}>
-                      <span style={{ fontWeight: 700, color: muted, marginRight: "4px" }}>LINK DO VÍDEO:</span>
-                      {a?.video || pi?.link}
-                    </div>
-                  )}
-                  {/* Liberação de Pilotagem */}
-                  {pilRow && (pilRow.num || pilRow.lacre || pilRow.envio || pilRow.receb || pilRow.prova) && (
-                    <div style={{ marginTop: "6px" }}>
-                      <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Liberação de Pilotagem</div>
-                      <table style={{ ...tbl, marginTop: 0 }}>
-                        <thead><tr style={headRow}>
-                          <th style={th}>Nº Piloto</th>
-                          <th style={th}>Lacre</th>
-                          <th style={th}>Data de Envio</th>
-                          <th style={th}>Data de Receb.</th>
-                          <th style={th}>Data de Prova</th>
-                          <th style={th}>Status</th>
-                        </tr></thead>
-                        <tbody>
-                          <tr>
-                            <td style={td}>{pilRow.num || "—"}</td>
-                            <td style={td}>{pilRow.lacre || "—"}</td>
-                            <td style={td}>{pilRow.envio || "—"}</td>
-                            <td style={td}>{pilRow.receb || "—"}</td>
-                            <td style={td}>{pilRow.prova || "—"}</td>
-                            <td style={{ ...td, fontWeight: 700, color: piCol }}>{pilRow.status || "—"}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+
+          {/* Fotos da prova mais recente — primeiro */}
+          {fotos.length > 0 && (
+            <div style={{ marginBottom: "16px" }}>
+              <div style={{ fontSize: "7px", fontWeight: 800, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px", borderBottom: `1px solid ${lineDark}`, paddingBottom: "3px" }}>
+                Fotos da Prova {latestN}{pi?.tipo ? ` — ${pi.tipo}` : ""}
               </div>
-            );
-          })}
+              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                {fotos.map(f => (
+                  <div key={f.label} style={{ textAlign: "center", flex: 1 }}>
+                    <img src={f.url!} alt={f.label} style={{ width: "100%", maxHeight: "220px", objectFit: "contain", borderRadius: "6px", border: `0.5px solid ${line}` }} />
+                    <div style={{ fontSize: "7px", color: muted, marginTop: "4px", fontWeight: 600 }}>{f.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Comentários da prova mais recente */}
+          <div style={{ border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
+            <div style={{ background: `${piCol}18`, borderBottom: `1px solid ${piCol}44`, padding: "6px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ fontSize: "8px", fontWeight: 800, color: piCol, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Anotações da Prova {latestN}{pi?.tipo ? ` — ${pi.tipo}` : ""}
+              </div>
+              {piSt && <div style={{ fontSize: "7.5px", color: piCol, fontWeight: 700 }}>— {piSt}</div>}
+              {pi?.data && <div style={{ fontSize: "7px", color: muted, marginLeft: "auto" }}>{pi.data}</div>}
+            </div>
+            <div style={{ padding: "8px 12px" }}>
+              {a?.texto && <div style={{ fontSize: "8.5px", color: navy, marginBottom: "6px", lineHeight: "1.5" }}>{a.texto}</div>}
+              {(a?.video || pi?.link) && (
+                <div style={{ fontSize: "8px", color: accent, marginBottom: "6px" }}>
+                  <span style={{ fontWeight: 700, color: muted, marginRight: "4px" }}>LINK DO VÍDEO:</span>
+                  {a?.video || pi?.link}
+                </div>
+              )}
+              {pilRow && (pilRow.num || pilRow.lacre || pilRow.envio || pilRow.receb || pilRow.prova) && (
+                <div style={{ marginTop: "6px" }}>
+                  <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Liberação de Pilotagem</div>
+                  <table style={{ ...tbl, marginTop: 0 }}>
+                    <thead><tr style={headRow}>
+                      <th style={th}>Nº Piloto</th>
+                      <th style={th}>Lacre</th>
+                      <th style={th}>Data de Envio</th>
+                      <th style={th}>Data de Receb.</th>
+                      <th style={th}>Data de Prova</th>
+                      <th style={th}>Status</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td style={td}>{pilRow.num || "—"}</td>
+                        <td style={td}>{pilRow.lacre || "—"}</td>
+                        <td style={td}>{pilRow.envio || "—"}</td>
+                        <td style={td}>{pilRow.receb || "—"}</td>
+                        <td style={td}>{pilRow.prova || "—"}</td>
+                        <td style={{ ...td, fontWeight: 700, color: piCol }}>{pilRow.status || "—"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         );
       })()}
