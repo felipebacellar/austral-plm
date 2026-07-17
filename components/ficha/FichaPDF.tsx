@@ -585,43 +585,47 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           <div style={{ border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
             <div style={{ background: `${piCol}18`, borderBottom: `1px solid ${piCol}44`, padding: "6px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
               <div style={{ fontSize: "8px", fontWeight: 800, color: piCol, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                Anotações da Prova {latestN}{pi?.tipo ? ` — ${pi.tipo}` : ""}
+                Anotações da Prova {latestN}{pilRow?.num ? ` — ${pilRow.num}` : pi?.tipo ? ` — ${pi.tipo}` : ""}
               </div>
               {piSt && <div style={{ fontSize: "7.5px", color: piCol, fontWeight: 700 }}>— {piSt}</div>}
               {pi?.data && <div style={{ fontSize: "7px", color: muted, marginLeft: "auto" }}>{pi.data}</div>}
             </div>
             <div style={{ padding: "8px 12px" }}>
-              {a?.texto && <div style={{ fontSize: "8.5px", color: navy, marginBottom: "6px", lineHeight: "1.5" }}>{a.texto}</div>}
+              {/* Bullets */}
+              {a?.texto && (
+                <div style={{ marginBottom: "8px" }}>
+                  {a.texto.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "3px" }}>
+                      <span style={{ color: piCol, fontWeight: 800, fontSize: "10px", lineHeight: "1.6", flexShrink: 0 }}>•</span>
+                      <span style={{ fontSize: "8.5px", color: navy, lineHeight: "1.6" }}>{line}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {(a?.video || pi?.link) && (
-                <div style={{ fontSize: "8px", color: accent, marginBottom: "6px" }}>
+                <div style={{ fontSize: "8px", color: accent, marginBottom: "8px" }}>
                   <span style={{ fontWeight: 700, color: muted, marginRight: "4px" }}>LINK DO VÍDEO:</span>
                   {a?.video || pi?.link}
                 </div>
               )}
-              {pilRow && (pilRow.num || pilRow.lacre || pilRow.envio || pilRow.receb || pilRow.prova) && (
-                <div style={{ marginTop: "6px" }}>
-                  <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Liberação de Pilotagem</div>
-                  <table style={{ ...tbl, marginTop: 0 }}>
-                    <thead><tr style={headRow}>
-                      <th style={th}>Nº Piloto</th>
-                      <th style={th}>Lacre</th>
-                      <th style={th}>Data de Envio</th>
-                      <th style={th}>Data de Receb.</th>
-                      <th style={th}>Data de Prova</th>
-                      <th style={th}>Status</th>
-                    </tr></thead>
-                    <tbody>
-                      <tr>
-                        <td style={td}>{pilRow.num || "—"}</td>
-                        <td style={td}>{pilRow.lacre || "—"}</td>
-                        <td style={td}>{pilRow.envio || "—"}</td>
-                        <td style={td}>{pilRow.receb || "—"}</td>
-                        <td style={td}>{pilRow.prova || "—"}</td>
-                        <td style={{ ...td, fontWeight: 700, color: piCol }}>{pilRow.status || "—"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              {/* Nº Lacre / Data de Prova / Status */}
+              {pilRow && (pilRow.num || pilRow.lacre || pilRow.prova) && (
+                <table style={{ ...tbl, marginTop: 0 }}>
+                  <thead><tr style={headRow}>
+                    <th style={th}>Tipo</th>
+                    <th style={th}>Nº Lacre</th>
+                    <th style={th}>Data de Prova</th>
+                    <th style={th}>Status</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr>
+                      <td style={td}>{pilRow.num || "—"}</td>
+                      <td style={td}>{pilRow.lacre || "—"}</td>
+                      <td style={td}>{pilRow.prova || "—"}</td>
+                      <td style={{ ...td, fontWeight: 700, color: piCol }}>{piSt || "—"}</td>
+                    </tr>
+                  </tbody>
+                </table>
               )}
             </div>
           </div>

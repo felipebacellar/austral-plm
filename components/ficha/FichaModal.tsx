@@ -1208,7 +1208,65 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 </div>
               );
             })()}
-            <div className="space-y-3">{([1, 2, 3] as const).map(n => { const k = `p${n}` as "p1" | "p2" | "p3"; const a = an[k] || { texto: "", video: "" }; return (<div key={n} className="apple-card p-4"><div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Anotações — Prova {n}</div><textarea value={a.texto} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, texto: e.target.value } }))} placeholder="Anotações..." className="apple-input w-full resize-none h-14 mb-2" /><div className="flex items-center gap-2"><span className="text-[11px] text-[var(--label-tertiary)]">Vídeo:</span><input type="text" value={a.video} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, video: e.target.value } }))} placeholder="https://..." className="apple-input flex-1 text-[12px]" /></div></div>); })}</div>
+            <div className="space-y-3">{([1, 2, 3] as const).map(n => {
+              const k = `p${n}` as "p1" | "p2" | "p3";
+              const a = an[k] || { texto: "", video: "" };
+              const pilRow = pil[n - 1] || { num: "", lacre: "", envio: "", receb: "", prova: "", status: "" };
+              const bullets: string[] = a.texto ? a.texto.split('\n') : [""];
+              const piStatus = provaInfo[k]?.status || "";
+              const statusColor = piStatus.includes("REPROV") ? "text-[var(--system-red)]" : piStatus.includes("RESTR") ? "text-[var(--system-orange)]" : piStatus.includes("APROV") || piStatus.includes("LIBER") ? "text-[var(--system-green)]" : "text-[var(--label-secondary)]";
+              return (
+                <div key={n} className="apple-card p-4">
+                  {/* Cabeçalho: Prova N + tipo */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] shrink-0">Prova {n}</div>
+                    <select value={pilRow.num || ""} onChange={e => setPil(prev => prev.map((r, i) => i === n - 1 ? { ...r, num: e.target.value } : r))} className="apple-select text-[12px]">
+                      <option value="">Tipo...</option>
+                      {["Piloto 1","Piloto 2","Peça de Mostruário","Repilotagem 1","Repilotagem 2","Repilotagem 3"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  {/* Tópicos / bullets */}
+                  <div className="space-y-1.5 mb-3">
+                    {bullets.map((line, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-[var(--label-tertiary)] text-[13px] select-none shrink-0">•</span>
+                        <input type="text" value={line} onChange={e => {
+                          const nb = [...bullets]; nb[i] = e.target.value;
+                          setAn(prev => ({ ...prev, [k]: { ...a, texto: nb.join('\n') } }));
+                        }} placeholder="Anotação..." className="apple-input flex-1 text-[12px]" />
+                        {bullets.length > 1 && (
+                          <button onClick={() => {
+                            const nb = bullets.filter((_, j) => j !== i);
+                            setAn(prev => ({ ...prev, [k]: { ...a, texto: nb.join('\n') } }));
+                          }} className="text-[var(--label-tertiary)] hover:text-[var(--system-red)] text-[16px] leading-none shrink-0">×</button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => setAn(prev => ({ ...prev, [k]: { ...a, texto: a.texto ? a.texto + '\n' : '\n' } }))} className="text-[11px] text-[var(--system-blue)] font-medium ml-5 mt-0.5">+ Adicionar tópico</button>
+                  </div>
+                  {/* Link vídeo */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[11px] text-[var(--label-tertiary)] shrink-0">Link vídeo:</span>
+                    <input type="text" value={a.video} onChange={e => setAn(prev => ({ ...prev, [k]: { ...a, video: e.target.value } }))} placeholder="https://..." className="apple-input flex-1 text-[12px]" />
+                  </div>
+                  {/* Campos de pilotagem */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Nº Lacre</div>
+                      <input type="text" value={pilRow.lacre || ""} onChange={e => setPil(prev => prev.map((r, i) => i === n - 1 ? { ...r, lacre: e.target.value } : r))} className="apple-input w-full text-[12px]" placeholder="—" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Data de Prova</div>
+                      <input type="date" value={pilRow.prova || ""} onChange={e => setPil(prev => prev.map((r, i) => i === n - 1 ? { ...r, prova: e.target.value } : r))} className="apple-input w-full text-[12px]" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-[var(--label-tertiary)] mb-1 uppercase tracking-wide">Status</div>
+                      <div className={`apple-input w-full text-[12px] font-semibold ${statusColor}`}>{piStatus || "—"}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}</div>
           </>)}
         </div>)}
 
