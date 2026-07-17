@@ -174,11 +174,11 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     setRows((p:any[]) => p.map((r:any) => {
       if(r.id!==id) return r;
       const u={...r,[k]:v};
-      if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){u.forn_tecido=t.forn;u.composicao=t.composicao||"";}}
+      if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){u.forn_tecido=t.forn;u.composicao=t.comp||"";}}
       return u;
     }));
     await updateProdutoField(id, k, v);
-    if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){await updateProdutoField(id,"forn_tecido",t.forn);await updateProdutoField(id,"composicao",t.composicao||"");}}
+    if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){await updateProdutoField(id,"forn_tecido",t.forn);await updateProdutoField(id,"composicao",t.comp||"");}}
   };
 
   const add = async () => {
