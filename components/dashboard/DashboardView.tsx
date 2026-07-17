@@ -266,8 +266,61 @@ export default function DashboardView({ rows, variantes }: Props) {
     </div>
   );
 
+  /* ── Alertas acionáveis ── */
+  const alerts = useMemo(() => {
+    const ativos     = rows.filter(r => r.status !== "CANCELADO");
+    const semCor     = ativos.filter(r => !variantes[r.ref]?.length);
+    const semFornTec = ativos.filter(r => !r.forn_tecido);
+    const semForn    = ativos.filter(r => !r.fornecedor);
+    const repilot    = rows.filter(r => r.status === "REPILOTANDO PRODUÇÃO");
+    const semCusto   = ativos.filter(r => !(r.custo_forn > 0));
+    return [
+      { key: "semCor",     label: "Sem variante de cor",     count: semCor.length,     refs: semCor,     color: "#F59E0B", icon: "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12" },
+      { key: "semFornTec", label: "Sem fornecedor de tecido",count: semFornTec.length, refs: semFornTec, color: "#EF4444", icon: "M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" },
+      { key: "semForn",    label: "Sem fornecedor",           count: semForn.length,    refs: semForn,    color: "#EF4444", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
+      { key: "semCusto",   label: "Sem custo de fornecedor",  count: semCusto.length,   refs: semCusto,   color: "#8B5CF6", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 9v1m-2.599-1.414A2.001 2.001 0 0110 16m4.599-1.414A2.001 2.001 0 0014 16m-2 0c0 1.105-1.343 2-3 2" },
+      { key: "repilot",    label: "Repilotando produção",     count: repilot.length,    refs: repilot,    color: "#3B82F6", icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" },
+    ].filter(a => a.count > 0);
+  }, [rows, variantes]);
+
+  const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
+
   return (
     <div className="space-y-5">
+
+      {/* ── Alertas acionáveis ── */}
+      {alerts.length > 0 && (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--label-tertiary)] mb-2">Atenção necessária</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            {alerts.map(a => (
+              <div key={a.key}>
+                <button
+                  onClick={() => setExpandedAlert(expandedAlert === a.key ? null : a.key)}
+                  style={{ width:"100%", background: expandedAlert===a.key ? a.color : `${a.color}18`, border: `1px solid ${a.color}40`, borderRadius:12, padding:"12px 14px", textAlign:"left", cursor:"pointer", transition:"all .15s" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={expandedAlert===a.key ? "#fff" : a.color} strokeWidth="2" strokeLinecap="round"><path d={a.icon}/></svg>
+                    <span style={{ fontSize:11, fontWeight:700, color: expandedAlert===a.key ? "#fff" : a.color, textTransform:"uppercase", letterSpacing:"0.05em" }}>
+                      {a.count} SKU{a.count!==1?"s":""}
+                    </span>
+                  </div>
+                  <div style={{ fontSize:12, fontWeight:500, color: expandedAlert===a.key ? "rgba(255,255,255,0.9)" : "var(--label-primary)", lineHeight:1.35 }}>{a.label}</div>
+                </button>
+                {expandedAlert === a.key && (
+                  <div style={{ background:"var(--surface, var(--bg-secondary))", border:`1px solid ${a.color}30`, borderTop:"none", borderRadius:"0 0 10px 10px", maxHeight:200, overflowY:"auto", zIndex:10, position:"relative" }}>
+                    {a.refs.map((r:any) => (
+                      <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 14px", borderBottom:"1px solid var(--separator)", fontSize:12 }}>
+                        <span style={{ fontWeight:600, color:"var(--label-primary)", fontFamily:"monospace" }}>{r.ref}</span>
+                        <span style={{ color:"var(--label-secondary)", fontSize:11, maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.desc || r.grupo || "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Group + SubTab selector ── */}
       <div className="flex flex-col gap-3">
