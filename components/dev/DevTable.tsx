@@ -65,14 +65,21 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const canDelete = isAdmin || perms[permPrefix + "can_delete"] === true;
 
   const colsStorageKey = `plm_cols_${permPrefix || "estilo"}`;
+  const filtersKey = `plm_filters_${permPrefix || "estilo"}`;
+
+  const loadFilters = () => {
+    if (typeof window === "undefined") return { q: "", fl: {}, colecaoAtiva: null as string | null, sort: null as { key: string; dir: "asc" | "desc" } | null };
+    try { return JSON.parse(localStorage.getItem(filtersKey) || "{}"); } catch { return {}; }
+  };
+  const saved = loadFilters();
 
   const [cad, setCad] = useState<Record<string, any>>({});
-  const [q, setQ] = useState("");
-  const [fl, setFl] = useState<Record<string,string>>({});
+  const [q, setQ] = useState<string>(saved.q || "");
+  const [fl, setFl] = useState<Record<string,string>>(saved.fl || {});
   const [sf, setSf] = useState(false);
-  const [colecaoAtiva, setColecaoAtiva] = useState<string | null>(null);
+  const [colecaoAtiva, setColecaoAtiva] = useState<string | null>(saved.colecaoAtiva || null);
   const [dupAlert, setDupAlert] = useState<string|null>(null);
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(saved.sort || null);
   const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`plm_cols_${permPrefix || "estilo"}`) || "{}"); }
@@ -115,6 +122,11 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   useEffect(() => {
     localStorage.setItem(colsStorageKey, JSON.stringify(visibleCols));
   }, [visibleCols, colsStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(filtersKey, JSON.stringify({ q, fl, colecaoAtiva, sort }));
+  }, [q, fl, colecaoAtiva, sort, filtersKey]);
 
   useEffect(() => {
     if (!showColMenu) return;
@@ -173,9 +185,9 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     const blank: any = {};
     COLUMNS.forEach(c => { if(c.type!=="action") blank[c.key] = ""; });
     blank.status = "DESENVOLVIMENTO";
-    // Don't set ref — user must fill it in
-    const result = await insertProduto(blank);
-    if(result) {
+    const { data: result, error } = await insertProduto(blank);
+    if (error) { alert(`Erro ao criar SKU: ${error}`); return; }
+    if (result) {
       const newRow = { ...blank, id: result.id, ref: result.ref || "" };
       setRows((p:any) => [...p, newRow]);
     }
@@ -184,7 +196,8 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const del = async (id:number) => {
     if (!confirm("Excluir este SKU?")) return;
     setRows((p:any[]) => p.filter((r:any) => r.id!==id));
-    await deleteProduto(id);
+    const error = await deleteProduto(id);
+    if (error) { alert(`Erro ao excluir: ${error}`); setRows((p:any[]) => [...p]); }
   };
 
   const opts = (k:string):string[] => cad[k] || [];

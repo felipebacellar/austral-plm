@@ -1,55 +1,87 @@
 import { getSupabase } from "./supabase";
 const sb = () => getSupabase();
 
+// ── Cache simples em memória com TTL de 5 minutos ─────────────────────────
+const _cache: Record<string, { data: any; exp: number }> = {};
+const TTL = 5 * 60 * 1000;
+function fromCache<T>(key: string): T | null {
+  const c = _cache[key];
+  return c && Date.now() < c.exp ? c.data : null;
+}
+function toCache(key: string, data: any) {
+  _cache[key] = { data, exp: Date.now() + TTL };
+}
+export function invalidateCache(key?: string) {
+  if (key) delete _cache[key]; else Object.keys(_cache).forEach(k => delete _cache[k]);
+}
+
 // ══ CADASTROS ══
 export async function fetchCadastros() {
+  const cached = fromCache<Record<string, string[]>>("cadastros");
+  if (cached) return cached;
   const { data, error } = await sb().from("cadastros").select("*").order("nome");
   if (error) console.error("fetchCadastros:", error);
   const g: Record<string, string[]> = {};
   (data || []).forEach((i: any) => { if (!g[i.tabela]) g[i.tabela] = []; g[i.tabela].push(i.nome); });
+  toCache("cadastros", g);
   return g;
 }
 export async function addCadastro(tabela: string, nome: string) {
   const { error } = await sb().from("cadastros").insert({ tabela, nome });
   if (error) console.error("addCadastro:", error);
+  invalidateCache("cadastros");
 }
 export async function removeCadastro(tabela: string, nome: string) {
   const { error } = await sb().from("cadastros").delete().eq("tabela", tabela).eq("nome", nome);
   if (error) console.error("removeCadastro:", error);
+  invalidateCache("cadastros");
 }
 
 // ══ TECIDOS ══
 export async function fetchTecidos() {
+  const cached = fromCache<any[]>("tecidos");
+  if (cached) return cached;
   const { data, error } = await sb().from("tecidos").select("*").order("nome");
   if (error) console.error("fetchTecidos:", error);
-  return (data || []).map((t: any) => ({ nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "" }));
+  const result = (data || []).map((t: any) => ({ nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "" }));
+  toCache("tecidos", result);
+  return result;
 }
 export async function addTecido(t: { nome: string; forn: string; comp: string; preco: string }) {
   const { error } = await sb().from("tecidos").insert({ nome: t.nome, fornecedor: t.forn, composicao: t.comp, preco: t.preco ? parseFloat(t.preco) : null });
   if (error) console.error("addTecido:", error);
+  invalidateCache("tecidos");
 }
 export async function removeTecido(nome: string) {
   const { error } = await sb().from("tecidos").delete().eq("nome", nome);
   if (error) console.error("removeTecido:", error);
+  invalidateCache("tecidos");
 }
 
 // ══ AVIAMENTOS ══
 export async function fetchAviamentos() {
+  const cached = fromCache<any[]>("aviamentos");
+  if (cached) return cached;
   const { data, error } = await sb().from("aviamentos").select("*").order("nome");
   if (error) console.error("fetchAviamentos:", error);
-  return (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "" }));
+  const result = (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "" }));
+  toCache("aviamentos", result);
+  return result;
 }
 export async function addAviamento(a: { cod: string; nome: string; preco: number; localizacao_padrao?: string }) {
   const { error } = await sb().from("aviamentos").insert({ codigo: a.cod, nome: a.nome, preco: a.preco, localizacao_padrao: a.localizacao_padrao || "" });
   if (error) console.error("addAviamento:", error);
+  invalidateCache("aviamentos");
 }
 export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
+  invalidateCache("aviamentos");
 }
 export async function removeAviamento(cod: string) {
   const { error } = await sb().from("aviamentos").delete().eq("codigo", cod);
   if (error) console.error("removeAviamento:", error);
+  invalidateCache("aviamentos");
 }
 
 // ══ PRODUTOS ══
@@ -89,7 +121,7 @@ export async function fetchProdutos() {
     data_entrega2:   p.data_entrega2  || "",
   }));
 }
-export async function insertProduto(p: any) {
+export async function insertProduto(p: any): Promise<{ data: any; error: string | null }> {
   const { data, error } = await sb().from("produtos").insert({
     ref: p.ref || "", descricao: p.desc || "", tecido: p.tecido || "",
     forn_tecido: p.forn_tecido || "", status: p.status || "DESENVOLVIMENTO",
@@ -102,16 +134,18 @@ export async function insertProduto(p: any) {
     linha: p.linha || "", drop_num: p.drop || "", estilista: p.estilista || "",
   }).select().single();
   if (error) console.error("insertProduto:", error);
-  return data;
+  return { data, error: error ? (error.message || "Erro ao criar produto") : null };
 }
-export async function updateProdutoField(id: number, field: string, value: any) {
+export async function updateProdutoField(id: number, field: string, value: any): Promise<string | null> {
   const m: Record<string, string> = { desc: "descricao", drop: "drop_num" };
   const { error } = await sb().from("produtos").update({ [m[field] || field]: value }).eq("id", id);
-  if (error) console.error("updateProdutoField:", error);
+  if (error) { console.error("updateProdutoField:", error); return error.message || "Erro ao salvar"; }
+  return null;
 }
-export async function deleteProduto(id: number) {
+export async function deleteProduto(id: number): Promise<string | null> {
   const { error } = await sb().from("produtos").delete().eq("id", id);
-  if (error) console.error("deleteProduto:", error);
+  if (error) { console.error("deleteProduto:", error); return error.message || "Erro ao excluir"; }
+  return null;
 }
 
 // ══ COMPRAS POR VARIANTE ══

@@ -68,6 +68,15 @@ export default function Home() {
   /* ── Realtime: sincroniza produtos e variantes entre usuários ── */
   useEffect(() => {
     if (!user) return;
+    let varTimer: ReturnType<typeof setTimeout> | null = null;
+    const reloadVariants = () => {
+      if (varTimer) clearTimeout(varTimer);
+      varTimer = setTimeout(async () => {
+        const [vars, varsPorCol] = await Promise.all([fetchAllVariantes(), fetchVariantesPorColecao()]);
+        setVariantes(vars);
+        setVariantesPorColecao(varsPorCol);
+      }, 1000);
+    };
     const unsub = subscribeRealtime("produtos-sync", [
       {
         table: "produtos",
@@ -80,12 +89,12 @@ export default function Home() {
       },
       {
         table: "ficha_tecidos",
-        onInsert: () => fetchAllVariantes().then(setVariantes),
-        onUpdate: () => fetchAllVariantes().then(setVariantes),
-        onDelete: () => fetchAllVariantes().then(setVariantes),
+        onInsert: reloadVariants,
+        onUpdate: reloadVariants,
+        onDelete: reloadVariants,
       },
     ]);
-    return unsub;
+    return () => { if (varTimer) clearTimeout(varTimer); unsub(); };
   }, []);
 
   const handleFichaSave = async (updatedRow: any) => {
