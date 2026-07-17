@@ -174,11 +174,11 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     setRows((p:any[]) => p.map((r:any) => {
       if(r.id!==id) return r;
       const u={...r,[k]:v};
-      if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t)u.forn_tecido=t.forn;}
+      if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){u.forn_tecido=t.forn;u.composicao=t.composicao||"";}}
       return u;
     }));
     await updateProdutoField(id, k, v);
-    if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t)await updateProdutoField(id,"forn_tecido",t.forn);}
+    if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){await updateProdutoField(id,"forn_tecido",t.forn);await updateProdutoField(id,"composicao",t.composicao||"");}}
   };
 
   const add = async () => {
@@ -242,7 +242,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     ];
     const dataRows = filtered.map(row => [
       ...visReg.map(c => {
-        if (c.type === "readonly") return c.key === "composicao" ? ((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"") : (row[c.key]||"");
+        if (c.type === "readonly") return row[c.key] || "";
         return row[c.key] ?? "";
       }),
       ...visStat.map(c => row[c.key] || ""),
@@ -423,7 +423,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           {!readOnly && canAdd && <td style={{width:36,padding:"0 8px"}}><input type="checkbox" checked={selected.has(row.id)} onChange={()=>toggleSelect(row.id)} style={{cursor:"pointer"}}/></td>}
           {COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
           const isSticky = c.key === "ref";
-          const mainTd = <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<div style={{display:"flex",gap:4}}><button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>{!readOnly&&canAdd&&<button onClick={()=>{setCloneSource(row);setCloneRef("");}} title="Clonar SKU" className="apple-btn-secondary text-[12px] py-1 px-2" style={{color:"var(--system-blue)"}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>}</div>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{c.key==="composicao"?((cad._tecidoData||[]).find((t:any)=>t.nome===row.tecido)?.comp||"—"):row[c.key]||"—"}</span>:(readOnly||permPrefix==="compras_")?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
+          const mainTd = <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<div style={{display:"flex",gap:4}}><button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>{!readOnly&&canAdd&&<button onClick={()=>{setCloneSource(row);setCloneRef("");}} title="Clonar SKU" className="apple-btn-secondary text-[12px] py-1 px-2" style={{color:"var(--system-blue)"}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>}</div>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{row[c.key]||"—"}</span>:(readOnly||permPrefix==="compras_")?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
           if (c.key === "ref" && permPrefix === "compras_") {
             return [mainTd, ...COMPRAS_STATUS_COLS.filter(sc => isColVisible(sc.key)).map(sc => {
               const sv = row[sc.key] || "";

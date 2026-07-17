@@ -7,6 +7,8 @@ export type Produto = {
   ref: string;
   desc: string;
   tecido_id: number | null;
+  tecido: string;
+  composicao: string;
   forn_tecido: string;
   status: string;
   colecao: string;

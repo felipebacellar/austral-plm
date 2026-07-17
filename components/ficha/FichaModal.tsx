@@ -118,7 +118,16 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       if (ficha) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
         const ficTec = ficha.tecidos || [];
-        setTec(ficTec.length > 0 ? ficTec : row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
+        if (ficTec.length > 0) {
+          // Se o primeiro tecido da ficha está vazio mas o produto tem tecido, preenche
+          const first = ficTec[0];
+          if ((!first.artigo || first.artigo === "") && row.tecido) {
+            ficTec[0] = { ...first, artigo: row.tecido, forn: row.forn_tecido || "" };
+          }
+          setTec(ficTec);
+        } else {
+          setTec(row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
+        }
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
@@ -529,6 +538,18 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           <div className="flex gap-2 mt-2 mb-1">
             {numVars > 1 && <button onClick={() => setNumVars(n => n - 1)} className="apple-btn-secondary text-[12px]">− Remover variante</button>}
             {numVars < 6 && <button onClick={() => setNumVars(n => n + 1)} className="apple-btn-secondary text-[12px]">+ Adicionar variante</button>}
+            {tec.length < 2 && (
+              <button
+                onClick={() => setTec(p => [...p, { artigo: "", forn: "", composicao: "", preco: 0, cores: Array(numVars).fill("") }])}
+                className="apple-btn-secondary text-[12px]"
+              >+ Segundo tecido</button>
+            )}
+            {tec.length > 1 && (
+              <button
+                onClick={() => setTec(p => p.slice(0, -1))}
+                className="apple-btn-secondary text-[12px] text-[var(--system-red)]"
+              >− Remover segundo tecido</button>
+            )}
           </div>
 
           {hasComprasData && (
