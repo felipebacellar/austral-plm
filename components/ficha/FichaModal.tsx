@@ -261,7 +261,25 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   }, [tec, avi, pil, obs, pv, an, provaInfo, estamparia, varCodigos, varTingimento, qtdMost, statusLib, ncm, numVars, custoDet, obsCusto, tEsp, img, imgModelo, imgModoMedir]);
 
   const exportPDF = () => { setShowExportDlg(true); };
-  const doExport = () => { setShowExportDlg(false); setShowPrint(true); document.body.classList.add("printing-pdf"); setTimeout(() => { window.print(); setTimeout(() => { setShowPrint(false); document.body.classList.remove("printing-pdf"); }, 500); }, 200); };
+  const doExport = () => {
+    setShowExportDlg(false);
+    setShowPrint(true);
+    document.body.classList.add("printing-pdf");
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    const prevTitle = document.title;
+    document.title = `${row.ref} - ${dd}-${mm}-${yyyy}`;
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.title = prevTitle;
+        setShowPrint(false);
+        document.body.classList.remove("printing-pdf");
+      }, 500);
+    }, 200);
+  };
 
   const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
 
