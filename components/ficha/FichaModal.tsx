@@ -170,8 +170,6 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         setGrad(g);
         if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
-      // Marca como carregado para habilitar auto-save
-      setTimeout(() => { isLoaded.current = true; }, 500);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.ref, row.tab_medidas, selectedColecao, isClassic]);
@@ -218,7 +216,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     setPendingSave(false);
     setAutoSaveStatus("saving");
     try {
-      const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+      const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, pilotagem: pil, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
       const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
       if (newId) setFichaId(newId);
       if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
@@ -235,6 +233,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   // Mantém saveRef sempre atualizado (evita closures stale no auto-save)
   saveRef.current = save;
 
+  // Habilita auto-save 3s após o mount (tempo suficiente para o carregamento)
+  useEffect(() => {
+    const t = setTimeout(() => { isLoaded.current = true; }, 3000);
+    return () => { clearTimeout(t); isLoaded.current = false; };
+  }, []);
+
   // Auto-save: debounce de 1.5s após qualquer alteração
   useEffect(() => {
     if (!isLoaded.current) return;
@@ -243,7 +247,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     autoSaveTimer.current = setTimeout(() => {
       saveRef.current?.(true);
     }, 1500);
-    return () => clearTimeout(autoSaveTimer.current);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tec, avi, pil, obs, pv, an, provaInfo, estamparia, varCodigos, varTingimento, qtdMost, statusLib, ncm, numVars, custoDet, obsCusto, tEsp, img, imgModelo, imgModoMedir]);
 

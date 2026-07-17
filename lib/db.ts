@@ -205,10 +205,16 @@ export async function fetchFicha(ref: string, colecao?: string | null) {
   ]);
   const result: any = {
     id: fid, produto_ref: data.produto_ref,
-    imagem_url: data.imagem_url || null, imagem_modelo: data.imagem_modelo || null,
+    imagem_url: data.imagem_url || null,
+    imagem_modelo: data.imagem_modelo || null,
+    imagem_modo_medir: data.imagem_modo_medir || null,
     observacoes: data.observacoes || "", obsFechamento: data.obs_fechamento || "", ncm: data.ncm || "",
     pantones: (data.pantones as Record<string,string>) || {},
     statusLiberacao: data.status_liberacao || "",
+    provaInfo: data.prova_info || null,
+    custoDet: data.custo_det || null,
+    obsCusto: data.obs_custo || "",
+    tingimento: data.tingimento || null,
     qtdMost: {
       var01: data.qtd_most_var01 ?? null, var02: data.qtd_most_var02 ?? null,
       var03: data.qtd_most_var03 ?? null, var04: data.qtd_most_var04 ?? null,
@@ -241,29 +247,30 @@ export async function saveFichaImagem(fichaId: number, field: string, url: strin
 }
 
 export async function upsertFicha(ref: string, f: any, colecao?: string | null) {
+  const fichaRow = {
+    observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
+    ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
+    imagem_modo_medir: f.imagem_modo_medir || "",
+    pantones: f.pantones || {}, estamparia: f.estamparia || {},
+    status_liberacao: f.statusLiberacao || "",
+    prova_info: f.provaInfo || null,
+    custo_det: f.custoDet || null,
+    obs_custo: f.obsCusto || "",
+    tingimento: f.tingimento || null,
+    qtd_most_var01: f.qtdMost?.var01 ?? null, qtd_most_var02: f.qtdMost?.var02 ?? null,
+    qtd_most_var03: f.qtdMost?.var03 ?? null, qtd_most_var04: f.qtdMost?.var04 ?? null,
+    qtd_most_var05: f.qtdMost?.var05 ?? null, qtd_most_var06: f.qtdMost?.var06 ?? null,
+  };
   let fid = f.id;
   if (!fid) {
     const { data, error } = await sb().from("fichas_tecnicas").insert({
-      produto_ref: ref, colecao: colecao || null, observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
-      ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
-      pantones: f.pantones || {}, estamparia: f.estamparia || {},
-      status_liberacao: f.statusLiberacao || "",
-      qtd_most_var01: f.qtdMost?.var01 ?? null, qtd_most_var02: f.qtdMost?.var02 ?? null,
-      qtd_most_var03: f.qtdMost?.var03 ?? null, qtd_most_var04: f.qtdMost?.var04 ?? null,
-      qtd_most_var05: f.qtdMost?.var05 ?? null, qtd_most_var06: f.qtdMost?.var06 ?? null,
+      produto_ref: ref, colecao: colecao || null, ...fichaRow,
     }).select().single();
-    if (error) { console.error("upsertFicha:", error); return null; }
+    if (error) { console.error("upsertFicha insert:", error); return null; }
     fid = data.id;
   } else {
-    await sb().from("fichas_tecnicas").update({
-      observacoes: f.observacoes || "", obs_fechamento: f.obsFechamento || "",
-      ncm: f.ncm || "", imagem_url: f.imagem_url || "", imagem_modelo: f.imagem_modelo || "",
-      pantones: f.pantones || {}, estamparia: f.estamparia || {},
-      status_liberacao: f.statusLiberacao || "",
-      qtd_most_var01: f.qtdMost?.var01 ?? null, qtd_most_var02: f.qtdMost?.var02 ?? null,
-      qtd_most_var03: f.qtdMost?.var03 ?? null, qtd_most_var04: f.qtdMost?.var04 ?? null,
-      qtd_most_var05: f.qtdMost?.var05 ?? null, qtd_most_var06: f.qtdMost?.var06 ?? null,
-    }).eq("id", fid);
+    const { error } = await sb().from("fichas_tecnicas").update(fichaRow).eq("id", fid);
+    if (error) console.error("upsertFicha update:", error);
   }
   // Tecidos
   await sb().from("ficha_tecidos").delete().eq("ficha_id", fid);
@@ -271,14 +278,15 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
   // Aviamentos
   await sb().from("ficha_aviamentos").delete().eq("ficha_id", fid);
   if (f.aviamentos?.length) await sb().from("ficha_aviamentos").insert(f.aviamentos.map((a: any) => ({ ficha_id: fid, item: a.item, codigo: a.cod, qtd: a.qtd || 1, valor: a.valor || 0, localizacao: a.local || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })));
+  // Pilotagem
+  await sb().from("ficha_pilotagem").delete().eq("ficha_id", fid);
+  if (f.pilotagem?.length) await sb().from("ficha_pilotagem").insert(f.pilotagem.map((p: any) => ({ ficha_id: fid, num: p.num || "", lacre: p.lacre || "", data_envio: p.envio || null, data_recebimento: p.receb || null, data_prova: p.prova || null, status: p.status || "" })));
   // Provas
   if (f.provas) for (const [cod, v] of Object.entries(f.provas) as any) await sb().from("ficha_provas").upsert({ ficha_id: fid, ponto_cod: cod, prova1: v.p1 || "", prova2: v.p2 || "", prova3: v.p3 || "" }, { onConflict: "ficha_id,ponto_cod" });
   // Anotações
   if (f.anotacoes) for (const [k, v] of Object.entries(f.anotacoes) as any) { const n = parseInt(k.replace("p", "")); if (!isNaN(n)) await sb().from("ficha_anotacoes").upsert({ ficha_id: fid, prova_num: n, anotacao: v.texto || "", video_link: v.video || "" }, { onConflict: "ficha_id,prova_num" }); }
   // Tabela especial
-  if (f.tabelaEspecialAtiva !== undefined) {
-    await sb().from("fichas_tecnicas").update({ tabela_especial_ativa: f.tabelaEspecialAtiva }).eq("id", fid);
-  }
+  if (f.tabelaEspecialAtiva !== undefined) await sb().from("fichas_tecnicas").update({ tabela_especial_ativa: f.tabelaEspecialAtiva }).eq("id", fid);
   if (f.tabelaEspecialAtiva && f.pontosEspeciais) {
     await sb().from("ficha_pontos_especiais").delete().eq("ficha_id", fid);
     if (f.pontosEspeciais.length) await sb().from("ficha_pontos_especiais").insert(f.pontosEspeciais.map((p: any, i: number) => ({ ficha_id: fid, cod: p.cod, descricao: p.desc, valor_base: p.tabela || "", tolerancia: p.tol || "1,0 + OU -", ordem: i })));
