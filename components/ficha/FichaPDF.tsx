@@ -495,15 +495,15 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               {imgModoMedir && (
                 <div style={{ flex: 1, textAlign: "center" }}>
                   <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Modo de Medir</div>
-                  <img src={imgModoMedir} alt="Modo de Medir" style={{ maxWidth: "100%", maxHeight: "180px", objectFit: "contain", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
+                  <img src={imgModoMedir} alt="Modo de Medir" style={{ width: "100%", maxHeight: "320px", objectFit: "contain", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
                 </div>
               )}
               {(modeloFrenteUrl || modeloCostasUrl) && (
                 <div style={{ flex: 1, textAlign: "center" }}>
                   <div style={{ fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Modelo</div>
                   <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
-                    {modeloFrenteUrl && <img src={modeloFrenteUrl} alt="Frente" style={{ maxHeight: "180px", objectFit: "contain", borderRadius: "4px" }} />}
-                    {modeloCostasUrl && <img src={modeloCostasUrl} alt="Costas" style={{ maxHeight: "180px", objectFit: "contain", borderRadius: "4px" }} />}
+                    {modeloFrenteUrl && <img src={modeloFrenteUrl} alt="Frente" style={{ maxHeight: "320px", maxWidth: "48%", objectFit: "contain", borderRadius: "4px" }} />}
+                    {modeloCostasUrl && <img src={modeloCostasUrl} alt="Costas" style={{ maxHeight: "320px", maxWidth: "48%", objectFit: "contain", borderRadius: "4px" }} />}
                   </div>
                 </div>
               )}
