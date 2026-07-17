@@ -97,7 +97,7 @@ export async function fetchProdutos() {
   (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
   return (data || []).map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "", tecido: p.tecido || "",
-    composicao: tecidoCompMap[p.tecido] || "",
+    composicao: p.composicao || tecidoCompMap[p.tecido] || "",
     forn_tecido: p.forn_tecido || "", status: p.status || "",
     piloto_most: p.piloto_most || "", colecao: p.colecao || "",
     grupo: p.grupo || "", subgrupo: p.subgrupo || "",
@@ -454,7 +454,7 @@ export async function fetchMapaColecao() {
   return (prodsRes.data || []).map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "",
     tecido: p.tecido || "", forn_tecido: p.forn_tecido || "",
-    composicao: tecidoCompMap[p.tecido] || "",
+    composicao: p.composicao || tecidoCompMap[p.tecido] || "",
     fornecedor: p.fornecedor || "", colecao: p.colecao || "",
     grupo: p.grupo || "", subgrupo: p.subgrupo || "", operacao: p.operacao || "",
     categoria: p.categoria || "", subcategoria: p.subcategoria || "",
@@ -497,7 +497,7 @@ export async function fetchMapaEntregas() {
     if (!prod) return;
     const base = {
       ref: prod.ref, desc: prod.descricao || "", status: prod.status || "",
-      tecido: prod.tecido || "", composicao: tecidoCompMap[prod.tecido] || "",
+      tecido: prod.tecido || "", composicao: prod.composicao || tecidoCompMap[prod.tecido] || "",
       forn_tecido: prod.forn_tecido || "", fornecedor: prod.fornecedor || "",
       colecao: prod.colecao || "", grupo: prod.grupo || "", subgrupo: prod.subgrupo || "",
       operacao: prod.operacao || "", categoria: prod.categoria || "",
