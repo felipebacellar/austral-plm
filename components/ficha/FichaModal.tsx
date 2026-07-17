@@ -239,9 +239,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   // Mantém saveRef sempre atualizado (evita closures stale no auto-save)
   saveRef.current = save;
 
-  // Habilita auto-save 3s após o mount (tempo suficiente para o carregamento)
+  // Habilita auto-save 3s após o mount e salva o estado atual (captura edições feitas durante o carregamento)
   useEffect(() => {
-    const t = setTimeout(() => { isLoaded.current = true; }, 3000);
+    const t = setTimeout(() => {
+      isLoaded.current = true;
+      saveRef.current?.(true);
+    }, 3000);
     return () => { clearTimeout(t); isLoaded.current = false; };
   }, []);
 
