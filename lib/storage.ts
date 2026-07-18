@@ -1,8 +1,8 @@
 import { getSupabase } from "./supabase";
 
 const BUCKET = "fichas-imagens";
-const MAX_SIDE = 1800; // px — mantém qualidade visual, reduz ~70-80% do tamanho
-const QUALITY = 0.82;
+const MAX_SIDE = 1200; // px — boa qualidade para PDF, upload ~2x mais rápido
+const QUALITY = 0.80;
 
 function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve) => {
