@@ -78,7 +78,7 @@ export default function DashboardView({ rows, variantes }: Props) {
     return r;
   }, [rows, fl]);
 
-  const uv = (k: string) => [...new Set(rows.map((r: any) => r[k]).filter(Boolean))].sort() as string[];
+  const uv = (k: string) => Array.from(new Set(rows.map((r: any) => r[k]).filter(Boolean))).sort() as string[];
   const sf = (k: string, v: string) => setFl(p => { const n = { ...p }; if (v) n[k] = v; else delete n[k]; return n; });
   const ac = Object.values(fl).filter(Boolean).length;
 
@@ -179,7 +179,7 @@ export default function DashboardView({ rows, variantes }: Props) {
 
   // Média preço final por grupo (bar chart using float values)
   const precoPorGrupo = useMemo(() => {
-    const grupos = [...new Set(comprasFiltered.map((r: any) => r.grupo).filter(Boolean))].sort() as string[];
+    const grupos = Array.from(new Set(comprasFiltered.map((r: any) => r.grupo).filter(Boolean))).sort() as string[];
     return grupos.map(g => {
       const gRows = comprasFiltered.filter((r: any) => r.grupo === g && r.varejo_final > 0);
       const avg = gRows.length ? gRows.reduce((s, r) => s + r.varejo_final, 0) / gRows.length : 0;
@@ -189,7 +189,7 @@ export default function DashboardView({ rows, variantes }: Props) {
 
   // Média markup por categoria
   const mkpPorCategoria = useMemo(() => {
-    const cats = [...new Set(comprasFiltered.map((r: any) => r.categoria).filter(Boolean))].sort() as string[];
+    const cats = Array.from(new Set(comprasFiltered.map((r: any) => r.categoria).filter(Boolean))).sort() as string[];
     return cats.map(cat => {
       const cRows = comprasFiltered.filter((r: any) => r.categoria === cat && mkpOf(r) !== null);
       const avg = cRows.length ? cRows.reduce((s, r) => s + mkpOf(r)!, 0) / cRows.length : 0;
@@ -212,7 +212,7 @@ export default function DashboardView({ rows, variantes }: Props) {
 
   // Total peças compradas por grupo = sum(qtd_compra1 + qtd_compra2) × nº variantes de cor
   const totalCompradoPorGrupo = useMemo(() => {
-    const grupos = [...new Set(comprasFiltered.map((r: any) => r.grupo).filter(Boolean))].sort() as string[];
+    const grupos = Array.from(new Set(comprasFiltered.map((r: any) => r.grupo).filter(Boolean))).sort() as string[];
     return grupos.map(g => {
       const total = comprasFiltered.filter((r: any) => r.grupo === g).reduce((s, r) => {
         const qtd = ((r.qtd_compra1 || 0) + (r.qtd_compra2 || 0));
@@ -348,9 +348,10 @@ export default function DashboardView({ rows, variantes }: Props) {
               style={{
                 color: subTab === t.id ? B600 : "var(--label-tertiary)",
                 fontWeight: subTab === t.id ? 600 : 400,
+                background: "none",
+                border: "none",
                 borderBottom: subTab === t.id ? `2px solid ${B600}` : "2px solid transparent",
                 marginBottom: -2,
-                background: "none", border: "none", borderBottom: subTab === t.id ? `2px solid ${B600}` : "2px solid transparent",
                 cursor: "pointer",
               }}>
               {t.label}

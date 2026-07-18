@@ -284,25 +284,59 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
     // Se falhou (coluna não existe), tenta só com campos base
     if (error) await sb().from("fichas_tecnicas").update(fichaBase).eq("id", fid);
   }
-  // Tecidos
-  await sb().from("ficha_tecidos").delete().eq("ficha_id", fid);
-  if (f.tecidos?.length) await sb().from("ficha_tecidos").insert(f.tecidos.map((t: any) => ({ ficha_id: fid, artigo: t.artigo, fornecedor: t.forn || "", preco: t.preco || 0, cores: t.cores || [] })));
-  // Aviamentos
-  await sb().from("ficha_aviamentos").delete().eq("ficha_id", fid);
-  if (f.aviamentos?.length) await sb().from("ficha_aviamentos").insert(f.aviamentos.map((a: any) => ({ ficha_id: fid, item: a.item, codigo: a.cod, qtd: a.qtd || 1, valor: a.valor || 0, localizacao: a.local || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })));
-  // Pilotagem
-  await sb().from("ficha_pilotagem").delete().eq("ficha_id", fid);
-  if (f.pilotagem?.length) await sb().from("ficha_pilotagem").insert(f.pilotagem.map((p: any) => ({ ficha_id: fid, num: p.num || "", lacre: p.lacre || "", data_envio: p.envio || null, data_recebimento: p.receb || null, data_prova: p.prova || null, status: p.status || "" })));
-  // Provas — delete+insert (mais confiável que upsert com onConflict)
-  await sb().from("ficha_provas").delete().eq("ficha_id", fid);
-  if (f.provas && Object.keys(f.provas).length > 0) {
-    const provasRows = Object.entries(f.provas)
-      .filter(([, v]: any) => v.p1 || v.p2 || v.p3)
-      .map(([cod, v]: any) => ({ ficha_id: fid, ponto_cod: cod, prova1: v.p1 || "", prova2: v.p2 || "", prova3: v.p3 || "" }));
-    if (provasRows.length) await sb().from("ficha_provas").insert(provasRows);
-  }
-  // Anotações
-  if (f.anotacoes) for (const [k, v] of Object.entries(f.anotacoes) as any) { const n = parseInt(k.replace("p", "")); if (!isNaN(n)) await sb().from("ficha_anotacoes").upsert({ ficha_id: fid, prova_num: n, anotacao: v.texto || "", video_link: v.video || "" }, { onConflict: "ficha_id,prova_num" }); }
+  // Deletar tudo em paralelo, depois inserir tudo em paralelo (mais rápido)
+  await Promise.all([
+    sb().from("ficha_tecidos").delete().eq("ficha_id", fid),
+    sb().from("ficha_aviamentos").delete().eq("ficha_id", fid),
+    sb().from("ficha_pilotagem").delete().eq("ficha_id", fid),
+    sb().from("ficha_provas").delete().eq("ficha_id", fid),
+    sb().from("ficha_anotacoes").delete().eq("ficha_id", fid),
+  ]);
+
+  // Inserir tudo em paralelo
+  const insertResults = await Promise.all([
+    // Tecidos
+    f.tecidos?.length
+      ? sb().from("ficha_tecidos").insert(f.tecidos.map((t: any) => ({ ficha_id: fid, artigo: t.artigo, fornecedor: t.forn || "", preco: t.preco || 0, cores: t.cores || [] })))
+      : Promise.resolve(),
+    // Aviamentos
+    f.aviamentos?.length
+      ? sb().from("ficha_aviamentos").insert(f.aviamentos.map((a: any) => ({ ficha_id: fid, item: a.item, codigo: a.cod, qtd: a.qtd || 1, valor: a.valor || 0, localizacao: a.local || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })))
+      : Promise.resolve(),
+    // Pilotagem
+    f.pilotagem?.length
+      ? sb().from("ficha_pilotagem").insert(f.pilotagem.map((p: any) => ({ ficha_id: fid, num: p.num || "", lacre: p.lacre || "", data_envio: p.envio || null, data_recebimento: p.receb || null, data_prova: p.prova || null, status: p.status || "" })))
+      : Promise.resolve(),
+    // Provas
+    (async () => {
+      if (f.provas && Object.keys(f.provas).length > 0) {
+        const provasRows = Object.entries(f.provas)
+          .filter(([, v]: any) => v.p1 || v.p2 || v.p3)
+          .map(([cod, v]: any) => ({ ficha_id: fid, ponto_cod: cod, prova1: v.p1 || "", prova2: v.p2 || "", prova3: v.p3 || "" }));
+        if (provasRows.length) return sb().from("ficha_provas").insert(provasRows);
+      }
+    })(),
+    // Anotações
+    (async () => {
+      if (f.anotacoes) {
+        const anotRows = Object.entries(f.anotacoes).map(([k, v]: any) => {
+          const n = parseInt(k.replace("p", ""));
+          return !isNaN(n) ? { ficha_id: fid, prova_num: n, anotacao: v.texto || "", video_link: v.video || "" } : null;
+        }).filter(Boolean);
+        if (anotRows.length) {
+          const { error } = await sb().from("ficha_anotacoes").insert(anotRows);
+          if (error) console.error("Erro ao salvar anotações:", error.message);
+        }
+      }
+    })(),
+  ]);
+  // Verificar se houve erros nos inserts
+  insertResults.forEach((result: any, idx: number) => {
+    if (result?.error) {
+      const tableName = ["ficha_tecidos", "ficha_aviamentos", "ficha_pilotagem", "ficha_provas"][idx];
+      console.error(`Erro ao salvar ${tableName}:`, result.error.message);
+    }
+  });
   // Tabela especial
   if (f.tabelaEspecialAtiva !== undefined) await sb().from("fichas_tecnicas").update({ tabela_especial_ativa: f.tabelaEspecialAtiva }).eq("id", fid);
   if (f.tabelaEspecialAtiva && f.pontosEspeciais) {

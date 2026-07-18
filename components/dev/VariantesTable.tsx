@@ -178,7 +178,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
     return r;
   }, [vr, fl, q, sort]);
 
-  const uv = (k: string): string[] => [...new Set(vr.map(r => r[k]).filter(Boolean))].sort();
+  const uv = (k: string): string[] => Array.from(new Set(vr.map(r => r[k]).filter(Boolean))).sort();
   const sf2 = (k: string, v: string) => setFl(p => { const n={...p}; if(v) n[k]=v; else delete n[k]; return n; });
 
   return (

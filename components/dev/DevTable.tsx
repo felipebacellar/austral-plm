@@ -1,6 +1,8 @@
 ﻿"use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import InlineCell from "@/components/ui/InlineCell";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import COLUMNS from "@/lib/columns";
 import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto, cloneProduto, bulkUpdateStatus } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
@@ -138,7 +140,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     return () => document.removeEventListener("mousedown", handler);
   }, [showColMenu]);
 
-  const colecoes = useMemo(() => [...new Set(rows.map((r: any) => r.colecao).filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a), "pt-BR", { numeric: true })), [rows]);
+  const colecoes = useMemo(() => Array.from(new Set(rows.map((r: any) => r.colecao).filter(Boolean))).sort((a, b) => String(b).localeCompare(String(a), "pt-BR", { numeric: true })), [rows]);
 
   const filtered = useMemo(() => {
     let r = rows;
@@ -182,34 +184,57 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){await updateProdutoField(id,"forn_tecido",t.forn);await updateProdutoField(id,"composicao",t.comp||"");}}
   };
 
+  const { confirm } = useConfirm();
+  const { success, error: showError, Container: ToastContainer } = useToast();
+
   const add = async () => {
     const blank: any = {};
     COLUMNS.forEach(c => { if(c.type!=="action") blank[c.key] = ""; });
     blank.status = STATUS_ESTILO.DESENVOLVIMENTO;
     const { data: result, error } = await insertProduto(blank);
-    if (error) { alert(`Erro ao criar SKU: ${error}`); return; }
+    if (error) { showError(`Erro ao criar SKU: ${error}`); return; }
     if (result) {
       const newRow = { ...blank, id: result.id, ref: result.ref || "" };
       setRows((p:any) => [...p, newRow]);
+      success("SKU criado com sucesso");
     }
   };
 
   const del = async (id:number) => {
-    if (!confirm("Excluir este SKU?")) return;
+    const confirmed = await confirm({
+      title: "Excluir SKU?",
+      message: "Esta ação não pode ser desfeita. Todos os dados associados serão removidos.",
+      confirmLabel: "Excluir",
+      cancelLabel: "Cancelar",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     setRows((p:any[]) => p.filter((r:any) => r.id!==id));
     const error = await deleteProduto(id);
-    if (error) { alert(`Erro ao excluir: ${error}`); setRows((p:any[]) => [...p]); }
+    if (error) {
+      showError(`Erro ao excluir: ${error}`);
+      setRows((p:any[]) => [...p]);
+    } else {
+      success("SKU excluído");
+    }
   };
 
   const handleClone = async () => {
     if (!cloneSource || !cloneRef.trim()) return;
     const dup = rows.find((r:any) => r.ref === cloneRef.trim());
-    if (dup) { alert(`Referência "${cloneRef.trim()}" já existe.`); return; }
+    if (dup) {
+      showError(`Referência "${cloneRef.trim()}" já existe.`);
+      return;
+    }
     const { data, error } = await cloneProduto(cloneSource.id, cloneRef.trim());
-    if (error) { alert(`Erro ao clonar: ${error}`); return; }
+    if (error) {
+      showError(`Erro ao clonar: ${error}`);
+      return;
+    }
     if (data) {
       const newRow = { ...cloneSource, id: data.id, ref: data.ref, status: STATUS_ESTILO.DESENVOLVIMENTO };
       setRows((p:any) => [...p, newRow]);
+      success("SKU clonado com sucesso");
     }
     setCloneSource(null);
     setCloneRef("");
@@ -217,10 +242,14 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
   const handleBulkStatus = async () => {
     if (!bulkStatus || selected.size === 0) return;
-    const ids = [...selected];
+    const ids = Array.from(selected);
     setRows((p:any[]) => p.map((r:any) => ids.includes(r.id) ? { ...r, status: bulkStatus } : r));
     const error = await bulkUpdateStatus(ids, bulkStatus);
-    if (error) alert(`Erro: ${error}`);
+    if (error) {
+      showError(`Erro: ${error}`);
+    } else {
+      success(`Status atualizado para ${selected.size} SKU(s)`);
+    }
     setSelected(new Set());
     setBulkStatus("");
   };
@@ -229,7 +258,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const toggleSelectAll = () => setSelected(selected.size === filtered.length ? new Set() : new Set(filtered.map((r:any) => r.id)));
 
   const opts = (k:string):string[] => cad[k] || [];
-  const uv = (k:string):string[] => [...new Set(rows.map((r:any)=>r[k]).filter(Boolean))].sort();
+  const uv = (k:string):string[] => Array.from(new Set(rows.map((r:any)=>r[k]).filter(Boolean))).sort();
   const sf2 = (k:string,v:string) => setFl(p=>{const n={...p};if(v)n[k]=v;else delete n[k];return n;});
 
   const handleExport = () => {
@@ -382,14 +411,17 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
 
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4"><span className="text-[28px] font-bold tabnum tracking-[-0.03em]">{filtered.length}</span><span className="text-[14px] text-[var(--label-secondary)]">SKU{filtered.length!==1&&"s"}</span>{ac>0&&<span className="text-[12px] text-[var(--label-tertiary)]">de {rows.length}</span>}<span className="text-[11px] text-[var(--label-quaternary)] ml-auto italic hidden sm:inline">duplo-clique para editar · salva automaticamente</span></div>
 
-      <ScrollTable><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}><thead><tr>
-        {!readOnly && canAdd && <th style={{width:36,padding:"0 8px"}}><input type="checkbox" checked={selected.size===filtered.length&&filtered.length>0} onChange={toggleSelectAll} style={{cursor:"pointer"}}/></th>}
+      <ScrollTable><table className="plm-table" style={{width:"max-content",minWidth:"100%"}}>
+      <caption className="sr-only">Tabela de SKUs com filtros e opções de edição</caption>
+      <thead><tr>
+        {!readOnly && canAdd && <th style={{width:36,padding:"0 8px"}}><input type="checkbox" aria-label="Selecionar todos" checked={selected.size===filtered.length&&filtered.length>0} onChange={toggleSelectAll} style={{cursor:"pointer"}}/></th>}
         {COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
         const sortable = c.type !== "action";
         const isActive = sort?.key === c.key;
         const isSticky = c.key === "ref";
+        const isMobileHidden = ["forn", "composicao", "taxa_cliente", "estilista", "operacao", "fornecedor"].includes(c.key);
         const mainTh = (
-          <th key={c.key} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left",...(isSticky?{position:"sticky",left:0,zIndex:3,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.06)"}:{})}}>
+          <th key={c.key} className={isMobileHidden ? "hidden sm:table-cell" : ""} style={{width:c.width,minWidth:c.width,textAlign:c.type==="number"?"right":"left",...(isSticky?{position:"sticky",left:0,zIndex:3,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.06)"}:{})}}>
             {sortable ? (
               <button onClick={() => toggleSort(c.key)} className={`inline-flex items-center gap-1 select-none cursor-pointer hover:text-[var(--label-primary)] transition-colors ${isActive ? "text-[var(--system-blue)]" : ""}`}>
                 <span>{c.label}</span>
@@ -421,7 +453,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
       ))}
       <th style={{width:36}}/></tr></thead><tbody>
         {filtered.map((row:any)=>(<tr key={row.id} style={selected.has(row.id)?{background:"rgba(0,122,255,0.06)"}:{}}>
-          {!readOnly && canAdd && <td style={{width:36,padding:"0 8px"}}><input type="checkbox" checked={selected.has(row.id)} onChange={()=>toggleSelect(row.id)} style={{cursor:"pointer"}}/></td>}
+          {!readOnly && canAdd && <td style={{width:36,padding:"0 8px"}}><input type="checkbox" aria-label={`Selecionar SKU ${row.ref}`} checked={selected.has(row.id)} onChange={()=>toggleSelect(row.id)} style={{cursor:"pointer"}}/></td>}
           {COLUMNS.filter(c=>isColVisible(c.key)).flatMap(c=>{
           const isSticky = c.key === "ref";
           const mainTd = <td key={c.key} style={{width:c.width,minWidth:c.width,...(isSticky?{position:"sticky",left:0,zIndex:2,background:"var(--bg-primary)",boxShadow:"2px 0 4px rgba(0,0,0,0.04)"}:{})}}>{c.type==="action"?<div style={{display:"flex",gap:4}}><button onClick={()=>onOpenFicha(row)} className="apple-btn-secondary text-[12px] py-1 px-3">Abrir</button>{!readOnly&&canAdd&&<button onClick={()=>{setCloneSource(row);setCloneRef("");}} title="Clonar SKU" className="apple-btn-secondary text-[12px] py-1 px-2" style={{color:"var(--system-blue)"}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>}</div>:c.type==="readonly"?<span className="text-[13px] px-2.5 py-1.5 block text-[var(--label-secondary)]">{row[c.key]||"—"}</span>:(readOnly||permPrefix==="compras_")?<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-secondary)"}}>{row[c.key]||"—"}</span>:canEdit(c.key)?<InlineCell value={row[c.key]} type={c.type} options={c.cad?opts(c.cad):undefined} isStatus={c.key==="status"} onChange={v=>upd(row.id,c.key,v)}/>:<span style={{fontSize:13,padding:"6px 10px",display:"block",color:"var(--label-tertiary)",cursor:"default"}} title="Sem permissão para editar">{row[c.key]||"—"}</span>}</td>;
@@ -460,6 +492,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
         <td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
         {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></ScrollTable>
+      <ToastContainer />
     </div>
   );
 }

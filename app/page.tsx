@@ -69,10 +69,14 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
     let varTimer: ReturnType<typeof setTimeout> | null = null;
+    let isMounted = true;
+
     const reloadVariants = () => {
       if (varTimer) clearTimeout(varTimer);
       varTimer = setTimeout(async () => {
+        if (!isMounted) return; // Previne update após desmonte
         const [vars, varsPorCol] = await Promise.all([fetchAllVariantes(), fetchVariantesPorColecao()]);
+        if (!isMounted) return;
         setVariantes(vars);
         setVariantesPorColecao(varsPorCol);
       }, 1000);
@@ -94,7 +98,11 @@ export default function Home() {
         onDelete: reloadVariants,
       },
     ]);
-    return () => { if (varTimer) clearTimeout(varTimer); unsub(); };
+    return () => {
+      isMounted = false;
+      if (varTimer) clearTimeout(varTimer);
+      unsub();
+    };
   }, []);
 
   const handleFichaSave = async (updatedRow: any) => {
@@ -129,7 +137,7 @@ export default function Home() {
             </div>
             {!sidebarCollapsed && <div><span className="plm-logo-text">Austral</span><span className="plm-logo-sub">PLM</span></div>}
           </div>
-          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="plm-sidebar-toggle">
+          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"} className="plm-sidebar-toggle">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d={sidebarCollapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} /></svg>
           </button>
         </div>
@@ -208,6 +216,7 @@ export default function Home() {
               </div>
               <button
                 onClick={() => setShowUsers(true)}
+                aria-label="Gerenciar usuários"
                 title="Gerenciar usuários"
                 style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--separator)", background: "var(--bg-secondary)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--label-tertiary)", transition: "all .15s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--system-blue)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--system-blue)"; }}
@@ -219,6 +228,7 @@ export default function Home() {
               </button>
               <button
                 onClick={signOut}
+                aria-label="Sair"
                 title="Sair"
                 style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--separator)", background: "var(--bg-secondary)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--label-tertiary)", transition: "all .15s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--system-red)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--system-red)"; }}

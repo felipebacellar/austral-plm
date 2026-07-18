@@ -77,8 +77,20 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
     : String(value || "—");
 
   return (
-    <div onDoubleClick={() => setEditing(true)} title={isDate ? fmtDate(String(value || "")) : String(value || "")}
-      className={`cursor-default text-[13px] px-2.5 py-1.5 rounded-lg min-h-[28px] flex items-center transition-colors hover:bg-black/[0.02] ${isNum ? "justify-end tabnum" : ""} ${value ? "text-[var(--label-primary)]" : "text-[var(--label-quaternary)]"}`}>
+    <div
+      onDoubleClick={() => setEditing(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setEditing(true);
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Editar: ${displayEl || display}`}
+      title={isDate ? fmtDate(String(value || "")) : String(value || "")}
+      className={`cursor-default text-[13px] px-2.5 py-1.5 rounded-lg min-h-[28px] flex items-center transition-colors hover:bg-black/[0.02] focus:ring-2 focus:ring-[var(--system-blue)] outline-none ${isNum ? "justify-end tabnum" : ""} ${value ? "text-[var(--label-primary)]" : "text-[var(--label-quaternary)]"}`}
+    >
       {displayEl ?? display}
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
@@ -45,9 +47,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [numVars, setNumVars] = useState(4);
   const [pendingSave, setPendingSave] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const autoSaveTimer = useRef<any>(null);
   const isLoaded = useRef(false);
   const saveRef = useRef<(confirmed?: boolean) => Promise<void>>();
+  const { confirm } = useConfirm();
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
@@ -93,7 +97,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       // Para clássicos: carrega a ficha da temporada selecionada (ou null se nenhuma ainda)
       const fichaColecao = isClassic ? selectedColecao : null;
       setFichaId(null);
-      const [ficha, cadastros, aviCad, tecs, vcAll] = await Promise.all([fetchFicha(row.ref, fichaColecao), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras()]);
+      const [ficha, cadastros, aviCad, tecs, vcAll, tabs] = await Promise.all([fetchFicha(row.ref, fichaColecao), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras(), fetchTabelasMedidas()]);
       setVcCompras(vcAll);
       setCorOpts(cadastros.cor || []);
       setTingimentoOpts(cadastros.tingimento || []);
@@ -126,11 +130,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         return { ...a, ...varPatch, imagem: cat?.imagem || "", cores_disponiveis: cores, fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" };
       }));
       // Carrega imagem do modo de medir da tabela de medidas
-      if (row.tab_medidas) {
-        fetchTabelasMedidas().then(tabs => {
-          const t = tabs.find((t: any) => t.nome === row.tab_medidas);
-          if (t && (t as any).imagem_modo_medir) setImgModoMedir((t as any).imagem_modo_medir);
-        });
+      if (row.tab_medidas && tabs) {
+        const t = tabs.find((t: any) => t.nome === row.tab_medidas);
+        if (t && (t as any).imagem_modo_medir) setImgModoMedir((t as any).imagem_modo_medir);
       }
       if (ficha) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
@@ -176,6 +178,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         setGrad(g);
         if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
+      setIsDataLoaded(true);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.ref, row.tab_medidas, selectedColecao, isClassic]);
@@ -229,7 +232,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
       onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } });
       setAutoSaveStatus("saved");
-      setTimeout(() => setAutoSaveStatus("idle"), 2000);
+      setTimeout(() => setAutoSaveStatus("idle"), 3500);
     } catch {
       setAutoSaveStatus("error");
       setTimeout(() => setAutoSaveStatus("idle"), 3000);
@@ -405,17 +408,27 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     );
   }
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (autoSaveStatus === "pending" || autoSaveStatus === "saving") {
-      if (!window.confirm("Existem alterações ainda sendo salvas. Deseja fechar mesmo assim?")) return;
+      const confirmed = await confirm({
+        title: "Alterações em andamento",
+        message: "Existem alterações ainda sendo salvas. Deseja fechar mesmo assim?",
+        confirmLabel: "Fechar",
+        cancelLabel: "Continuar salvando",
+      });
+      if (!confirmed) return;
     }
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={handleClose}>
-      <div className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[var(--separator)] gap-2.5">
+      <div role="dialog" aria-modal="true" aria-labelledby="ficha-modal-title" className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
+        {!isDataLoaded && <SkeletonLoader count={8} />}
+        {isDataLoaded && (
+        <div>
+          <div id="ficha-modal-title" className="sr-only">Ficha técnica de {row.ref}</div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[var(--separator)] gap-2.5">
           <div className="seg-control overflow-x-auto">
             {([
               ["ficha", "Ficha técnica"],
@@ -431,29 +444,29 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             {up && <span className="text-[12px] text-[var(--system-blue)] animate-pulse font-medium">Enviando...</span>}
             {!up && autoSaveStatus === "pending" && (
               <span className="text-[11px] font-semibold text-[#B45309] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-full flex items-center gap-1">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 Alterações não salvas
               </span>
             )}
             {!up && autoSaveStatus === "saving" && <span className="text-[11px] text-[var(--system-blue)] animate-pulse font-medium">Salvando...</span>}
             {!up && autoSaveStatus === "saved" && (
               <span className="text-[11px] text-[#2DB564] font-medium flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Salvo
               </span>
             )}
             {!up && autoSaveStatus === "error" && (
               <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer" onClick={() => saveRef.current?.(true)}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 Erro — clique para tentar novamente
               </span>
             )}
             <button onClick={exportPDF} className="text-[12px] sm:text-[13px] font-medium text-[var(--system-blue)] hover:bg-blue-50 px-2 sm:px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
-              <svg className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <svg aria-hidden="true" className="inline mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span className="hidden sm:inline">Exportar </span>PDF
             </button>
-            <button onClick={handleClose} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            <button onClick={handleClose} aria-label="Fechar" className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--label-secondary)] flex-shrink-0">
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
         </div>
@@ -599,7 +612,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                         className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-[var(--separator-opaque)] outline-none focus:border-[var(--system-blue)]"
                       >
                         <option value="">—</option>
-                        {[...new Set([...(tingimentoOpts.length ? tingimentoOpts : ["AMACIADO","CORASTONED","ESTONADO","FIO TINTO","MARMORIZADO LEVE","REATIVO","SOBRETINTO","SPRAY LOCALIZADO","TINTO A SECO","TINTO EM ROLO"])])].sort().map(o => <option key={o} value={o}>{o}</option>)}
+                        {Array.from(new Set(tingimentoOpts.length ? tingimentoOpts : ["AMACIADO","CORASTONED","ESTONADO","FIO TINTO","MARMORIZADO LEVE","REATIVO","SOBRETINTO","SPRAY LOCALIZADO","TINTO A SECO","TINTO EM ROLO"])).sort().map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     </td>
                   ))}
@@ -1451,6 +1464,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           );
         })()}
 
+        </div>
+        )}
       </div>
       {/* Hidden file input for prova photos (outside tabs so always mounted) */}
       <input ref={fotoProvaRef} type="file" accept="image/*" className="hidden" onChange={handleFotoProva} />
