@@ -429,14 +429,11 @@ export async function fetchGraduacoesByTabelaNome(nome: string) {
 export async function fetchTabelasComPontos() {
   const { data, error } = await sb().rpc('get_tabelas_com_pontos').order('nome' as any);
   if (error) {
-    // Fallback: fetch all tables then filter client-side
+    // Fallback: fetch all points in parallel, group by tabela_id
     const tabelas = await fetchTabelasMedidas();
-    const withPts: any[] = [];
-    for (const t of tabelas) {
-      const { count } = await sb().from("tabela_medida_pontos").select("*", { count: "exact", head: true }).eq("tabela_id", t.id);
-      if (count && count > 0) withPts.push(t);
-    }
-    return withPts.map((t: any) => t.nome);
+    const { data: pontos } = await sb().from("tabela_medida_pontos").select("tabela_id");
+    const tabelasComPontos = new Set((pontos || []).map((p: any) => p.tabela_id));
+    return tabelas.filter((t: any) => tabelasComPontos.has(t.id)).map((t: any) => t.nome);
   }
   return (data || []).map((t: any) => t.nome);
 }

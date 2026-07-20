@@ -87,7 +87,7 @@ export default function CadView(){
             {/* Cadastros simples (grupo, subgrupo, etc.) */}
             {!isSpecial&&m!=="cor"&&(<>
               <div className="flex gap-2 mb-5">
-                <input type="text" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addS()} placeholder="Novo item..." className={`${inp} flex-1`}/>
+                <input type="text" aria-label={`Novo ${info?.l?.toLowerCase()}`} value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addS()} placeholder="Novo item..." className={`${inp} flex-1`}/>
                 <button onClick={addS} className={btn}>Adicionar</button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -104,8 +104,8 @@ export default function CadView(){
             {/* Cores */}
             {m==="cor"&&(<>
               <div className="flex flex-wrap gap-2 mb-5">
-                <input className={`${inp} w-24`} value={cc} onChange={e=>setCc(e.target.value)} placeholder="Código"/>
-                <input className={`${inp} flex-1 min-w-[140px]`} value={cn} onChange={e=>setCn(e.target.value)} placeholder="Nome da cor" onKeyDown={e=>e.key==="Enter"&&addCor()}/>
+                <input className={`${inp} w-24`} aria-label="Código da cor" value={cc} onChange={e=>setCc(e.target.value)} placeholder="Código"/>
+                <input className={`${inp} flex-1 min-w-[140px]`} aria-label="Nome da cor" value={cn} onChange={e=>setCn(e.target.value)} placeholder="Nome da cor" onKeyDown={e=>e.key==="Enter"&&addCor()}/>
                 <button onClick={addCor} className={btn}>Adicionar</button>
               </div>
               <div className="border border-[var(--separator)] rounded-xl overflow-hidden">
@@ -120,16 +120,16 @@ export default function CadView(){
             {m==="aviamento"&&(<>
               <input type="file" accept="image/*" ref={avImgRef} className="hidden" onChange={handleAvImg}/>
               <div className="flex flex-wrap gap-2 mb-3">
-                <input className={`${inp} w-28`} value={ac} onChange={e=>setAc(e.target.value)} placeholder="Nosso código"/>
-                <input className={`${inp} flex-1 min-w-[120px]`} value={an} onChange={e=>setAn(e.target.value)} placeholder="Nome"/>
-                <input className={`${inp} w-24`} value={ap} onChange={e=>setAp(e.target.value)} placeholder="Preço"/>
-                <input className={`${inp} flex-1 min-w-[150px]`} value={al} onChange={e=>setAl(e.target.value)} placeholder="Localização padrão"/>
-                <input className={`${inp} flex-1 min-w-[120px]`} value={af} onChange={e=>setAf(e.target.value)} placeholder="Fornecedor"/>
-                <input className={`${inp} w-32`} value={acf} onChange={e=>setAcf(e.target.value)} placeholder="Cód. fornecedor"/>
+                <input className={`${inp} w-28`} aria-label="Nosso código do aviamento" value={ac} onChange={e=>setAc(e.target.value)} placeholder="Nosso código"/>
+                <input className={`${inp} flex-1 min-w-[120px]`} aria-label="Nome do aviamento" value={an} onChange={e=>setAn(e.target.value)} placeholder="Nome"/>
+                <input className={`${inp} w-24`} aria-label="Preço do aviamento" value={ap} onChange={e=>setAp(e.target.value)} placeholder="Preço"/>
+                <input className={`${inp} flex-1 min-w-[150px]`} aria-label="Localização padrão do aviamento" value={al} onChange={e=>setAl(e.target.value)} placeholder="Localização padrão"/>
+                <input className={`${inp} flex-1 min-w-[120px]`} aria-label="Fornecedor do aviamento" value={af} onChange={e=>setAf(e.target.value)} placeholder="Fornecedor"/>
+                <input className={`${inp} w-32`} aria-label="Código do fornecedor do aviamento" value={acf} onChange={e=>setAcf(e.target.value)} placeholder="Cód. fornecedor"/>
                 <button onClick={addAv} className={btn}>Adicionar</button>
               </div>
               <div className="mb-4">
-                <input type="text" value={sr} onChange={e=>setSr(e.target.value)} placeholder="Buscar aviamento..." className={`${inp} w-full`}/>
+                <input type="text" aria-label="Buscar aviamento por código ou nome" value={sr} onChange={e=>setSr(e.target.value)} placeholder="Buscar aviamento..." className={`${inp} w-full`}/>
               </div>
               <div className="border border-[var(--separator)] rounded-xl overflow-hidden max-h-[540px] overflow-y-auto overscroll-y-contain">
                 {avCoresOpen && <div className="fixed inset-0 z-40" onClick={() => setAvCoresOpen(null)} />}
