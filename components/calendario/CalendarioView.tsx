@@ -8,32 +8,33 @@ interface TarefaCalendario {
   colecao: string;
   responsavel: string;
   status: "CONCLUÍDO" | "EM ANDAMENTO" | "PENDENTE";
-  dataInicio: string; // formato YYYY-MM-DD
+  dataInicio: string;
   dataFim: string;
   progresso: number;
   descricao?: string;
 }
 
 const CALENDARIO_DATA: TarefaCalendario[] = [
-  { id: "1", tarefa: "Campanha - Planejamento Inicial", colecao: "Inverno 25", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-20", dataFim: "2026-01-24", progresso: 100, descricao: "Definição de localização e janela de captação" },
-  { id: "2", tarefa: "Pesquisa de tendências e comportamento", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", dataInicio: "2026-01-20", dataFim: "2026-01-24", progresso: 100 },
+  { id: "1", tarefa: "Campanha - Planejamento", colecao: "Inverno 25", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-20", dataFim: "2026-01-24", progresso: 100, descricao: "Definição de localização" },
+  { id: "2", tarefa: "Pesquisa de tendências", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", dataInicio: "2026-01-20", dataFim: "2026-01-24", progresso: 100 },
   { id: "3", tarefa: "Definição do Tema", colecao: "Inverno 26", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-27", dataFim: "2026-01-31", progresso: 100 },
   { id: "4", tarefa: "Pesquisa de tendências", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", dataInicio: "2026-02-03", dataFim: "2026-02-07", progresso: 100 },
   { id: "5", tarefa: "Campanha - Pré Produção", colecao: "Inverno 25", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-27", dataFim: "2026-02-14", progresso: 100 },
   { id: "6", tarefa: "Campanha - Captação", colecao: "Inverno 25", responsavel: "Marketing", status: "CONCLUÍDO", dataInicio: "2026-02-17", dataFim: "2026-02-21", progresso: 100 },
   { id: "7", tarefa: "Desenvolvimento de Aviamentos", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", dataInicio: "2026-03-10", dataFim: "2026-03-14", progresso: 100 },
-  { id: "8", tarefa: "Desenvolvimento de fichas técnicas", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", dataInicio: "2026-02-03", dataFim: "2026-03-07", progresso: 100 },
-  { id: "9", tarefa: "Campanha - Planejamento Criativo", colecao: "Collab Gaia", responsavel: "Criação", status: "EM ANDAMENTO", dataInicio: "2026-03-17", dataFim: "2026-03-21", progresso: 80 },
-  { id: "10", tarefa: "Preparação para lançamento", colecao: "Collab Gaia", responsavel: "Marketing", status: "EM ANDAMENTO", dataInicio: "2026-03-10", dataFim: "2026-03-14", progresso: 70 },
-  { id: "11", tarefa: "Desenvolvimento de aviamentos", colecao: "Inverno 27", responsavel: "Produto", status: "EM ANDAMENTO", dataInicio: "2026-03-24", dataFim: "2026-03-28", progresso: 75 },
-  { id: "12", tarefa: "Recebimento de desenvolvimentos", colecao: "Inverno 27", responsavel: "Produto", status: "EM ANDAMENTO", dataInicio: "2026-03-31", dataFim: "2026-04-04", progresso: 60 },
-  { id: "13", tarefa: "Cadastro e compra de aviamentos", colecao: "Inverno 27", responsavel: "Compras", status: "PENDENTE", dataInicio: "2026-04-07", dataFim: "2026-04-11", progresso: 20 },
-  { id: "14", tarefa: "Lançamento de coleção", colecao: "Collab Gaia", responsavel: "Marketing", status: "PENDENTE", dataInicio: "2026-04-14", dataFim: "2026-04-18", progresso: 0 },
-  { id: "15", tarefa: "Liberação de mostruário", colecao: "Inverno 27", responsavel: "Produto", status: "PENDENTE", dataInicio: "2026-04-21", dataFim: "2026-04-25", progresso: 0 },
+  { id: "8", tarefa: "Desenvolvimento fichas técnicas", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", dataInicio: "2026-02-03", dataFim: "2026-03-07", progresso: 100 },
+  { id: "9", tarefa: "Planejamento Criativo", colecao: "Collab Gaia", responsavel: "Criação", status: "EM ANDAMENTO", dataInicio: "2026-03-17", dataFim: "2026-03-21", progresso: 80 },
+  { id: "10", tarefa: "Preparação lançamento", colecao: "Collab Gaia", responsavel: "Marketing", status: "EM ANDAMENTO", dataInicio: "2026-03-10", dataFim: "2026-03-14", progresso: 70 },
+  { id: "11", tarefa: "Desenvolvimento aviamentos", colecao: "Inverno 27", responsavel: "Produto", status: "EM ANDAMENTO", dataInicio: "2026-03-24", dataFim: "2026-03-28", progresso: 75 },
+  { id: "12", tarefa: "Recebimento desenvolv.", colecao: "Inverno 27", responsavel: "Produto", status: "EM ANDAMENTO", dataInicio: "2026-03-31", dataFim: "2026-04-04", progresso: 60 },
+  { id: "13", tarefa: "Cadastro e compra", colecao: "Inverno 27", responsavel: "Compras", status: "PENDENTE", dataInicio: "2026-04-07", dataFim: "2026-04-11", progresso: 20 },
+  { id: "14", tarefa: "Lançamento coleção", colecao: "Collab Gaia", responsavel: "Marketing", status: "PENDENTE", dataInicio: "2026-04-14", dataFim: "2026-04-18", progresso: 0 },
+  { id: "15", tarefa: "Liberação mostruário", colecao: "Inverno 27", responsavel: "Produto", status: "PENDENTE", dataInicio: "2026-04-21", dataFim: "2026-04-25", progresso: 0 },
 ];
 
 export default function CalendarioView() {
   const [tarefas, setTarefas] = useState<TarefaCalendario[]>(CALENDARIO_DATA);
+  const [mesAtual, setMesAtual] = useState(new Date(2026, 2)); // Março 2026
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<TarefaCalendario>>({
@@ -49,24 +50,31 @@ export default function CalendarioView() {
   const colecoes = useMemo(() => Array.from(new Set(tarefas.map(t => t.colecao).filter(Boolean))).sort(), [tarefas]);
   const responsaveis = useMemo(() => Array.from(new Set(tarefas.map(t => t.responsavel).filter(Boolean))).sort(), [tarefas]);
 
-  // Ordena tarefas por data
-  const tarefasOrdenadas = useMemo(() => {
-    return [...tarefas].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime());
-  }, [tarefas]);
+  // Gera dias do calendário
+  const diasCalendario = useMemo(() => {
+    const ano = mesAtual.getFullYear();
+    const mes = mesAtual.getMonth();
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+    const diasDaSemanaInicio = primeiroDia.getDay();
 
-  // Agrupa por semana
-  const tarefasPorSemana = useMemo(() => {
-    const semanas: Record<string, TarefaCalendario[]> = {};
-    tarefasOrdenadas.forEach(tarefa => {
-      const dataInicio = new Date(tarefa.dataInicio);
-      const semanaDe = dataInicio.toLocaleDateString("pt-BR", { month: "short", day: "numeric" });
-      const semanaAte = new Date(new Date(tarefa.dataFim).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR", { month: "short", day: "numeric" });
-      const chave = `${semanaDe} → ${semanaAte}`;
-      if (!semanas[chave]) semanas[chave] = [];
-      semanas[chave].push(tarefa);
+    const dias: (number | null)[] = [];
+    for (let i = 0; i < diasDaSemanaInicio; i++) dias.push(null);
+    for (let i = 1; i <= ultimoDia.getDate(); i++) dias.push(i);
+    return dias;
+  }, [mesAtual]);
+
+  const getTarefasDoDia = (dia: number) => {
+    const ano = mesAtual.getFullYear();
+    const mes = mesAtual.getMonth();
+    const dataStr = new Date(ano, mes, dia).toISOString().split("T")[0];
+    return tarefas.filter(t => {
+      const inicio = new Date(t.dataInicio);
+      const fim = new Date(t.dataFim);
+      const data = new Date(dataStr);
+      return data >= inicio && data <= fim;
     });
-    return semanas;
-  }, [tarefasOrdenadas]);
+  };
 
   const handleSave = () => {
     if (!formData.tarefa || !formData.dataInicio || !formData.dataFim) {
@@ -101,115 +109,98 @@ export default function CalendarioView() {
   };
 
   const getStatusColor = (status: string) => {
-    if (status === "CONCLUÍDO") return "bg-[var(--bg-success)] text-[var(--text-success)]";
-    if (status === "EM ANDAMENTO") return "bg-[var(--bg-warning)] text-[var(--text-warning)]";
-    return "bg-[var(--bg-secondary)] text-[var(--text-secondary)]";
+    if (status === "CONCLUÍDO") return "bg-[#dcf3dc] border-[#4caf50] text-[#2e7d32]";
+    if (status === "EM ANDAMENTO") return "bg-[#fff9c4] border-[#fbc02d] text-[#f57f17]";
+    return "bg-[#f5f5f5] border-[#9e9e9e] text-[#616161]";
   };
 
-  const formatData = (date: string) => new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  const diasSemana = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+  const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
   return (
     <div className="flex flex-col gap-5 min-h-[600px]">
-      <div className="apple-card p-5">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[18px] font-bold tracking-[-0.02em]">Calendário 2026</h2>
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ tarefa: "", colecao: "", responsavel: "", status: "PENDENTE", dataInicio: "", dataFim: "", progresso: 0 });
-              setShowModal(true);
-            }}
-            className="apple-btn-primary px-4 py-2 text-[13px]"
-          >
-            + Nova Tarefa
-          </button>
+      <div className="apple-card p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--label-primary)]">
+              {meses[mesAtual.getMonth()]} {mesAtual.getFullYear()}
+            </h2>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1))}
+              className="apple-btn-secondary px-4 py-2 text-[13px]"
+            >
+              ← Anterior
+            </button>
+            <button
+              onClick={() => setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1))}
+              className="apple-btn-secondary px-4 py-2 text-[13px]"
+            >
+              Próximo →
+            </button>
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setFormData({ tarefa: "", colecao: "", responsavel: "", status: "PENDENTE", dataInicio: "", dataFim: "", progresso: 0 });
+                setShowModal(true);
+              }}
+              className="apple-btn-primary px-4 py-2 text-[13px]"
+            >
+              + Nova
+            </button>
+          </div>
         </div>
 
-        {/* Timeline Visual */}
-        <div className="space-y-6">
-          {Object.entries(tarefasPorSemana).map(([semana, semanasTarefas]) => (
-            <div key={semana} className="border border-[var(--separator)] rounded-xl p-4">
-              <div className="text-[13px] font-semibold text-[var(--label-secondary)] mb-4 uppercase tracking-[0.5px]">
-                📅 Semana de {semana}
-              </div>
+        {/* Grid de dias da semana */}
+        <div className="grid grid-cols-7 gap-2 mb-2">
+          {diasSemana.map(dia => (
+            <div key={dia} className="text-center py-3 font-semibold text-[12px] text-[var(--label-secondary)] uppercase tracking-[0.5px]">
+              {dia}
+            </div>
+          ))}
+        </div>
 
-              <div className="space-y-3">
-                {semanasTarefas.map(tarefa => (
-                  <div
-                    key={tarefa.id}
-                    className="border border-[var(--separator)] rounded-lg p-4 hover:bg-[var(--bg-secondary)] transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-[13px] text-[var(--label-primary)] mb-2">
-                          {tarefa.tarefa}
-                        </div>
+        {/* Grid do calendário */}
+        <div className="grid grid-cols-7 gap-2 bg-[var(--surface-1)] p-2 rounded-lg border border-[var(--separator)]">
+          {diasCalendario.map((dia, idx) => (
+            <div
+              key={idx}
+              className={`min-h-[140px] rounded-lg border-2 p-2 ${
+                dia ? "border-[var(--separator)] bg-white" : "border-transparent bg-[var(--surface-1)]"
+              }`}
+            >
+              {dia && (
+                <>
+                  <div className="text-[14px] font-bold text-[var(--label-primary)] mb-2">
+                    {dia}
+                  </div>
 
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {tarefa.colecao && (
-                            <span className="inline-block bg-[var(--bg-accent)] text-[var(--text-accent)] px-2.5 py-1 rounded text-[11px] font-semibold">
-                              {tarefa.colecao}
-                            </span>
-                          )}
-                          {tarefa.responsavel && (
-                            <span className="inline-block bg-[var(--bg-secondary)] text-[var(--text-secondary)] px-2.5 py-1 rounded text-[11px]">
-                              {tarefa.responsavel}
-                            </span>
-                          )}
-                          <span className={`inline-block px-2.5 py-1 rounded text-[11px] font-semibold ${getStatusColor(tarefa.status)}`}>
-                            {tarefa.status}
-                          </span>
-                        </div>
-
-                        {tarefa.descricao && (
-                          <div className="text-[12px] text-[var(--label-secondary)] mb-3 italic">
-                            {tarefa.descricao}
+                  <div className="space-y-1 max-h-[100px] overflow-y-auto">
+                    {getTarefasDoDia(dia).map(tarefa => (
+                      <div
+                        key={tarefa.id}
+                        className={`text-[10px] p-1.5 rounded border-l-4 cursor-pointer hover:opacity-80 group ${getStatusColor(tarefa.status)}`}
+                        title={tarefa.tarefa}
+                        onClick={() => {
+                          setEditingId(tarefa.id);
+                          setFormData(tarefa);
+                          setShowModal(true);
+                        }}
+                      >
+                        <div className="font-semibold line-clamp-2">{tarefa.tarefa}</div>
+                        <div className="text-[9px] opacity-70 mt-0.5">{tarefa.colecao}</div>
+                        {tarefa.progresso > 0 && (
+                          <div className="w-full h-0.5 bg-black/10 rounded-full mt-1 overflow-hidden">
+                            <div className="h-full bg-black/40" style={{ width: `${tarefa.progresso}%` }} />
                           </div>
                         )}
-
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-[11px] text-[var(--label-tertiary)]">
-                            📆 {formatData(tarefa.dataInicio)} → {formatData(tarefa.dataFim)}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-[var(--bg-secondary)] rounded-full overflow-hidden max-w-[200px]">
-                            <div
-                              className="h-full bg-[var(--system-blue)] transition-all"
-                              style={{ width: `${tarefa.progresso}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] font-semibold tabnum text-[var(--label-secondary)] w-8 text-right">
-                            {tarefa.progresso}%
-                          </span>
-                        </div>
                       </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingId(tarefa.id);
-                            setFormData(tarefa);
-                            setShowModal(true);
-                          }}
-                          className="px-2.5 py-1 text-[11px] rounded border border-[var(--separator)] text-[var(--label-secondary)] hover:bg-[var(--bg-secondary)]"
-                          title="Editar"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => handleCopy(tarefa)}
-                          className="px-2.5 py-1 text-[11px] rounded border border-[var(--separator)] text-[var(--label-secondary)] hover:bg-[var(--bg-secondary)]"
-                          title="Copiar"
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
           ))}
         </div>
