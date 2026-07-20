@@ -8,340 +8,272 @@ interface TarefaCalendario {
   colecao: string;
   responsavel: string;
   status: "CONCLUÍDO" | "EM ANDAMENTO" | "PENDENTE";
-  dataInicio: string;
-  dataFim: string;
-  progresso: number;
+  semanaInicio: number; // índice da semana
+  semanaFim: number;
   descricao?: string;
 }
 
+// Semanas de 2026 (do arquivo original)
+const SEMANAS = [
+  "20/01 - 24/01",
+  "27/01 - 31/01",
+  "03/02 - 07/02",
+  "10/02 - 14/02",
+  "17/02 - 21/02",
+  "24/02 - 28/02",
+  "03/03 - 07/03",
+  "10/03 - 14/03",
+  "17/03 - 21/03",
+  "24/03 - 28/03",
+  "31/03 - 04/04",
+  "07/04 - 11/04",
+  "14/04 - 18/04",
+  "20/04 - 25/04",
+  "28/04 - 02/05",
+  "05/05 - 09/05",
+  "12/05 - 16/05",
+  "19/05 - 23/05",
+  "26/05 - 30/05",
+  "02/06 - 06/06",
+];
+
 const CALENDARIO_DATA: TarefaCalendario[] = [
-  { id: "1", tarefa: "Campanha - Planejamento", colecao: "Inverno 25", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-20", dataFim: "2026-01-24", progresso: 100, descricao: "Definição de localização" },
-  { id: "2", tarefa: "Pesquisa de tendências", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", dataInicio: "2026-01-20", dataFim: "2026-01-24", progresso: 100 },
-  { id: "3", tarefa: "Definição do Tema", colecao: "Inverno 26", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-27", dataFim: "2026-01-31", progresso: 100 },
-  { id: "4", tarefa: "Pesquisa de tendências", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", dataInicio: "2026-02-03", dataFim: "2026-02-07", progresso: 100 },
-  { id: "5", tarefa: "Campanha - Pré Produção", colecao: "Inverno 25", responsavel: "Criação", status: "CONCLUÍDO", dataInicio: "2026-01-27", dataFim: "2026-02-14", progresso: 100 },
-  { id: "6", tarefa: "Campanha - Captação", colecao: "Inverno 25", responsavel: "Marketing", status: "CONCLUÍDO", dataInicio: "2026-02-17", dataFim: "2026-02-21", progresso: 100 },
-  { id: "7", tarefa: "Desenvolvimento de Aviamentos", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", dataInicio: "2026-03-10", dataFim: "2026-03-14", progresso: 100 },
-  { id: "8", tarefa: "Desenvolvimento fichas técnicas", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", dataInicio: "2026-02-03", dataFim: "2026-03-07", progresso: 100 },
-  { id: "9", tarefa: "Planejamento Criativo", colecao: "Collab Gaia", responsavel: "Criação", status: "EM ANDAMENTO", dataInicio: "2026-03-17", dataFim: "2026-03-21", progresso: 80 },
-  { id: "10", tarefa: "Preparação lançamento", colecao: "Collab Gaia", responsavel: "Marketing", status: "EM ANDAMENTO", dataInicio: "2026-03-10", dataFim: "2026-03-14", progresso: 70 },
-  { id: "11", tarefa: "Desenvolvimento aviamentos", colecao: "Inverno 27", responsavel: "Produto", status: "EM ANDAMENTO", dataInicio: "2026-03-24", dataFim: "2026-03-28", progresso: 75 },
-  { id: "12", tarefa: "Recebimento desenvolv.", colecao: "Inverno 27", responsavel: "Produto", status: "EM ANDAMENTO", dataInicio: "2026-03-31", dataFim: "2026-04-04", progresso: 60 },
-  { id: "13", tarefa: "Cadastro e compra", colecao: "Inverno 27", responsavel: "Compras", status: "PENDENTE", dataInicio: "2026-04-07", dataFim: "2026-04-11", progresso: 20 },
-  { id: "14", tarefa: "Lançamento coleção", colecao: "Collab Gaia", responsavel: "Marketing", status: "PENDENTE", dataInicio: "2026-04-14", dataFim: "2026-04-18", progresso: 0 },
-  { id: "15", tarefa: "Liberação mostruário", colecao: "Inverno 27", responsavel: "Produto", status: "PENDENTE", dataInicio: "2026-04-21", dataFim: "2026-04-25", progresso: 0 },
+  { id: "1", tarefa: "Campanha - Planejamento Inicial", colecao: "Inverno 25 / Raw", responsavel: "Criação", status: "CONCLUÍDO", semanaInicio: 0, semanaFim: 0 },
+  { id: "2", tarefa: "Pesquisa de tendências e comportamento", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", semanaInicio: 0, semanaFim: 0 },
+  { id: "3", tarefa: "Definição do Tema", colecao: "Inverno 26", responsavel: "Criação", status: "CONCLUÍDO", semanaInicio: 1, semanaFim: 1 },
+  { id: "4", tarefa: "Acompanhamento estamparia mostruário", colecao: "Fluvial", responsavel: "Produto / Criação", status: "CONCLUÍDO", semanaInicio: 1, semanaFim: 1 },
+  { id: "5", tarefa: "Campanha - Pré Produção", colecao: "Inverno 25 / Raw", responsavel: "Criação", status: "CONCLUÍDO", semanaInicio: 1, semanaFim: 3 },
+  { id: "6", tarefa: "Pesquisa de tendências", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", semanaInicio: 2, semanaFim: 2 },
+  { id: "7", tarefa: "Definição de bases já disponíveis", colecao: "Inverno 26", responsavel: "Produto", status: "CONCLUÍDO", semanaInicio: 2, semanaFim: 2 },
+  { id: "8", tarefa: "Campanha - Captação", colecao: "Inverno 25 / Raw", responsavel: "Marketing / Criação", status: "CONCLUÍDO", semanaInicio: 4, semanaFim: 4 },
+  { id: "9", tarefa: "Apresentação do Moodboard, Cartela de Cores e Aviamentos", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 6, semanaFim: 6 },
+  { id: "10", tarefa: "Desenvolvimento de Aviamentos", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 6, semanaFim: 6 },
+  { id: "11", tarefa: "Campanha - Pós produção e entrega do material", colecao: "Aukai", responsavel: "", status: "CONCLUÍDO", semanaInicio: 6, semanaFim: 6 },
+  { id: "12", tarefa: "Início pesquisa estampas", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 7, semanaFim: 7 },
+  { id: "13", tarefa: "Preparação para lançamento", colecao: "Aukai", responsavel: "", status: "CONCLUÍDO", semanaInicio: 7, semanaFim: 7 },
+  { id: "14", tarefa: "Recebimento do mostruário", colecao: "Fluvial", responsavel: "", status: "CONCLUÍDO", semanaInicio: 8, semanaFim: 8 },
+  { id: "15", tarefa: "Campanha - Pré produção lookbook", colecao: "Fluvial", responsavel: "", status: "CONCLUÍDO", semanaInicio: 8, semanaFim: 8 },
+  { id: "16", tarefa: "Lançamento de coleção", colecao: "Aukai", responsavel: "", status: "CONCLUÍDO", semanaInicio: 8, semanaFim: 8 },
+  { id: "17", tarefa: "Campanha - Pós produção e entrega do material", colecao: "Inverno 25 / Raw", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "18", tarefa: "Campanha - Captação estúdio", colecao: "Fluvial", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "19", tarefa: "Desenvolvimento estampas e colorações", colecao: "Collab Pan", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "20", tarefa: "Apresentação de briefings das estampas", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 7, semanaFim: 9 },
+  { id: "21", tarefa: "Desenvolvimento de fichas técnicas - produtos diferenciados", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 2, semanaFim: 10 },
+  { id: "22", tarefa: "Passar desenvolvimento - produtos diferenciados", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 8, semanaFim: 8 },
+  { id: "23", tarefa: "Impressão Catálogo e montagem showroom", colecao: "Fluvial", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "24", tarefa: "Liberação de produção - Mostruário", colecao: "Fluvial", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "25", tarefa: "Recebimento e envio para fornecedores dos tecidos de pilotagem", colecao: "Inverno 26", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "26", tarefa: "Campanha - Planejamento Inicial", colecao: "Collab Pan", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
+  { id: "27", tarefa: "Campanha - Planejamento Criativo", colecao: "Collab Pan", responsavel: "", status: "CONCLUÍDO", semanaInicio: 9, semanaFim: 9 },
 ];
 
 export default function CalendarioView() {
   const [tarefas, setTarefas] = useState<TarefaCalendario[]>(CALENDARIO_DATA);
-  const [mesAtual, setMesAtual] = useState(new Date(2026, 2)); // Março 2026
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<TarefaCalendario>>({
-    tarefa: "",
-    colecao: "",
-    responsavel: "",
-    status: "PENDENTE",
-    dataInicio: "",
-    dataFim: "",
-    progresso: 0,
-  });
+  const [filterColecao, setFilterColecao] = useState("");
+  const [filterResponsavel, setFilterResponsavel] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   const colecoes = useMemo(() => Array.from(new Set(tarefas.map(t => t.colecao).filter(Boolean))).sort(), [tarefas]);
   const responsaveis = useMemo(() => Array.from(new Set(tarefas.map(t => t.responsavel).filter(Boolean))).sort(), [tarefas]);
 
-  // Gera dias do calendário
-  const diasCalendario = useMemo(() => {
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const primeiroDia = new Date(ano, mes, 1);
-    const ultimoDia = new Date(ano, mes + 1, 0);
-    const diasDaSemanaInicio = primeiroDia.getDay();
+  const filtered = useMemo(() => {
+    return tarefas.filter(t =>
+      (!filterColecao || t.colecao === filterColecao) &&
+      (!filterResponsavel || t.responsavel === filterResponsavel) &&
+      (!filterStatus || t.status === filterStatus)
+    );
+  }, [tarefas, filterColecao, filterResponsavel, filterStatus]);
 
-    const dias: (number | null)[] = [];
-    for (let i = 0; i < diasDaSemanaInicio; i++) dias.push(null);
-    for (let i = 1; i <= ultimoDia.getDate(); i++) dias.push(i);
-    return dias;
-  }, [mesAtual]);
-
-  const getTarefasDoDia = (dia: number) => {
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const dataStr = new Date(ano, mes, dia).toISOString().split("T")[0];
-    return tarefas.filter(t => {
-      const inicio = new Date(t.dataInicio);
-      const fim = new Date(t.dataFim);
-      const data = new Date(dataStr);
-      return data >= inicio && data <= fim;
-    });
-  };
-
-  const handleSave = () => {
-    if (!formData.tarefa || !formData.dataInicio || !formData.dataFim) {
-      alert("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    if (editingId) {
-      setTarefas(prev => prev.map(t => t.id === editingId ? { ...t, ...formData } as TarefaCalendario : t));
-    } else {
-      const newId = String(Math.max(...tarefas.map(t => parseInt(t.id)), 0) + 1);
-      setTarefas(prev => [...prev, { ...formData, id: newId } as TarefaCalendario]);
-    }
-    setShowModal(false);
-    setFormData({ tarefa: "", colecao: "", responsavel: "", status: "PENDENTE", dataInicio: "", dataFim: "", progresso: 0 });
-    setEditingId(null);
-  };
-
-  const handleCopy = (tarefa: TarefaCalendario) => {
-    setEditingId(null);
-    setFormData({
-      tarefa: tarefa.tarefa,
-      colecao: tarefa.colecao,
-      responsavel: tarefa.responsavel,
-      status: "PENDENTE",
-      dataInicio: "",
-      dataFim: "",
-      progresso: 0,
-      descricao: tarefa.descricao,
-    });
-    setShowModal(true);
+  const toggleStatus = (id: string) => {
+    setTarefas(prev =>
+      prev.map(t => {
+        if (t.id === id) {
+          const statusOrder = { "PENDENTE": "EM ANDAMENTO", "EM ANDAMENTO": "CONCLUÍDO", "CONCLUÍDO": "PENDENTE" };
+          return { ...t, status: statusOrder[t.status] as any };
+        }
+        return t;
+      })
+    );
   };
 
   const getStatusColor = (status: string) => {
-    if (status === "CONCLUÍDO") return "bg-[#dcf3dc] border-[#4caf50] text-[#2e7d32]";
-    if (status === "EM ANDAMENTO") return "bg-[#fff9c4] border-[#fbc02d] text-[#f57f17]";
-    return "bg-[#f5f5f5] border-[#9e9e9e] text-[#616161]";
+    if (status === "CONCLUÍDO") return "bg-[#4caf50] text-white";
+    if (status === "EM ANDAMENTO") return "bg-[#fbc02d] text-[#000]";
+    return "bg-[#9e9e9e] text-white";
   };
 
-  const diasSemana = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
-  const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const getStatusBg = (status: string) => {
+    if (status === "CONCLUÍDO") return "bg-[#e8f5e9]";
+    if (status === "EM ANDAMENTO") return "bg-[#fffde7]";
+    return "bg-[#f5f5f5]";
+  };
 
   return (
-    <div className="flex flex-col gap-5 min-h-[600px]">
-      <div className="apple-card p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--label-primary)]">
-              {meses[mesAtual.getMonth()]} {mesAtual.getFullYear()}
-            </h2>
+    <div className="flex flex-col gap-5 min-h-screen pb-10">
+      <div className="apple-card p-5">
+        <h2 className="text-[18px] font-bold tracking-[-0.02em] mb-5">Calendário 2026 - Gantt Chart</h2>
+
+        {/* Filtros */}
+        <div className="flex flex-wrap gap-3 mb-5">
+          <div className="flex flex-col gap-1">
+            <label className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)]">Coleção</label>
+            <select value={filterColecao} onChange={e => setFilterColecao(e.target.value)} className="apple-input w-48">
+              <option value="">Todas ({colecoes.length})</option>
+              {colecoes.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1))}
-              className="apple-btn-secondary px-4 py-2 text-[13px]"
-            >
-              ← Anterior
-            </button>
-            <button
-              onClick={() => setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1))}
-              className="apple-btn-secondary px-4 py-2 text-[13px]"
-            >
-              Próximo →
-            </button>
-            <button
-              onClick={() => {
-                setEditingId(null);
-                setFormData({ tarefa: "", colecao: "", responsavel: "", status: "PENDENTE", dataInicio: "", dataFim: "", progresso: 0 });
-                setShowModal(true);
-              }}
-              className="apple-btn-primary px-4 py-2 text-[13px]"
-            >
-              + Nova
-            </button>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)]">Responsável</label>
+            <select value={filterResponsavel} onChange={e => setFilterResponsavel(e.target.value)} className="apple-input w-48">
+              <option value="">Todos ({responsaveis.length})</option>
+              {responsaveis.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)]">Status</label>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="apple-input w-48">
+              <option value="">Todos</option>
+              <option value="PENDENTE">⏳ Pendente</option>
+              <option value="EM ANDAMENTO">⚙ Em andamento</option>
+              <option value="CONCLUÍDO">✓ Concluído</option>
+            </select>
           </div>
         </div>
 
-        {/* Grid de dias da semana */}
-        <div className="grid grid-cols-7 gap-2 mb-2">
-          {diasSemana.map(dia => (
-            <div key={dia} className="text-center py-3 font-semibold text-[12px] text-[var(--label-secondary)] uppercase tracking-[0.5px]">
-              {dia}
-            </div>
-          ))}
-        </div>
+        {/* Gantt Chart */}
+        <div className="border border-[var(--separator)] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              {/* Header com semanas */}
+              <thead>
+                <tr className="bg-[var(--surface-1)] border-b border-[var(--separator)]">
+                  <th className="px-4 py-3 text-left font-semibold text-[12px] w-64 sticky left-0 bg-[var(--surface-1)] z-10">
+                    Tarefa
+                  </th>
+                  {SEMANAS.slice(0, 20).map((semana, idx) => (
+                    <th key={idx} className="px-2 py-3 text-center font-semibold text-[11px] min-w-[100px] border-r border-[var(--separator)] whitespace-nowrap">
+                      {semana}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
 
-        {/* Grid do calendário */}
-        <div className="grid grid-cols-7 gap-2 bg-[var(--surface-1)] p-2 rounded-lg border border-[var(--separator)]">
-          {diasCalendario.map((dia, idx) => (
-            <div
-              key={idx}
-              className={`min-h-[140px] rounded-lg border-2 p-2 ${
-                dia ? "border-[var(--separator)] bg-white" : "border-transparent bg-[var(--surface-1)]"
-              }`}
-            >
-              {dia && (
-                <>
-                  <div className="text-[14px] font-bold text-[var(--label-primary)] mb-2">
-                    {dia}
-                  </div>
-
-                  <div className="space-y-1 max-h-[100px] overflow-y-auto">
-                    {getTarefasDoDia(dia).map(tarefa => (
-                      <div
-                        key={tarefa.id}
-                        className={`text-[10px] p-1.5 rounded border-l-4 cursor-pointer hover:opacity-80 group ${getStatusColor(tarefa.status)}`}
-                        title={tarefa.tarefa}
-                        onClick={() => {
-                          setEditingId(tarefa.id);
-                          setFormData(tarefa);
-                          setShowModal(true);
-                        }}
-                      >
-                        <div className="font-semibold line-clamp-2">{tarefa.tarefa}</div>
-                        <div className="text-[9px] opacity-70 mt-0.5">{tarefa.colecao}</div>
-                        {tarefa.progresso > 0 && (
-                          <div className="w-full h-0.5 bg-black/10 rounded-full mt-1 overflow-hidden">
-                            <div className="h-full bg-black/40" style={{ width: `${tarefa.progresso}%` }} />
+              {/* Linhas de tarefas */}
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={21} className="px-4 py-8 text-center text-[var(--label-tertiary)] text-[13px]">
+                      Nenhuma tarefa encontrada para os filtros selecionados
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map(tarefa => (
+                    <tr key={tarefa.id} className="border-b border-[var(--separator)] hover:bg-[var(--bg-secondary)] transition-colors">
+                      <td className="px-4 py-3 sticky left-0 bg-white z-10 min-w-0">
+                        <div className="font-semibold text-[12px] text-[var(--label-primary)] truncate">
+                          {tarefa.tarefa}
+                        </div>
+                        <div className="text-[11px] text-[var(--label-secondary)] truncate">
+                          {tarefa.colecao}
+                        </div>
+                        {tarefa.responsavel && (
+                          <div className="text-[10px] text-[var(--label-tertiary)]">
+                            {tarefa.responsavel}
                           </div>
                         )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+                        <div className="mt-1">
+                          <button
+                            onClick={() => toggleStatus(tarefa.id)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${getStatusColor(tarefa.status)}`}
+                            title="Clique para mudar status"
+                          >
+                            {tarefa.status}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Células das semanas */}
+                      {SEMANAS.slice(0, 20).map((_, semanaIdx) => {
+                        const isInRange = semanaIdx >= tarefa.semanaInicio && semanaIdx <= tarefa.semanaFim;
+                        const isStart = semanaIdx === tarefa.semanaInicio;
+                        const isEnd = semanaIdx === tarefa.semanaFim;
+                        const isOnly = isStart && isEnd;
+
+                        return (
+                          <td
+                            key={semanaIdx}
+                            className={`px-2 py-3 text-center border-r border-[var(--separator)] min-w-[100px] ${
+                              isInRange ? getStatusBg(tarefa.status) : ""
+                            }`}
+                          >
+                            {isInRange && (
+                              <div
+                                className={`py-1 px-1 rounded text-[10px] font-semibold text-center ${
+                                  isOnly
+                                    ? `${getStatusColor(tarefa.status)} rounded`
+                                    : isStart
+                                    ? `${getStatusColor(tarefa.status)} rounded-l`
+                                    : isEnd
+                                    ? `${getStatusColor(tarefa.status)} rounded-r`
+                                    : `${getStatusColor(tarefa.status)}`
+                                }`}
+                                style={
+                                  !isOnly
+                                    ? {
+                                        borderRadius: isStart ? "6px 0 0 6px" : isEnd ? "0 6px 6px 0" : "0",
+                                        marginLeft: isStart ? "0" : "-8px",
+                                        marginRight: isEnd ? "0" : "-8px",
+                                        paddingLeft: isStart ? "8px" : "0",
+                                        paddingRight: isEnd ? "8px" : "0",
+                                        width: "calc(100% + 16px)",
+                                      }
+                                    : {}
+                                }
+                              >
+                                {isOnly || isStart ? "●" : ""}
+                                {isStart && !isEnd && "→"}
+                                {isEnd && !isStart && "→"}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="mt-6 text-[12px] text-[var(--label-tertiary)]">
-          Total: <span className="font-semibold">{tarefas.length}</span> tarefas
+        <div className="mt-4 text-[12px] text-[var(--label-tertiary)]">
+          Mostrando <span className="font-semibold">{filtered.length}</span> de <span className="font-semibold">{tarefas.length}</span> tarefas
         </div>
-      </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl border border-[var(--separator)] shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[var(--separator)]">
-              <h3 className="text-[16px] font-bold">
-                {editingId ? "Editar Tarefa" : "Nova Tarefa"}
-              </h3>
+        {/* Legenda */}
+        <div className="mt-6 p-4 bg-[var(--surface-1)] rounded-lg border border-[var(--separator)]">
+          <div className="text-[12px] font-semibold text-[var(--label-secondary)] mb-3 uppercase">Legenda</div>
+          <div className="flex flex-wrap gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-[#4caf50]"></div>
+              <span className="text-[12px]">Concluído</span>
             </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Tarefa *</label>
-                <input
-                  type="text"
-                  value={formData.tarefa || ""}
-                  onChange={e => setFormData({ ...formData, tarefa: e.target.value })}
-                  className="apple-input w-full mt-1"
-                  placeholder="Nome da tarefa"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Coleção</label>
-                  <input
-                    type="text"
-                    list="colecoes-list"
-                    value={formData.colecao || ""}
-                    onChange={e => setFormData({ ...formData, colecao: e.target.value })}
-                    className="apple-input w-full mt-1 text-[13px]"
-                    placeholder="Ex: Inverno 27"
-                  />
-                  <datalist id="colecoes-list">
-                    {colecoes.map(c => <option key={c} value={c} />)}
-                  </datalist>
-                </div>
-
-                <div>
-                  <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Responsável</label>
-                  <input
-                    type="text"
-                    list="responsaveis-list"
-                    value={formData.responsavel || ""}
-                    onChange={e => setFormData({ ...formData, responsavel: e.target.value })}
-                    className="apple-input w-full mt-1 text-[13px]"
-                    placeholder="Ex: Produto"
-                  />
-                  <datalist id="responsaveis-list">
-                    {responsaveis.map(r => <option key={r} value={r} />)}
-                  </datalist>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Data Início *</label>
-                  <input
-                    type="date"
-                    value={formData.dataInicio || ""}
-                    onChange={e => setFormData({ ...formData, dataInicio: e.target.value })}
-                    className="apple-input w-full mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Data Fim *</label>
-                  <input
-                    type="date"
-                    value={formData.dataFim || ""}
-                    onChange={e => setFormData({ ...formData, dataFim: e.target.value })}
-                    className="apple-input w-full mt-1"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Status</label>
-                  <select
-                    value={formData.status || "PENDENTE"}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                    className="apple-input w-full mt-1 text-[13px]"
-                  >
-                    <option value="PENDENTE">Pendente</option>
-                    <option value="EM ANDAMENTO">Em andamento</option>
-                    <option value="CONCLUÍDO">Concluído</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Progresso %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.progresso || 0}
-                    onChange={e => setFormData({ ...formData, progresso: parseInt(e.target.value) || 0 })}
-                    className="apple-input w-full mt-1"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[12px] font-semibold text-[var(--label-secondary)] uppercase">Descrição</label>
-                <textarea
-                  value={formData.descricao || ""}
-                  onChange={e => setFormData({ ...formData, descricao: e.target.value })}
-                  className="apple-input w-full mt-1 text-[13px] resize-none"
-                  rows={3}
-                  placeholder="Detalhes da tarefa"
-                />
-              </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-[#fbc02d]"></div>
+              <span className="text-[12px]">Em andamento</span>
             </div>
-
-            <div className="p-6 border-t border-[var(--separator)] flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="apple-btn-secondary px-4 py-2 text-[13px] flex-1"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                className="apple-btn-primary px-4 py-2 text-[13px] flex-1"
-              >
-                {editingId ? "Atualizar" : "Criar"}
-              </button>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-[#9e9e9e]"></div>
+              <span className="text-[12px]">Pendente</span>
+            </div>
+            <div className="text-[12px] text-[var(--label-secondary)]">
+              • Clique no status para mudar
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
