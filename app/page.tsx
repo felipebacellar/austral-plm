@@ -155,7 +155,7 @@ export default function Home() {
           ))}
           {/* Grupo Estilo */}
           <div className="plm-nav-label" style={{ marginTop: 8 }}>{!sidebarCollapsed && "Estilo"}</div>
-          {TABS.filter(t => t.id !== "dashboard").filter(t => {
+          {TABS.filter(t => t.id !== "dashboard" && t.id !== "calendario").filter(t => {
             if (t.id === "cad")     return canSection("can_cadastros");
             if (t.id === "medidas") return canSection("can_medidas");
             return true;
