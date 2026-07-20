@@ -153,6 +153,13 @@ export default function Home() {
               {!sidebarCollapsed && <span>{t.label}</span>}
             </button>
           ))}
+          {/* Calendário */}
+          {TABS.filter(t => t.id === "calendario").map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setMobileOpen(false); }} className={`plm-nav-item ${tab === t.id ? "active" : ""}`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={t.icon} /></svg>
+              {!sidebarCollapsed && <span>{t.label}</span>}
+            </button>
+          ))}
           {/* Grupo Estilo */}
           <div className="plm-nav-label" style={{ marginTop: 8 }}>{!sidebarCollapsed && "Estilo"}</div>
           {TABS.filter(t => t.id !== "dashboard" && t.id !== "calendario").filter(t => {
