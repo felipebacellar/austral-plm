@@ -8,36 +8,11 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { getColecaoColor } from "@/lib/collection-colors";
+import { parseISO, addDays, startOfWeekMonday, fmtDiaMes } from "@/lib/calendario-utils";
+import CalendarioResumoView from "./CalendarioResumoView";
 
 const STATUS_OPTIONS = ["PENDENTE", "EM ANDAMENTO", "CONCLUÍDO"] as const;
 const STATUS_ORDER: Record<string, string> = { PENDENTE: "EM ANDAMENTO", "EM ANDAMENTO": "CONCLUÍDO", CONCLUÍDO: "PENDENTE" };
-
-function parseISO(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-function toISO(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function fmtDiaMes(d: Date): string {
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-function startOfWeekMonday(d: Date): Date {
-  const r = new Date(d);
-  const day = r.getDay(); // 0=Dom..6=Sab
-  const diff = day === 0 ? -6 : 1 - day;
-  r.setDate(r.getDate() + diff);
-  r.setHours(0, 0, 0, 0);
-  return r;
-}
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
 
 type Semana = { start: Date; end: Date; label: string };
 
@@ -47,6 +22,7 @@ const emptyForm = {
 };
 
 export default function CalendarioView() {
+  const [subTab, setSubTab] = useState<"gantt" | "resumo">("gantt");
   const [tarefas, setTarefas] = useState<CalendarioTarefa[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterColecao, setFilterColecao] = useState("");
@@ -63,6 +39,27 @@ export default function CalendarioView() {
   const { confirm, Dialog: ConfirmDialogEl } = useConfirm();
   const todayColRef = useRef<HTMLTableCellElement | null>(null);
   const scrolledRef = useRef(false);
+
+  // Scroll horizontal duplicado (topo + fundo) sincronizado — evita ter que
+  // descer até o fim da tabela (que pode ter centenas de linhas) só para
+  // rolar a grade de semanas.
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const bottomScrollRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const syncingRef = useRef(false);
+
+  const onTopScroll = () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (bottomScrollRef.current && topScrollRef.current) bottomScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    syncingRef.current = false;
+  };
+  const onBottomScroll = () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (topScrollRef.current && bottomScrollRef.current) topScrollRef.current.scrollLeft = bottomScrollRef.current.scrollLeft;
+    syncingRef.current = false;
+  };
 
   const load = async () => {
     setLoading(true);
@@ -119,6 +116,18 @@ export default function CalendarioView() {
       scrolledRef.current = true;
     }
   }, [semanas]);
+
+  // Mede a largura real da tabela para a barra de rolagem "fantasma" do topo
+  // ter o mesmo tamanho da barra de baixo.
+  useEffect(() => {
+    const el = bottomScrollRef.current;
+    if (!el) return;
+    const measure = () => setTableScrollWidth(el.scrollWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [semanas, filtered]);
 
   const weekRangeFor = (t: CalendarioTarefa) => {
     const ini = parseISO(t.data_inicio);
@@ -204,7 +213,7 @@ export default function CalendarioView() {
       <div className="apple-card p-5">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
-            <h2 className="text-[18px] font-bold tracking-[-0.02em]">Calendário - Gantt Chart</h2>
+            <h2 className="text-[18px] font-bold tracking-[-0.02em]">Calendário</h2>
             <div className="text-[12px] text-[var(--label-tertiary)] mt-1">
               {tarefas.length} tarefa{tarefas.length !== 1 ? "s" : ""} cadastrada{tarefas.length !== 1 ? "s" : ""}
             </div>
@@ -212,6 +221,28 @@ export default function CalendarioView() {
           <button onClick={openAdd} className="apple-btn-primary text-[13px]">+ Nova tarefa</button>
         </div>
 
+        {/* Sub-navegação: Gantt / Resumo */}
+        <div className="flex gap-1 mb-5 bg-[var(--surface-1)] rounded-lg p-1 w-fit border border-[var(--separator)]">
+          <button
+            onClick={() => setSubTab("gantt")}
+            className="px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors"
+            style={subTab === "gantt" ? { background: "var(--system-blue)", color: "white" } : { color: "var(--label-secondary)" }}
+          >
+            Gantt
+          </button>
+          <button
+            onClick={() => setSubTab("resumo")}
+            className="px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors"
+            style={subTab === "resumo" ? { background: "var(--system-blue)", color: "white" } : { color: "var(--label-secondary)" }}
+          >
+            Resumo
+          </button>
+        </div>
+
+        {subTab === "resumo" ? (
+          <CalendarioResumoView tarefas={tarefas} loading={loading} onEditTask={openEdit} />
+        ) : (
+        <>
         {/* Filtros */}
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="flex flex-col gap-1">
@@ -247,7 +278,13 @@ export default function CalendarioView() {
           <>
             {/* Gantt Chart */}
             <div className="border border-[var(--separator)] rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
+              {/* Scrollbar "fantasma" no topo — sincronizada com a de baixo, para não
+                  precisar descer até o fim de uma tabela com centenas de linhas só
+                  para rolar horizontalmente. */}
+              <div ref={topScrollRef} onScroll={onTopScroll} style={{ overflowX: "auto", overflowY: "hidden" }}>
+                <div style={{ width: tableScrollWidth, height: 1 }} />
+              </div>
+              <div ref={bottomScrollRef} onScroll={onBottomScroll} className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[var(--surface-1)] border-b border-[var(--separator)]">
@@ -380,6 +417,8 @@ export default function CalendarioView() {
               </div>
             </div>
           </>
+        )}
+        </>
         )}
       </div>
 
