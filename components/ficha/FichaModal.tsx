@@ -8,7 +8,7 @@ import { classificarNCM } from "@/lib/ncm";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
 
-type Props = { row: any; onClose: () => void; onSave: (r: any) => void };
+type Props = { row: any; onClose: () => void; onSave: (r: any, variantesChanged?: boolean) => void };
 
 export default function FichaModal({ row, onClose, onSave }: Props) {
   const [tab, setTab] = useState<"ficha" | "estamparia" | "liberacao" | "graduacao">("ficha");
@@ -51,6 +51,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const autoSaveTimer = useRef<any>(null);
   const isLoaded = useRef(false);
   const saveRef = useRef<(confirmed?: boolean) => Promise<void>>();
+  const lastCoresRef = useRef<string>("");
   const { confirm } = useConfirm();
 
   const [pts, setPts] = useState<any[]>([]);
@@ -231,7 +232,13 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       if (!newId) throw new Error("Falha ao salvar a ficha técnica.");
       setFichaId(newId);
       if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
-      onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } });
+      // Variantes só derivam das cores dos tecidos — evita recarregar a lista
+      // inteira de variantes do sistema a cada auto-save (a cada 1.5s de edição)
+      // quando o que mudou foi só, por exemplo, uma observação ou o NCM.
+      const coresSignature = JSON.stringify(tec.map((t: any) => t.cores || []));
+      const variantesChanged = coresSignature !== lastCoresRef.current;
+      lastCoresRef.current = coresSignature;
+      onSave({ ...row, ...(autoStatus ? { status: autoStatus } : {}), ficha: { ...fichaData, id: newId || fichaId } }, variantesChanged);
       setAutoSaveStatus("saved");
       setTimeout(() => setAutoSaveStatus("idle"), 3500);
     } catch {

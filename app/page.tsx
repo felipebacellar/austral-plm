@@ -132,11 +132,15 @@ export default function Home() {
     };
   }, [user]);
 
-  const handleFichaSave = async (updatedRow: any) => {
+  const handleFichaSave = async (updatedRow: any, variantesChanged = true) => {
     setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
     setFichaRow(updatedRow);
-    const vars = await fetchAllVariantes();
-    setVariantes(vars);
+    // Variantes só derivam das cores dos tecidos — evita um fetch completo do
+    // sistema a cada auto-save quando o que mudou não afeta variantes.
+    if (variantesChanged) {
+      const vars = await fetchAllVariantes();
+      setVariantes(vars);
+    }
   };
 
   if (authLoading) return (
