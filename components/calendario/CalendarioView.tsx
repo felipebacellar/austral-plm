@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { getColecaoColor } from "@/lib/collection-colors";
 import { parseISO, addDays, startOfWeekMonday, fmtDiaMes } from "@/lib/calendario-utils";
 import CalendarioResumoView from "./CalendarioResumoView";
+import CalendarioControleView from "./CalendarioControleView";
 
 const STATUS_OPTIONS = ["PENDENTE", "EM ANDAMENTO", "CONCLUÍDO"] as const;
 const STATUS_ORDER: Record<string, string> = { PENDENTE: "EM ANDAMENTO", "EM ANDAMENTO": "CONCLUÍDO", CONCLUÍDO: "PENDENTE" };
@@ -22,7 +23,7 @@ const emptyForm = {
 };
 
 export default function CalendarioView() {
-  const [subTab, setSubTab] = useState<"gantt" | "resumo">("gantt");
+  const [subTab, setSubTab] = useState<"gantt" | "resumo" | "controle">("gantt");
   const [tarefas, setTarefas] = useState<CalendarioTarefa[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterColecao, setFilterColecao] = useState("");
@@ -237,10 +238,19 @@ export default function CalendarioView() {
           >
             Resumo
           </button>
+          <button
+            onClick={() => setSubTab("controle")}
+            className="px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors"
+            style={subTab === "controle" ? { background: "var(--system-blue)", color: "white" } : { color: "var(--label-secondary)" }}
+          >
+            Controle
+          </button>
         </div>
 
         {subTab === "resumo" ? (
           <CalendarioResumoView tarefas={tarefas} loading={loading} onEditTask={openEdit} />
+        ) : subTab === "controle" ? (
+          <CalendarioControleView tarefas={tarefas} loading={loading} onEditTask={openEdit} />
         ) : (
         <>
         {/* Filtros */}
