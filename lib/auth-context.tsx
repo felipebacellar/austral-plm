@@ -8,6 +8,7 @@ type AuthCtx = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthCtx>({
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthCtx>({
   loading: true,
   signIn: async () => null,
   signOut: async () => {},
+  resetPassword: async () => null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -45,8 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await getSupabase().auth.signOut();
   };
 
+  const resetPassword = async (email: string): Promise<string | null> => {
+    const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}`,
+    });
+    return error ? error.message : null;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
