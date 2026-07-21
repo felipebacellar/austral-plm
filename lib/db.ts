@@ -491,18 +491,38 @@ export async function upsertControleFluxo(produto_ref: string, field: string, va
 }
 
 // ══ CALENDÁRIO ══
-export async function fetchCalendarioStatus(): Promise<Record<string, string>> {
-  const { data, error } = await sb().from("calendario_status").select("tarefa_id, status");
-  if (error) { console.error("fetchCalendarioStatus:", error); return {}; }
-  const m: Record<string, string> = {};
-  (data || []).forEach((r: any) => { m[r.tarefa_id] = r.status; });
-  return m;
+export type CalendarioTarefa = {
+  id: number;
+  tarefa: string;
+  colecao: string;
+  responsavel: string;
+  status: string;
+  data_inicio: string;
+  data_fim: string;
+  descricao: string;
+};
+
+export async function fetchCalendarioTarefas(): Promise<CalendarioTarefa[]> {
+  const { data, error } = await sb().from("calendario_tarefas").select("*").order("data_inicio");
+  if (error) { console.error("fetchCalendarioTarefas:", error); return []; }
+  return (data || []) as CalendarioTarefa[];
 }
-export async function upsertCalendarioStatus(tarefaId: string, status: string): Promise<string | null> {
-  const { error } = await sb()
-    .from("calendario_status")
-    .upsert({ tarefa_id: tarefaId, status, updated_at: new Date().toISOString() }, { onConflict: "tarefa_id" });
-  if (error) { console.error("upsertCalendarioStatus:", error); return error.message || "Erro ao salvar"; }
+
+export async function createCalendarioTarefa(t: Omit<CalendarioTarefa, "id">): Promise<{ data: CalendarioTarefa | null; error: string | null }> {
+  const { data, error } = await sb().from("calendario_tarefas").insert(t).select().single();
+  if (error) { console.error("createCalendarioTarefa:", error); return { data: null, error: error.message || "Erro ao criar tarefa" }; }
+  return { data: data as CalendarioTarefa, error: null };
+}
+
+export async function updateCalendarioTarefa(id: number, fields: Partial<Omit<CalendarioTarefa, "id">>): Promise<string | null> {
+  const { error } = await sb().from("calendario_tarefas").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) { console.error("updateCalendarioTarefa:", error); return error.message || "Erro ao salvar"; }
+  return null;
+}
+
+export async function deleteCalendarioTarefa(id: number): Promise<string | null> {
+  const { error } = await sb().from("calendario_tarefas").delete().eq("id", id);
+  if (error) { console.error("deleteCalendarioTarefa:", error); return error.message || "Erro ao excluir"; }
   return null;
 }
 
