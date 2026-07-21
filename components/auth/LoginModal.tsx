@@ -19,7 +19,14 @@ export default function LoginModal() {
     setLoading(true);
     const err = await signIn(email.trim(), password);
     setLoading(false);
-    if (err) setError("Email ou senha incorretos.");
+    if (err) {
+      // Erros de rede/infra (ex.: CSP bloqueando, timeout, Supabase fora do ar) não são
+      // "senha incorreta" — mostrar mensagem genérica só mascara o problema real.
+      const isNetworkOrServerError = /failed to fetch|network|timeout|fetch/i.test(err);
+      setError(isNetworkOrServerError
+        ? "Erro de conexão. Verifique sua internet e tente novamente em instantes."
+        : "Email ou senha incorretos.");
+    }
   };
 
   const handleMagicLink = async (e: FormEvent) => {

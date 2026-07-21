@@ -98,7 +98,9 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
   const del = async (u: UserRow) => {
     if (u.id === me?.id) { alert("Você não pode excluir sua própria conta."); return; }
     if (!confirm(`Excluir o usuário ${u.email}?`)) return;
-    await fetch(`/api/users/${u.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/users/${u.id}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error) { alert(json.error || "Erro ao excluir usuário."); return; }
     load();
   };
 
@@ -115,12 +117,14 @@ export default function UsersModal({ onClose }: { onClose: () => void }) {
     setSavingPerms(true);
     const body: any = { role: editRole };
     if (editRole !== "admin") body.permissions = editPerms;
-    await fetch(`/api/users/${permUser.id}`, {
+    const res = await fetch(`/api/users/${permUser.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    const json = await res.json().catch(() => ({}));
     setSavingPerms(false);
+    if (!res.ok || json.error) { alert(json.error || "Erro ao salvar permissões."); return; }
     setPermUser(null);
     load();
   };

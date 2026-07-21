@@ -6,6 +6,7 @@ import StatusPill from "@/components/ui/StatusPill";
 import { updateProdutoField, fetchVarianteCompras, upsertVarianteCompra } from "@/lib/db";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 import ScrollTable from "@/components/ui/ScrollTable";
+import { useToast } from "@/components/ui/Toast";
 
 // Colunas ESTILO
 const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"composicao",label:"Composição",w:160},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
@@ -70,19 +71,31 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
     return () => { active = false; };
   }, [compras]);
 
+  const { error: showError, Container: ToastContainer } = useToast();
+
   const updOrder = async (r: any, field: string, value: any) => {
     if (COMPRA_FIELDS.has(field)) {
       const key = `${r.id}:${r.cor}`;
+      const prevValue = vcMap[key]?.[field];
       // Optimistic update
       setVcMap(prev => ({
         ...prev,
         [key]: { ...(prev[key] ?? {}), [field]: value }
       }));
       // Persist
-      await upsertVarianteCompra(r.id, r.cor, field, value);
+      const err = await upsertVarianteCompra(r.id, r.cor, field, value);
+      if (err) {
+        showError(`Erro ao salvar: ${err}`);
+        setVcMap(prev => ({ ...prev, [key]: { ...(prev[key] ?? {}), [field]: prevValue } }));
+      }
     } else {
+      const prevRow = rows.find((row:any) => row.id === r.id);
       setRows?.((p:any[]) => p.map((row:any) => row.id===r.id ? {...row,[field]:value} : row));
-      await updateProdutoField(r.id, field, value);
+      const err = await updateProdutoField(r.id, field, value);
+      if (err) {
+        showError(`Erro ao salvar: ${err}`);
+        setRows?.((p:any[]) => p.map((row:any) => row.id === r.id && prevRow ? { ...row, [field]: prevRow[field] } : row));
+      }
     }
   };
 
@@ -176,7 +189,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
       });
     }
     return r;
-  }, [vr, fl, q, sort]);
+  }, [vr, fl, q, sort, variantesPorColecao]);
 
   const uv = (k: string): string[] => Array.from(new Set(vr.map(r => r[k]).filter(Boolean))).sort();
   const sf2 = (k: string, v: string) => setFl(p => { const n={...p}; if(v) n[k]=v; else delete n[k]; return n; });
@@ -229,6 +242,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
         </td>))}</tr>))}
         {filtered.length===0&&<tr><td colSpan={COLS.length} className="py-16 text-center text-[var(--label-tertiary)]">Nenhuma variante</td></tr>}
       </tbody></table></ScrollTable>
+      <ToastContainer />
     </div>
   );
 }

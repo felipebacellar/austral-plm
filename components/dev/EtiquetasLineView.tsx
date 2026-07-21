@@ -448,7 +448,24 @@ setTecidoCompMap(map);
   }), [rows, filters]);
 
   const activeCount = Object.values(filters).filter(v => v.length > 0).length;
-  useEffect(() => { setSelected(new Set(filtered.map(r => r.ref))); }, [filtered]);
+  const prevFilteredRefs = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const currentRefs = new Set(filtered.map(r => r.ref));
+    // Preserva desmarcações manuais: só entra pré-selecionada a referência que é
+    // nova no filtro atual; quem já estava visível mantém a escolha do usuário.
+    setSelected(prevSelected => {
+      const next = new Set<string>();
+      currentRefs.forEach(ref => {
+        if (prevFilteredRefs.current.has(ref)) {
+          if (prevSelected.has(ref)) next.add(ref);
+        } else {
+          next.add(ref);
+        }
+      });
+      return next;
+    });
+    prevFilteredRefs.current = currentRefs;
+  }, [filtered]);
 
   const toggleRef  = (ref: string) => setSelected(prev => { const n = new Set(prev); n.has(ref) ? n.delete(ref) : n.add(ref); return n; });
   const toggleAll  = () => setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(r => r.ref)));
@@ -602,7 +619,7 @@ setTecidoCompMap(map);
                   {page.map((item, idx) =>
                     item
                       ? <Etiqueta key={item.ref + si + idx} item={item} cores={variantes[item.ref] || []} />
-                      : <div key={"pad" + idx} style={{ width: "99.1mm", height: "57mm" }} />
+                      : <div key={"pad" + idx} style={{ width: "101.6mm", height: "50.8mm" }} />
                   )}
                 </div>
               );

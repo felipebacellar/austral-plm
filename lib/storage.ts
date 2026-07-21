@@ -48,10 +48,24 @@ export async function uploadImage(file: File, path: string): Promise<string | nu
   return data.publicUrl;
 }
 
-export async function deleteImage(url: string): Promise<void> {
+export async function deleteImage(url: string): Promise<string | null> {
   const supabase = getSupabase();
   const parts = url.split(`${BUCKET}/`);
-  if (parts.length < 2) return;
+  if (parts.length < 2) return null;
   const path = parts[1];
-  await supabase.storage.from(BUCKET).remove([path]);
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
+  if (error) { console.error("deleteImage:", error); return error.message || "Erro ao remover imagem"; }
+  return null;
+}
+
+// Remove todos os arquivos de uma "pasta" (prefixo) do bucket — usado ao excluir
+// um produto inteiro, para não deixar fotos órfãs acumulando no armazenamento.
+export async function deleteImagesByPrefix(prefix: string): Promise<void> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.storage.from(BUCKET).list(prefix);
+  if (error) { console.error("deleteImagesByPrefix list:", error); return; }
+  if (!data?.length) return;
+  const paths = data.map(f => `${prefix}/${f.name}`);
+  const { error: rmErr } = await supabase.storage.from(BUCKET).remove(paths);
+  if (rmErr) console.error("deleteImagesByPrefix remove:", rmErr);
 }

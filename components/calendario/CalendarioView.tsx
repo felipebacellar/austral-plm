@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { fetchCalendarioStatus, upsertCalendarioStatus } from "@/lib/db";
+import { useToast } from "@/components/ui/Toast";
 
 interface TarefaCalendario {
   id: string;
@@ -13,29 +15,25 @@ interface TarefaCalendario {
   descricao?: string;
 }
 
-// Semanas de 2026 (do arquivo original)
-const SEMANAS = [
-  "20/01 - 24/01",
-  "27/01 - 31/01",
-  "03/02 - 07/02",
-  "10/02 - 14/02",
-  "17/02 - 21/02",
-  "24/02 - 28/02",
-  "03/03 - 07/03",
-  "10/03 - 14/03",
-  "17/03 - 21/03",
-  "24/03 - 28/03",
-  "31/03 - 04/04",
-  "07/04 - 11/04",
-  "14/04 - 18/04",
-  "20/04 - 25/04",
-  "28/04 - 02/05",
-  "05/05 - 09/05",
-  "12/05 - 16/05",
-  "19/05 - 23/05",
-  "26/05 - 30/05",
-  "02/06 - 06/06",
-];
+// Semanas geradas dinamicamente a partir da mesma âncora original (20/01/2026,
+// uma terça-feira) — os índices semanaInicio/semanaFim das tarefas abaixo
+// continuam válidos, mas a grade agora cobre o ano inteiro em vez de parar
+// em junho, então o calendário nunca fica "preso" num período que já passou.
+const SEMANA_ANCHOR = new Date(2026, 0, 20); // 20/01/2026
+const TOTAL_SEMANAS = 52;
+function fmtDiaMes(d: Date) {
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function gerarSemanas(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    const inicio = new Date(SEMANA_ANCHOR);
+    inicio.setDate(inicio.getDate() + i * 7);
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + 4);
+    return `${fmtDiaMes(inicio)} - ${fmtDiaMes(fim)}`;
+  });
+}
+const SEMANAS = gerarSemanas(TOTAL_SEMANAS);
 
 const CALENDARIO_DATA: TarefaCalendario[] = [
   { id: "1", tarefa: "Campanha - Planejamento Inicial", colecao: "Inverno 25 / Raw", responsavel: "Criação", status: "CONCLUÍDO", semanaInicio: 0, semanaFim: 0 },
@@ -72,6 +70,16 @@ export default function CalendarioView() {
   const [filterColecao, setFilterColecao] = useState("");
   const [filterResponsavel, setFilterResponsavel] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const { error: showError, Container: ToastContainer } = useToast();
+
+  useEffect(() => {
+    let active = true;
+    fetchCalendarioStatus().then(saved => {
+      if (!active || Object.keys(saved).length === 0) return;
+      setTarefas(prev => prev.map(t => saved[t.id] ? { ...t, status: saved[t.id] as any } : t));
+    });
+    return () => { active = false; };
+  }, []);
 
   const colecoes = useMemo(() => Array.from(new Set(tarefas.map(t => t.colecao).filter(Boolean))).sort(), [tarefas]);
   const responsaveis = useMemo(() => Array.from(new Set(tarefas.map(t => t.responsavel).filter(Boolean))).sort(), [tarefas]);
@@ -84,16 +92,18 @@ export default function CalendarioView() {
     );
   }, [tarefas, filterColecao, filterResponsavel, filterStatus]);
 
-  const toggleStatus = (id: string) => {
-    setTarefas(prev =>
-      prev.map(t => {
-        if (t.id === id) {
-          const statusOrder = { "PENDENTE": "EM ANDAMENTO", "EM ANDAMENTO": "CONCLUÍDO", "CONCLUÍDO": "PENDENTE" };
-          return { ...t, status: statusOrder[t.status] as any };
-        }
-        return t;
-      })
-    );
+  const toggleStatus = async (id: string) => {
+    const atual = tarefas.find(t => t.id === id);
+    if (!atual) return;
+    const statusOrder = { "PENDENTE": "EM ANDAMENTO", "EM ANDAMENTO": "CONCLUÍDO", "CONCLUÍDO": "PENDENTE" };
+    const novoStatus = statusOrder[atual.status] as TarefaCalendario["status"];
+
+    setTarefas(prev => prev.map(t => t.id === id ? { ...t, status: novoStatus } : t));
+    const err = await upsertCalendarioStatus(id, novoStatus);
+    if (err) {
+      showError(`Erro ao salvar status: ${err}`);
+      setTarefas(prev => prev.map(t => t.id === id ? { ...t, status: atual.status } : t));
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -152,7 +162,7 @@ export default function CalendarioView() {
                   <th className="px-4 py-3 text-left font-semibold text-[12px] w-64 sticky left-0 bg-[var(--surface-1)] z-10">
                     Tarefa
                   </th>
-                  {SEMANAS.slice(0, 20).map((semana, idx) => (
+                  {SEMANAS.map((semana, idx) => (
                     <th key={idx} className="px-2 py-3 text-center font-semibold text-[11px] min-w-[100px] border-r border-[var(--separator)] whitespace-nowrap">
                       {semana}
                     </th>
@@ -164,7 +174,7 @@ export default function CalendarioView() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={21} className="px-4 py-8 text-center text-[var(--label-tertiary)] text-[13px]">
+                    <td colSpan={SEMANAS.length + 1} className="px-4 py-8 text-center text-[var(--label-tertiary)] text-[13px]">
                       Nenhuma tarefa encontrada para os filtros selecionados
                     </td>
                   </tr>
@@ -195,7 +205,7 @@ export default function CalendarioView() {
                       </td>
 
                       {/* Células das semanas */}
-                      {SEMANAS.slice(0, 20).map((_, semanaIdx) => {
+                      {SEMANAS.map((_, semanaIdx) => {
                         const isInRange = semanaIdx >= tarefa.semanaInicio && semanaIdx <= tarefa.semanaFim;
                         const isStart = semanaIdx === tarefa.semanaInicio;
                         const isEnd = semanaIdx === tarefa.semanaFim;
@@ -274,6 +284,7 @@ export default function CalendarioView() {
           </div>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 }

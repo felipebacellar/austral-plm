@@ -11,7 +11,7 @@ type Props = {
   sections?: { ficha: boolean; estamparia: boolean; liberacao: boolean; graduacao: boolean };
   ncm?: string;
   vcCompras?: Record<string, any>;
-  provaInfo?: Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string }>;
+  provaInfo?: Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string; tipo: string }>;
 };
 
 /* ── Design tokens ── */

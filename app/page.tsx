@@ -7,6 +7,7 @@ import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
 import DashboardView from "@/components/dashboard/DashboardView";
 import LoginModal from "@/components/auth/LoginModal";
+import SetNewPasswordModal from "@/components/auth/SetNewPasswordModal";
 import UsersModal from "@/components/settings/UsersModal";
 import ExplosaoView from "@/components/compras/ExplosaoView";
 import ControleFluxoView from "@/components/dev/ControleFluxoView";
@@ -41,9 +42,9 @@ const COMPRAS_TABS = [
 type Tab = (typeof TABS)[number]["id"] | "compras_dev" | "compras_variantes" | "compras_explosao" | "compras_entregas" | "dev_fluxo" | "dev_mapa" | "dev_etiquetas" | "calendario";
 
 export default function Home() {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const isAdmin = user?.user_metadata?.role === "admin";
-  const perms: Record<string, boolean> = user?.user_metadata?.permissions || {};
+  const { user, loading: authLoading, signOut, passwordRecovery } = useAuth();
+  const isAdmin = user?.app_metadata?.role === "admin";
+  const perms: Record<string, boolean> = user?.app_metadata?.permissions || {};
   const canSection = (key: string) => isAdmin || perms[key] === true;
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rows, setRows] = useState<any[]>([]);
@@ -71,6 +72,7 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
     let varTimer: ReturnType<typeof setTimeout> | null = null;
+    let rowsTimer: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
 
     const reloadVariants = () => {
@@ -81,6 +83,16 @@ export default function Home() {
         if (!isMounted) return;
         setVariantes(vars);
         setVariantesPorColecao(varsPorCol);
+      }, 1000);
+    };
+    // Compras/fluxo não têm patch incremental de linha — recarrega a tabela toda, com debounce.
+    const reloadRows = () => {
+      if (rowsTimer) clearTimeout(rowsTimer);
+      rowsTimer = setTimeout(async () => {
+        if (!isMounted) return;
+        const prods = await fetchProdutos();
+        if (!isMounted) return;
+        setRows(prods);
       }, 1000);
     };
     const unsub = subscribeRealtime("produtos-sync", [
@@ -99,13 +111,26 @@ export default function Home() {
         onUpdate: reloadVariants,
         onDelete: reloadVariants,
       },
+      {
+        table: "controle_fluxo",
+        onInsert: reloadRows,
+        onUpdate: reloadRows,
+        onDelete: reloadRows,
+      },
+      {
+        table: "produto_variante_compras",
+        onInsert: reloadRows,
+        onUpdate: reloadRows,
+        onDelete: reloadRows,
+      },
     ]);
     return () => {
       isMounted = false;
       if (varTimer) clearTimeout(varTimer);
+      if (rowsTimer) clearTimeout(rowsTimer);
       unsub();
     };
-  }, []);
+  }, [user]);
 
   const handleFichaSave = async (updatedRow: any) => {
     setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
@@ -120,6 +145,7 @@ export default function Home() {
     </div>
   );
   if (!user) return <LoginModal />;
+  if (passwordRecovery) return <SetNewPasswordModal />;
 
   const today = new Date();
   const dateStr = today.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });

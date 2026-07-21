@@ -1,15 +1,12 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { adminClient, requireAdmin } from "@/lib/supabase-server";
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada.");
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-
-// GET /api/users — lista todos os usuários
+// GET /api/users — lista todos os usuários (somente admin)
 export async function GET() {
+  const { user, isAdmin } = await requireAdmin();
+  if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  if (!isAdmin) return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
+
   try {
     const { data, error } = await adminClient().auth.admin.listUsers();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -17,8 +14,8 @@ export async function GET() {
       id: u.id,
       email: u.email,
       nome: u.user_metadata?.nome || "",
-      role: u.user_metadata?.role || "user",
-      permissions: u.user_metadata?.permissions || {},
+      role: u.app_metadata?.role || "user",
+      permissions: u.app_metadata?.permissions || {},
       created_at: u.created_at,
       last_sign_in_at: u.last_sign_in_at || null,
     }));
@@ -28,8 +25,12 @@ export async function GET() {
   }
 }
 
-// POST /api/users — cria novo usuário { email, password, nome }
+// POST /api/users — cria novo usuário { email, password, nome } (somente admin)
 export async function POST(req: NextRequest) {
+  const { user, isAdmin } = await requireAdmin();
+  if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  if (!isAdmin) return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
+
   try {
     const { email, password, nome } = await req.json();
     if (!email || !password) return NextResponse.json({ error: "Email e senha são obrigatórios." }, { status: 400 });
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       user_metadata: { nome: nome || "" },
+      app_metadata: { role: "user" },
       email_confirm: true,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { fetchControleFluxo, upsertControleFluxo } from "@/lib/db";
 import ScrollTable from "@/components/ui/ScrollTable";
+import { useToast } from "@/components/ui/Toast";
 
 const PILOTAGEM_COLS = [
   { field: "data_desenvolvimento",  label: "Data Desenv.",         type: "date", width: 140 },
@@ -67,12 +68,19 @@ export default function ControleFluxoView({ rows }: Props) {
     });
   }, []);
 
+  const { error: showError, Container: ToastContainer } = useToast();
+
   const val = (ref: string, field: string) =>
     localData[ref]?.[field] !== undefined ? localData[ref][field] : fmtDate(fluxoMap[ref]?.[field] ?? "");
 
-  const handleChange = (ref: string, field: string, value: string) => {
+  const handleChange = async (ref: string, field: string, value: string) => {
+    const prevValue = val(ref, field);
     setLocalData(prev => ({ ...prev, [ref]: { ...(prev[ref] || {}), [field]: value } }));
-    upsertControleFluxo(ref, field, value || null);
+    const err = await upsertControleFluxo(ref, field, value || null);
+    if (err) {
+      showError(`Erro ao salvar: ${err}`);
+      setLocalData(prev => ({ ...prev, [ref]: { ...(prev[ref] || {}), [field]: prevValue } }));
+    }
   };
 
   const [search, setSearch] = useState("");
@@ -197,6 +205,7 @@ export default function ControleFluxoView({ rows }: Props) {
         </tbody>
       </table>
       </ScrollTable>
+      <ToastContainer />
     </div>
   );
 }

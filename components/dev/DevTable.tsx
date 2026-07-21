@@ -57,8 +57,8 @@ function getPriceVal(key: string, row: any): number | null {
 
 export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOnly = false, permPrefix = "", hiddenColumns = [] }: Props) {
   const { user } = useAuth();
-  const isAdmin = user?.user_metadata?.role === "admin";
-  const perms: Record<string, boolean> = user?.user_metadata?.permissions || {};
+  const isAdmin = user?.app_metadata?.role === "admin";
+  const perms: Record<string, boolean> = user?.app_metadata?.permissions || {};
   const canEdit   = (key: string) => isAdmin || perms[permPrefix + key] === true;
   const canAdd    = isAdmin || perms[permPrefix + "can_add"] === true;
   const canDelete = isAdmin || perms[permPrefix + "can_delete"] === true;
@@ -174,14 +174,28 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
       }
     }
 
+    const prevRow = rows.find((r:any) => r.id === id);
+    const tecidoInfo = k === "tecido" ? (cad._tecidoData||[]).find((t:any)=>t.nome===v) : null;
+
     setRows((p:any[]) => p.map((r:any) => {
       if(r.id!==id) return r;
       const u={...r,[k]:v};
-      if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){u.forn_tecido=t.forn;u.composicao=t.comp||"";}}
+      if(tecidoInfo){u.forn_tecido=tecidoInfo.forn;u.composicao=tecidoInfo.comp||"";}
       return u;
     }));
-    await updateProdutoField(id, k, v);
-    if(k==="tecido"){const t=(cad._tecidoData||[]).find((t:any)=>t.nome===v);if(t){await updateProdutoField(id,"forn_tecido",t.forn);await updateProdutoField(id,"composicao",t.comp||"");}}
+
+    const err = await updateProdutoField(id, k, v);
+    if (err) {
+      showError(`Erro ao salvar: ${err}`);
+      setRows((p:any[]) => p.map((r:any) => r.id === id && prevRow ? { ...r, [k]: prevRow[k] } : r));
+      return;
+    }
+
+    if (tecidoInfo) {
+      const err2 = await updateProdutoField(id, "forn_tecido", tecidoInfo.forn);
+      const err3 = await updateProdutoField(id, "composicao", tecidoInfo.comp || "");
+      if (err2 || err3) showError(`Tecido salvo, mas houve erro ao atualizar fornecedor/composição: ${err2 || err3}`);
+    }
   };
 
   const { confirm } = useConfirm();
@@ -209,8 +223,9 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
       variant: "danger",
     });
     if (!confirmed) return;
+    const target = rows.find((r:any) => r.id === id);
     setRows((p:any[]) => p.filter((r:any) => r.id!==id));
-    const error = await deleteProduto(id);
+    const error = await deleteProduto(id, target?.ref);
     if (error) {
       showError(`Erro ao excluir: ${error}`);
       setRows((p:any[]) => [...p]);

@@ -23,11 +23,22 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
   const [editing, setEditing] = useState(false);
   const [tmp, setTmp] = useState(value);
   const ref = useRef<HTMLInputElement | HTMLSelectElement>(null);
+  const cancelling = useRef(false);
 
   useEffect(() => { if (editing && ref.current) ref.current.focus(); }, [editing]);
   useEffect(() => { setTmp(value); }, [value]);
 
-  const commit = (v: string | number) => { setEditing(false); if (v !== value) onChange(v); };
+  const cancel = () => { cancelling.current = true; setTmp(value); setEditing(false); };
+  const commit = (v: string | number) => {
+    if (cancelling.current) { cancelling.current = false; return; }
+    setEditing(false);
+    if (v !== value) onChange(v);
+  };
+  // Campo numérico limpo/invalido mantém o valor anterior em vez de zerar.
+  const parseNumOrKeep = (v: string | number) => {
+    const n = parseFloat(String(v));
+    return Number.isNaN(n) ? value : n;
+  };
 
   if (editing) {
     const cls = "w-full text-[13px] px-2.5 py-1.5 rounded-lg bg-white border border-[var(--system-blue)] shadow-[0_0_0_3px_rgba(0,122,255,0.15)] outline-none";
@@ -48,17 +59,17 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
           onBlur={() => commit(tmp)}
           onKeyDown={e => {
             if (e.key === "Enter") commit(tmp);
-            if (e.key === "Escape") { setTmp(value); setEditing(false); }
+            if (e.key === "Escape") cancel();
           }} />
       );
     }
     return (
       <input ref={ref as any} type={type === "number" ? "number" : "text"} className={cls}
         value={tmp} onChange={e => setTmp(e.target.value)}
-        onBlur={() => commit(type === "number" ? (parseFloat(String(tmp)) || 0) : tmp)}
+        onBlur={() => commit(type === "number" ? parseNumOrKeep(tmp) : tmp)}
         onKeyDown={e => {
-          if (e.key === "Enter") commit(type === "number" ? (parseFloat(String(tmp)) || 0) : tmp);
-          if (e.key === "Escape") { setTmp(value); setEditing(false); }
+          if (e.key === "Enter") commit(type === "number" ? parseNumOrKeep(tmp) : tmp);
+          if (e.key === "Escape") cancel();
         }} />
     );
   }

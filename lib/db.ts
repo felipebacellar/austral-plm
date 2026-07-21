@@ -142,9 +142,13 @@ export async function updateProdutoField(id: number, field: string, value: any):
   if (error) { console.error("updateProdutoField:", error); return error.message || "Erro ao salvar"; }
   return null;
 }
-export async function deleteProduto(id: number): Promise<string | null> {
+export async function deleteProduto(id: number, ref?: string): Promise<string | null> {
   const { error } = await sb().from("produtos").delete().eq("id", id);
   if (error) { console.error("deleteProduto:", error); return error.message || "Erro ao excluir"; }
+  if (ref) {
+    const { deleteImagesByPrefix } = await import("./storage");
+    await deleteImagesByPrefix(ref);
+  }
   return null;
 }
 export async function cloneProduto(sourceId: number, newRef: string): Promise<{ data: any; error: string | null }> {
@@ -172,7 +176,7 @@ export async function fetchVarianteCompras(): Promise<Record<string, any>> {
   return map;
 }
 
-export async function upsertVarianteCompra(produtoId: number, cor: string, field: string, value: any) {
+export async function upsertVarianteCompra(produtoId: number, cor: string, field: string, value: any): Promise<string | null> {
   // Use upsert: inserts if not exists, updates only the specified field on conflict
   const { error } = await sb()
     .from("produto_variante_compras")
@@ -180,7 +184,8 @@ export async function upsertVarianteCompra(produtoId: number, cor: string, field
       { produto_id: produtoId, cor, [field]: value },
       { onConflict: "produto_id,cor" }
     );
-  if (error) console.error("upsertVarianteCompra:", { produtoId, cor, field, value, error });
+  if (error) { console.error("upsertVarianteCompra:", { produtoId, cor, field, value, error }); return error.message || "Erro ao salvar"; }
+  return null;
 }
 
 // ══ FICHAS TÉCNICAS ══
@@ -282,7 +287,11 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
     // Update com todos os campos
     let { error } = await sb().from("fichas_tecnicas").update({ ...fichaBase, ...fichaExtras }).eq("id", fid);
     // Se falhou (coluna não existe), tenta só com campos base
-    if (error) await sb().from("fichas_tecnicas").update(fichaBase).eq("id", fid);
+    if (error) {
+      const retry = await sb().from("fichas_tecnicas").update(fichaBase).eq("id", fid);
+      error = retry.error;
+    }
+    if (error) { console.error("upsertFicha update:", error); return null; }
   }
   // Deletar tudo em paralelo, depois inserir tudo em paralelo (mais rápido)
   await Promise.all([
@@ -473,11 +482,28 @@ export async function fetchControleFluxo() {
   return (data || []) as Record<string, any>[];
 }
 
-export async function upsertControleFluxo(produto_ref: string, field: string, value: string | null) {
+export async function upsertControleFluxo(produto_ref: string, field: string, value: string | null): Promise<string | null> {
   const { error } = await sb()
     .from("controle_fluxo")
     .upsert({ produto_ref, [field]: value || null, updated_at: new Date().toISOString() }, { onConflict: "produto_ref" });
-  if (error) console.error("upsertControleFluxo:", error);
+  if (error) { console.error("upsertControleFluxo:", error); return error.message || "Erro ao salvar"; }
+  return null;
+}
+
+// ══ CALENDÁRIO ══
+export async function fetchCalendarioStatus(): Promise<Record<string, string>> {
+  const { data, error } = await sb().from("calendario_status").select("tarefa_id, status");
+  if (error) { console.error("fetchCalendarioStatus:", error); return {}; }
+  const m: Record<string, string> = {};
+  (data || []).forEach((r: any) => { m[r.tarefa_id] = r.status; });
+  return m;
+}
+export async function upsertCalendarioStatus(tarefaId: string, status: string): Promise<string | null> {
+  const { error } = await sb()
+    .from("calendario_status")
+    .upsert({ tarefa_id: tarefaId, status, updated_at: new Date().toISOString() }, { onConflict: "tarefa_id" });
+  if (error) { console.error("upsertCalendarioStatus:", error); return error.message || "Erro ao salvar"; }
+  return null;
 }
 
 // ══ MAPA DE COLEÇÃO ══
