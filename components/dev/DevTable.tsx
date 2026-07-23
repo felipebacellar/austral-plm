@@ -92,6 +92,38 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const [cloneRef, setCloneRef] = useState("");
   const ac = Object.values(fl).filter(Boolean).length;
 
+  // Estoque atual do Linx (map ref -> total). Carregado via rota server-side
+  // /api/linx/estoque (a chave do Linx nunca chega ao browser).
+  const [estoqueMap, setEstoqueMap] = useState<Record<string, number> | null>(null);
+  const [estoqueDetalhe, setEstoqueDetalhe] = useState<import("@/lib/linx-client").EstoqueDetalhe | null>(null);
+  const [estoqueDetalheRef, setEstoqueDetalheRef] = useState<string | null>(null);
+  const [estoqueDetalheLoading, setEstoqueDetalheLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    import("@/lib/linx-client").then(({ fetchEstoqueTotals }) =>
+      fetchEstoqueTotals()
+        .then(m => { if (active) setEstoqueMap(m); })
+        .catch(() => { if (active) setEstoqueMap({}); })
+    );
+    return () => { active = false; };
+  }, []);
+
+  const abrirEstoqueDetalhe = async (ref: string) => {
+    setEstoqueDetalheRef(ref);
+    setEstoqueDetalhe(null);
+    setEstoqueDetalheLoading(true);
+    try {
+      const { fetchEstoqueDetalhe } = await import("@/lib/linx-client");
+      const d = await fetchEstoqueDetalhe(ref);
+      setEstoqueDetalhe(d);
+    } catch {
+      setEstoqueDetalhe(null);
+    } finally {
+      setEstoqueDetalheLoading(false);
+    }
+  };
+
   // Column visibility helpers
   const isColVisible = (key: string) => {
     if (ALWAYS_VISIBLE.includes(key)) return true;
@@ -466,6 +498,12 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           <span className={c.computed ? "text-[var(--label-tertiary)] italic" : ""}>{c.label}</span>
         </th>
       ))}
+      <th style={{width:110,minWidth:110,textAlign:"right"}}>
+        <span className="inline-flex items-center gap-1" title="Estoque atual no Linx (soma de todas as cores e filiais)">
+          Estoque
+          <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(0,122,255,0.1)] text-[var(--system-blue)]">Linx</span>
+        </span>
+      </th>
       <th style={{width:36}}/></tr></thead><tbody>
         {filtered.map((row:any)=>(<tr key={row.id} style={selected.has(row.id)?{background:"rgba(0,122,255,0.06)"}:{}}>
           {!readOnly && canAdd && <td style={{width:36,padding:"0 8px"}}><input type="checkbox" aria-label={`Selecionar SKU ${row.ref}`} checked={selected.has(row.id)} onChange={()=>toggleSelect(row.id)} style={{cursor:"pointer"}}/></td>}
@@ -504,9 +542,77 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
             }
           </td>;
         })}
+        <td style={{textAlign:"right"}}>{(() => {
+          if (estoqueMap === null) return <span className="text-[12px] text-[var(--label-quaternary)] px-2.5 tabnum">…</span>;
+          const total = estoqueMap[String(row.ref).trim()];
+          if (total === undefined) return <span className="text-[13px] text-[var(--label-quaternary)] px-2.5">—</span>;
+          return (
+            <button
+              onClick={() => abrirEstoqueDetalhe(String(row.ref).trim())}
+              title="Ver estoque por cor e filial"
+              className="text-[13px] px-2.5 py-1.5 tabnum font-semibold rounded-md hover:bg-[rgba(0,122,255,0.08)] transition-colors"
+              style={{ color: total > 0 ? "var(--system-blue)" : "var(--label-tertiary)" }}
+            >
+              {total.toLocaleString("pt-BR")}
+            </button>
+          );
+        })()}</td>
         <td className="text-center">{!readOnly&&canDelete&&<button onClick={()=>del(row.id)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] rounded-lg w-7 h-7 inline-flex items-center justify-center transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}</td></tr>))}
-        {filtered.length===0&&<tr><td colSpan={COLUMNS.length+1} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
+        {filtered.length===0&&<tr><td colSpan={COLUMNS.length+2} className="py-16 text-center text-[var(--label-tertiary)] text-[14px]">Nenhum item encontrado</td></tr>}
       </tbody></table></ScrollTable>
+
+      {/* Modal: detalhe de estoque do Linx por cor e filial */}
+      {estoqueDetalheRef && (
+        <div onClick={() => setEstoqueDetalheRef(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div onClick={e => e.stopPropagation()} className="apple-card" style={{ width: 460, maxHeight: "85vh", overflowY: "auto", padding: 24 }}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[16px] font-bold">Estoque atual — {estoqueDetalheRef}</div>
+              <button onClick={() => setEstoqueDetalheRef(null)} className="text-[var(--label-tertiary)] hover:text-[var(--label-primary)] w-7 h-7 flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="text-[11px] text-[var(--label-tertiary)] mb-4">Fonte: Linx · atualiza a cada ~5 min</div>
+
+            {estoqueDetalheLoading ? (
+              <div className="plm-loading" style={{ padding: "32px 0" }}><div className="plm-loading-spinner" /></div>
+            ) : !estoqueDetalhe || estoqueDetalhe.semDados ? (
+              <div className="py-8 text-center text-[13px] text-[var(--label-tertiary)]">Este produto não tem estoque no Linx.</div>
+            ) : (
+              <div className="flex flex-col gap-5">
+                <div className="rounded-xl px-4 py-3" style={{ background: "rgba(0,122,255,0.08)" }}>
+                  <div className="text-[11px] font-medium text-[var(--label-secondary)]">Total em estoque</div>
+                  <div className="text-[26px] font-bold tabnum" style={{ color: "var(--system-blue)" }}>{estoqueDetalhe.total.toLocaleString("pt-BR")}</div>
+                </div>
+
+                <div>
+                  <div className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)] mb-2">Por cor</div>
+                  <div className="flex flex-col gap-1.5">
+                    {estoqueDetalhe.porCor.map(c => (
+                      <div key={c.cor} className="flex items-center gap-2 text-[13px]">
+                        <span className="text-[var(--label-secondary)] flex-1 truncate">{c.nome}<span className="text-[var(--label-quaternary)]"> ({c.cor})</span></span>
+                        <span className="tabnum font-semibold">{c.qtd.toLocaleString("pt-BR")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)] mb-2">Por filial</div>
+                  <div className="flex flex-col gap-1.5">
+                    {estoqueDetalhe.porFilial.map(f => (
+                      <div key={f.filial} className="flex items-center gap-2 text-[13px]">
+                        <span className="text-[var(--label-secondary)] flex-1 truncate">{f.filial}</span>
+                        <span className="tabnum font-semibold">{f.qtd.toLocaleString("pt-BR")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <ToastContainer />
     </div>
   );

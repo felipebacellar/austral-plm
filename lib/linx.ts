@@ -37,7 +37,11 @@ export type LinxCores = Record<string, string>;
 export type LinxTamanhos = Record<string, string[]>;
 export type LinxHealth = { ok: boolean; service: string; linx_configured: boolean };
 
-async function fetchLinx<T>(path: string, params?: Record<string, string | undefined>): Promise<T> {
+async function fetchLinx<T>(
+  path: string,
+  params?: Record<string, string | undefined>,
+  opts?: { revalidateSeconds?: number },
+): Promise<T> {
   const key = process.env.LINX_API_KEY;
   if (!key) throw new Error("LINX_API_KEY não configurada no servidor.");
 
@@ -48,9 +52,16 @@ async function fetchLinx<T>(path: string, params?: Record<string, string | undef
     }
   }
 
+  // Estoque/cores mudam devagar e o payload é grande (dezenas de milhares de
+  // linhas) — cacheamos alguns minutos no servidor para não puxar tudo a cada
+  // abertura de tela. Sem revalidateSeconds, não cacheia (dado sempre fresco).
+  const cacheOpt = opts?.revalidateSeconds
+    ? { next: { revalidate: opts.revalidateSeconds } }
+    : { cache: "no-store" as const };
+
   const res = await fetch(url.toString(), {
     headers: { "X-API-Key": key },
-    cache: "no-store",
+    ...cacheOpt,
   });
 
   if (res.status === 401) throw new Error("Linx API: chave inválida ou não autorizada (401).");
@@ -76,7 +87,8 @@ export async function getProdutos(): Promise<LinxProduto[]> {
 }
 
 export async function getEstoque(filiais?: string[]): Promise<LinxEstoqueItem[]> {
-  return fetchLinx<LinxEstoqueItem[]>("/estoque", { filiais: filiais?.join(",") });
+  // Cache de 5 min — payload grande (dezenas de milhares de linhas).
+  return fetchLinx<LinxEstoqueItem[]>("/estoque", { filiais: filiais?.join(",") }, { revalidateSeconds: 300 });
 }
 
 export async function getCustos(produtos?: string[]): Promise<LinxCustos> {
@@ -84,7 +96,8 @@ export async function getCustos(produtos?: string[]): Promise<LinxCustos> {
 }
 
 export async function getCores(): Promise<LinxCores> {
-  return fetchLinx<LinxCores>("/cores");
+  // Cores raramente mudam — cache de 1h.
+  return fetchLinx<LinxCores>("/cores", undefined, { revalidateSeconds: 3600 });
 }
 
 export async function getTamanhos(): Promise<LinxTamanhos> {
