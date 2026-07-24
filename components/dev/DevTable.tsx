@@ -230,7 +230,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     }
   };
 
-  const { confirm } = useConfirm();
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const { success, error: showError, Container: ToastContainer } = useToast();
 
   const add = async () => {
@@ -613,6 +613,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
         </div>
       )}
 
+      <ConfirmDialog />
       <ToastContainer />
     </div>
   );

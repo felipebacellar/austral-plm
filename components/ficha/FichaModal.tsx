@@ -52,7 +52,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const isLoaded = useRef(false);
   const saveRef = useRef<(confirmed?: boolean) => Promise<void>>();
   const lastCoresRef = useRef<string>("");
-  const { confirm } = useConfirm();
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
@@ -1477,6 +1477,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       </div>
       {/* Hidden file input for prova photos (outside tabs so always mounted) */}
       <input ref={fotoProvaRef} type="file" accept="image/*" className="hidden" onChange={handleFotoProva} />
+      <ConfirmDialog />
     </div>
   );
 }
