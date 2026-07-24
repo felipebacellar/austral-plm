@@ -36,6 +36,15 @@ export async function removeCadastro(tabela: string, nome: string) {
   if (error) console.error("removeCadastro:", error);
   invalidateCache("cadastros");
 }
+// Insere vários itens de uma vez num cadastro (usado na importação do Linx).
+export async function addCadastrosBulk(tabela: string, nomes: string[]): Promise<string | null> {
+  if (!nomes.length) return null;
+  const rows = nomes.map(nome => ({ tabela, nome }));
+  const { error } = await sb().from("cadastros").insert(rows);
+  if (error) { console.error("addCadastrosBulk:", error); return error.message || "Erro ao importar"; }
+  invalidateCache("cadastros");
+  return null;
+}
 
 // ══ TECIDOS ══
 export async function fetchTecidos() {

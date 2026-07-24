@@ -1,10 +1,13 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { fetchCadastros, addCadastro, removeCadastro, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, removeAviamento, updateAviamento } from "@/lib/db";
+import { fetchCadastros, addCadastro, removeCadastro, addCadastrosBulk, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, removeAviamento, updateAviamento } from "@/lib/db";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { subscribeRealtime } from "@/lib/realtime";
 
 const TABS=[{k:"grupo",l:"Grupo"},{k:"subgrupo",l:"Subgrupo"},{k:"categoria",l:"Categoria"},{k:"subcategoria",l:"Subcategoria"},{k:"linha",l:"Linha"},{k:"grade",l:"Grade"},{k:"operacao",l:"Operação"},{k:"tipo",l:"Tipo"},{k:"fornecedor",l:"Fornecedor"},{k:"drop",l:"Drop"},{k:"colecao",l:"Coleção"},{k:"status",l:"Status"},{k:"piloto_most",l:"Piloto / mostr."},{k:"estilista",l:"Estilista"},{k:"cor",l:"Cores"},{k:"tingimento",l:"Tipo de Tingimento"},{k:"aviamento",l:"Aviamentos"},{k:"tecido",l:"Tecidos"}];
+
+// Cadastros que a API do Linx fornece hoje (os demais dependem de novo endpoint do BI).
+const IMPORTAVEIS_LINX = ["grupo","subgrupo","categoria","colecao","grade","fornecedor"];
 
 export default function CadView(){
   const [cad,setCad]=useState<Record<string,any>>({});const [tecidos,setTecidos]=useState<any[]>([]);const [aviamentos,setAviamentos]=useState<any[]>([]);
@@ -16,8 +19,35 @@ export default function CadView(){
   const avImgRef=useRef<HTMLInputElement>(null);
   const [avImgTarget,setAvImgTarget]=useState<string|null>(null);
   const [avCoresOpen,setAvCoresOpen]=useState<string|null>(null);
+  const [importing,setImporting]=useState(false);
+  const [importMsg,setImportMsg]=useState<{tipo:"ok"|"erro";texto:string}|null>(null);
 
   useEffect(()=>{loadAll();},[]);
+
+  // Importa do Linx os 6 cadastros que a API fornece (adiciona só o que falta).
+  const importarDoLinx=async()=>{
+    setImporting(true);setImportMsg(null);
+    try{
+      const {fetchLinxCadastros}=await import("@/lib/linx-client");
+      const linx=await fetchLinxCadastros();
+      const resumo:string[]=[];
+      for(const tab of IMPORTAVEIS_LINX){
+        const existentes=new Set((cad[tab]||[]).map((v:string)=>v.toUpperCase()));
+        const faltando=((linx as any)[tab]||[]).filter((v:string)=>!existentes.has(v.toUpperCase()));
+        if(faltando.length){
+          const err=await addCadastrosBulk(tab,faltando);
+          if(err){setImportMsg({tipo:"erro",texto:`Erro ao importar ${TABS.find(t=>t.k===tab)?.l}: ${err}`});setImporting(false);return;}
+          resumo.push(`${TABS.find(t=>t.k===tab)?.l}: +${faltando.length}`);
+        }
+      }
+      const c=await fetchCadastros();setCad(c);
+      setImportMsg({tipo:"ok",texto:resumo.length?`Importado do Linx — ${resumo.join(", ")}`:"Nada novo — os cadastros já estão atualizados com o Linx."});
+    }catch(e:any){
+      setImportMsg({tipo:"erro",texto:"Erro ao importar do Linx: "+(e.message||"tente novamente")});
+    }finally{
+      setImporting(false);
+    }
+  };
 
   /* Realtime: sincroniza cadastros entre usuários */
   useEffect(() => {
@@ -76,10 +106,31 @@ export default function CadView(){
         <div className="apple-card">
           {/* Header do cadastro */}
           <div className="px-5 pt-5 pb-4 border-b border-[var(--separator)]">
-            <div className="flex items-baseline justify-between mb-1">
+            <div className="flex items-baseline justify-between mb-1 gap-3">
               <h3 className="text-[20px] font-bold tracking-[-0.02em]">{info?.l}</h3>
-              <span className="text-[12px] text-[var(--label-tertiary)] tabnum">{m==="aviamento"?`${aviamentos.length} aviamentos`:m==="cor"?`${(cad.cor||[]).length} cores`:m==="tecido"?`${tecidos.length} tecidos`:`${items.length} itens`}</span>
+              <div className="flex items-center gap-3">
+                {IMPORTAVEIS_LINX.includes(m) && (
+                  <button
+                    onClick={importarDoLinx}
+                    disabled={importing}
+                    className="apple-btn-secondary text-[12px] flex items-center gap-1.5 whitespace-nowrap"
+                    style={{ opacity: importing ? 0.6 : 1 }}
+                    title="Puxa grupo, subgrupo, categoria, coleção, grade e fornecedor do Linx (adiciona só o que falta)"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+                    {importing ? "Importando…" : "Importar do Linx"}
+                  </button>
+                )}
+                <span className="text-[12px] text-[var(--label-tertiary)] tabnum">{m==="aviamento"?`${aviamentos.length} aviamentos`:m==="cor"?`${(cad.cor||[]).length} cores`:m==="tecido"?`${tecidos.length} tecidos`:`${items.length} itens`}</span>
+              </div>
             </div>
+            {IMPORTAVEIS_LINX.includes(m) && importMsg && (
+              <div className="mt-2 text-[12px] rounded-lg px-3 py-2" style={importMsg.tipo==="ok"
+                ? { background: "rgba(52,199,89,0.1)", color: "#1a7a35" }
+                : { background: "rgba(255,59,48,0.08)", color: "var(--system-red)" }}>
+                {importMsg.texto}
+              </div>
+            )}
           </div>
 
           {/* Conteúdo interno */}
