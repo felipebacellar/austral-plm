@@ -238,6 +238,7 @@ export default function CadView(){
                   <th className="w-32">Cód. fornecedor</th>
                   <th className="min-w-[200px]">Cores disponíveis</th>
                   <th className="min-w-[180px]">Localização padrão</th>
+                  <th className="w-20">Unidade</th>
                   <th className="w-24 text-right">Preço (R$)</th>
                   <th className="w-10"></th>
                 </tr></thead>
@@ -299,6 +300,10 @@ export default function CadView(){
                     {/* ── Localização (editável) ── */}
                     <td className="px-2 py-1">
                       <input className="w-full text-[12px] border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.localizacao_padrao} placeholder="—" onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v!==a.localizacao_padrao)saveAv(a.cod,{localizacao_padrao:v});}}/>
+                    </td>
+                    {/* ── Unidade (editável) ── */}
+                    <td className="px-2 py-1">
+                      <input className="w-full text-[12px] text-center uppercase border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.unidade} placeholder="—" onBlur={e=>{const v=e.target.value.trim().toUpperCase();if(v!==a.unidade)saveAv(a.cod,{unidade:v});}}/>
                     </td>
                     {/* ── Preço (editável) ── */}
                     <td className="px-2 py-1">

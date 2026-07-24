@@ -73,7 +73,7 @@ export async function fetchAviamentos() {
   if (cached) return cached;
   const { data, error } = await sb().from("aviamentos").select("*").order("nome");
   if (error) console.error("fetchAviamentos:", error);
-  const result = (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "" }));
+  const result = (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "" }));
   toCache("aviamentos", result);
   return result;
 }
@@ -89,7 +89,7 @@ export async function addAviamento(a: { cod: string; nome: string; preco: number
   invalidateCache("aviamentos");
   return null;
 }
-export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string }) {
+export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string; unidade?: string }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
   invalidateCache("aviamentos");
