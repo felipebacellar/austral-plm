@@ -14,6 +14,18 @@ export type LinxProduto = {
   subgrupo: string;
   categoria: string;
   fabricante: string;
+  // Campos que a equipe do BI ainda vai adicionar ao endpoint /produtos
+  // (hoje vêm undefined; ficam prontos para quando forem incluídos).
+  subcategoria?: string;
+  linha?: string;
+};
+
+export type LinxAviamento = {
+  codigo: string;
+  nome: string;
+  fornecedor?: string;
+  custo?: number;
+  unidade?: string;
 };
 
 export type LinxEstoqueItem = {
@@ -102,4 +114,10 @@ export async function getCores(): Promise<LinxCores> {
 
 export async function getTamanhos(): Promise<LinxTamanhos> {
   return fetchLinx<LinxTamanhos>("/tamanhos");
+}
+
+// Endpoint ainda a ser criado pelo BI (Matérias-primas → grupo 003008 Aviamentos).
+// Já preparado: quando o /aviamentos existir, passa a funcionar sem mudança aqui.
+export async function getAviamentos(): Promise<LinxAviamento[]> {
+  return fetchLinx<LinxAviamento[]>("/aviamentos", undefined, { revalidateSeconds: 3600 });
 }

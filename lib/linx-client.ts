@@ -23,6 +23,7 @@ export async function fetchEstoqueDetalhe(ref: string): Promise<EstoqueDetalhe> 
 }
 
 // Cadastros que o Linx fornece hoje (valores em MAIÚSCULAS, já distintos).
+// subcategoria/linha vêm vazios até o BI incluir no /produtos.
 export type LinxCadastros = {
   grupo: string[];
   subgrupo: string[];
@@ -30,6 +31,8 @@ export type LinxCadastros = {
   colecao: string[];
   grade: string[];
   fornecedor: string[];
+  subcategoria: string[];
+  linha: string[];
 };
 
 export async function fetchLinxCadastros(): Promise<LinxCadastros> {
@@ -37,4 +40,14 @@ export async function fetchLinxCadastros(): Promise<LinxCadastros> {
   if (!res.ok) throw new Error("Falha ao carregar cadastros do Linx.");
   const json = await res.json();
   return json.cadastros as LinxCadastros;
+}
+
+export type LinxAviamentoItem = { codigo: string; nome: string; fornecedor?: string; custo?: number; unidade?: string };
+
+// Retorna { available, aviamentos }. available=false = endpoint ainda não
+// publicado pelo BI (a tela mostra aviso em vez de erro).
+export async function fetchLinxAviamentos(): Promise<{ available: boolean; aviamentos: LinxAviamentoItem[] }> {
+  const res = await fetch("/api/linx/aviamentos");
+  if (!res.ok) throw new Error("Falha ao carregar aviamentos do Linx.");
+  return res.json();
 }

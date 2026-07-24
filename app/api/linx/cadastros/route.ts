@@ -26,6 +26,10 @@ export async function GET() {
       grade:      uniqUpper(Object.keys(tamanhos)),
       // Fornecedor: o Linx só tem "fabricante" — mapeado a pedido da usuária.
       fornecedor: uniqUpper(produtos.map(p => p.fabricante)),
+      // Pré-preparados: hoje o /produtos ainda não envia estes campos, então vêm
+      // vazios; quando o BI incluir subcategoria/linha, populam automaticamente.
+      subcategoria: uniqUpper(produtos.map(p => p.subcategoria)),
+      linha:        uniqUpper(produtos.map(p => p.linha)),
     };
 
     return NextResponse.json({ cadastros });

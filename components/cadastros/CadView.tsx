@@ -1,13 +1,15 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { fetchCadastros, addCadastro, removeCadastro, addCadastrosBulk, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, removeAviamento, updateAviamento } from "@/lib/db";
+import { fetchCadastros, addCadastro, removeCadastro, addCadastrosBulk, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, addAviamentosBulk, removeAviamento, updateAviamento } from "@/lib/db";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { subscribeRealtime } from "@/lib/realtime";
 
 const TABS=[{k:"grupo",l:"Grupo"},{k:"subgrupo",l:"Subgrupo"},{k:"categoria",l:"Categoria"},{k:"subcategoria",l:"Subcategoria"},{k:"linha",l:"Linha"},{k:"grade",l:"Grade"},{k:"operacao",l:"Operação"},{k:"tipo",l:"Tipo"},{k:"fornecedor",l:"Fornecedor"},{k:"drop",l:"Drop"},{k:"colecao",l:"Coleção"},{k:"status",l:"Status"},{k:"piloto_most",l:"Piloto / mostr."},{k:"estilista",l:"Estilista"},{k:"cor",l:"Cores"},{k:"tingimento",l:"Tipo de Tingimento"},{k:"aviamento",l:"Aviamentos"},{k:"tecido",l:"Tecidos"}];
 
-// Cadastros que a API do Linx fornece hoje (os demais dependem de novo endpoint do BI).
-const IMPORTAVEIS_LINX = ["grupo","subgrupo","categoria","colecao","grade","fornecedor"];
+// Cadastros importáveis do Linx. subcategoria/linha já ficam prontos: a API do
+// BI ainda não envia esses campos (importam 0 por ora), mas ligam sozinhos
+// assim que o /produtos passar a devolvê-los.
+const IMPORTAVEIS_LINX = ["grupo","subgrupo","categoria","colecao","grade","fornecedor","subcategoria","linha"];
 
 export default function CadView(){
   const [cad,setCad]=useState<Record<string,any>>({});const [tecidos,setTecidos]=useState<any[]>([]);const [aviamentos,setAviamentos]=useState<any[]>([]);
@@ -21,8 +23,38 @@ export default function CadView(){
   const [avCoresOpen,setAvCoresOpen]=useState<string|null>(null);
   const [importing,setImporting]=useState(false);
   const [importMsg,setImportMsg]=useState<{tipo:"ok"|"erro";texto:string}|null>(null);
+  // Foto no formulário de criar aviamento
+  const [newAvImg,setNewAvImg]=useState<string>("");
+  const [newAvImgUp,setNewAvImgUp]=useState(false);
+  const newAvImgRef=useRef<HTMLInputElement>(null);
 
   useEffect(()=>{loadAll();},[]);
+
+  // Importa aviamentos do Linx (endpoint ainda a ser criado pelo BI).
+  const importarAviamentosDoLinx=async()=>{
+    setImporting(true);setImportMsg(null);
+    try{
+      const {fetchLinxAviamentos}=await import("@/lib/linx-client");
+      const {available,aviamentos:linxAv}=await fetchLinxAviamentos();
+      if(!available){
+        setImportMsg({tipo:"erro",texto:"O endpoint de aviamentos ainda não está disponível na API do Linx (aguardando o BI publicar)."});
+        setImporting(false);return;
+      }
+      const existentes=new Set(aviamentos.map((a:any)=>String(a.cod).toUpperCase()));
+      const faltando=linxAv.filter(a=>a.codigo&&!existentes.has(String(a.codigo).toUpperCase()))
+        .map(a=>({cod:String(a.codigo).toUpperCase(),nome:(a.nome||"").toUpperCase(),preco:a.custo||0,fornecedor:(a.fornecedor||"").toUpperCase()}));
+      if(faltando.length){
+        const err=await addAviamentosBulk(faltando);
+        if(err){setImportMsg({tipo:"erro",texto:"Erro ao importar aviamentos: "+err});setImporting(false);return;}
+      }
+      const a=await fetchAviamentos();setAviamentos(a);
+      setImportMsg({tipo:"ok",texto:faltando.length?`Importado do Linx — Aviamentos: +${faltando.length}`:"Nada novo — os aviamentos já estão atualizados com o Linx."});
+    }catch(e:any){
+      setImportMsg({tipo:"erro",texto:"Erro ao importar aviamentos: "+(e.message||"tente novamente")});
+    }finally{
+      setImporting(false);
+    }
+  };
 
   // Importa do Linx os 6 cadastros que a API fornece (adiciona só o que falta).
   const importarDoLinx=async()=>{
@@ -68,7 +100,8 @@ export default function CadView(){
   const addT=async()=>{if(!tn.trim())return;const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp};await addTecido(t);setTecidos(p=>[...p,t]);setTn("");setTf("");setTc("");setTp("");};
   const remT=async(n:string)=>{await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
 
-  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:""};await addAviamento(a);setAviamentos(p=>[...p,a]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");};
+  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:newAvImg};const err=await addAviamento(a);if(err){setImportMsg({tipo:"erro",texto:err});return;}setAviamentos(p=>[...p,{...a,cores_disponiveis:[]}]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");setNewAvImg("");};
+  const handleNewAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file)return;const cod=ac.trim().toUpperCase();if(!cod){alert("Digite o código do aviamento antes de adicionar a foto.");if(newAvImgRef.current)newAvImgRef.current.value="";return;}setNewAvImgUp(true);const url=await uploadImage(file,`aviamentos/${cod}`);if(url)setNewAvImg(url);setNewAvImgUp(false);if(newAvImgRef.current)newAvImgRef.current.value="";};
   const remAv=async(cod:string)=>{const av=aviamentos.find((a:any)=>a.cod===cod);if(av?.imagem)await deleteImage(av.imagem);await removeAviamento(cod);setAviamentos(p=>p.filter(a=>a.cod!==cod));};
   const saveAv=async(cod:string,data:Record<string,any>)=>{await updateAviamento(cod,data);setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,...data}:a));};
   const triggerAvImg=(cod:string)=>{setAvImgTarget(cod);avImgRef.current?.click();};
@@ -109,13 +142,13 @@ export default function CadView(){
             <div className="flex items-baseline justify-between mb-1 gap-3">
               <h3 className="text-[20px] font-bold tracking-[-0.02em]">{info?.l}</h3>
               <div className="flex items-center gap-3">
-                {IMPORTAVEIS_LINX.includes(m) && (
+                {(IMPORTAVEIS_LINX.includes(m) || m==="aviamento") && (
                   <button
-                    onClick={importarDoLinx}
+                    onClick={m==="aviamento"?importarAviamentosDoLinx:importarDoLinx}
                     disabled={importing}
                     className="apple-btn-secondary text-[12px] flex items-center gap-1.5 whitespace-nowrap"
                     style={{ opacity: importing ? 0.6 : 1 }}
-                    title="Puxa grupo, subgrupo, categoria, coleção, grade e fornecedor do Linx (adiciona só o que falta)"
+                    title={m==="aviamento"?"Puxa os aviamentos do Linx (adiciona só o que falta)":"Puxa os valores deste cadastro do Linx (adiciona só o que falta)"}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
                     {importing ? "Importando…" : "Importar do Linx"}
@@ -124,7 +157,7 @@ export default function CadView(){
                 <span className="text-[12px] text-[var(--label-tertiary)] tabnum">{m==="aviamento"?`${aviamentos.length} aviamentos`:m==="cor"?`${(cad.cor||[]).length} cores`:m==="tecido"?`${tecidos.length} tecidos`:`${items.length} itens`}</span>
               </div>
             </div>
-            {IMPORTAVEIS_LINX.includes(m) && importMsg && (
+            {(IMPORTAVEIS_LINX.includes(m) || m==="aviamento") && importMsg && (
               <div className="mt-2 text-[12px] rounded-lg px-3 py-2" style={importMsg.tipo==="ok"
                 ? { background: "rgba(52,199,89,0.1)", color: "#1a7a35" }
                 : { background: "rgba(255,59,48,0.08)", color: "var(--system-red)" }}>
@@ -170,7 +203,20 @@ export default function CadView(){
             {/* Aviamentos */}
             {m==="aviamento"&&(<>
               <input type="file" accept="image/*" ref={avImgRef} className="hidden" onChange={handleAvImg}/>
-              <div className="flex flex-wrap gap-2 mb-3">
+              <input type="file" accept="image/*" ref={newAvImgRef} className="hidden" onChange={handleNewAvImg}/>
+              <div className="flex flex-wrap items-start gap-2 mb-3">
+                {/* Foto do novo aviamento */}
+                {newAvImgUp
+                  ? <div className="w-[42px] h-[42px] rounded border border-[var(--separator)] flex items-center justify-center text-[10px] text-[var(--label-tertiary)] shrink-0">...</div>
+                  : newAvImg
+                    ? <div className="relative inline-block shrink-0">
+                        <img src={newAvImg} alt="Foto do novo aviamento" onClick={()=>newAvImgRef.current?.click()} className="w-[42px] h-[42px] object-contain rounded border border-[var(--separator)] cursor-pointer hover:opacity-80" title="Clique para trocar"/>
+                        <button onClick={()=>setNewAvImg("")} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center" title="Remover foto">×</button>
+                      </div>
+                    : <button onClick={()=>newAvImgRef.current?.click()} className="w-[42px] h-[42px] border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors shrink-0" title="Adicionar foto (digite o código primeiro)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                        <span className="text-[8px] font-medium leading-none">foto</span>
+                      </button>}
                 <input className={`${inp} w-28`} aria-label="Nosso código do aviamento" value={ac} onChange={e=>setAc(e.target.value)} placeholder="Nosso código"/>
                 <input className={`${inp} flex-1 min-w-[120px]`} aria-label="Nome do aviamento" value={an} onChange={e=>setAn(e.target.value)} placeholder="Nome"/>
                 <input className={`${inp} w-24`} aria-label="Preço do aviamento" value={ap} onChange={e=>setAp(e.target.value)} placeholder="Preço"/>

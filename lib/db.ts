@@ -77,15 +77,31 @@ export async function fetchAviamentos() {
   toCache("aviamentos", result);
   return result;
 }
-export async function addAviamento(a: { cod: string; nome: string; preco: number; localizacao_padrao?: string }) {
-  const { error } = await sb().from("aviamentos").insert({ codigo: a.cod, nome: a.nome, preco: a.preco, localizacao_padrao: a.localizacao_padrao || "" });
-  if (error) console.error("addAviamento:", error);
+export async function addAviamento(a: { cod: string; nome: string; preco: number; localizacao_padrao?: string; imagem?: string; fornecedor?: string; codigo_fornecedor?: string }): Promise<string | null> {
+  const { error } = await sb().from("aviamentos").insert({
+    codigo: a.cod, nome: a.nome, preco: a.preco,
+    localizacao_padrao: a.localizacao_padrao || "",
+    imagem: a.imagem || "",
+    fornecedor: a.fornecedor || "",
+    codigo_fornecedor: a.codigo_fornecedor || "",
+  });
+  if (error) { console.error("addAviamento:", error); return error.message || "Erro ao adicionar aviamento"; }
   invalidateCache("aviamentos");
+  return null;
 }
 export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
   invalidateCache("aviamentos");
+}
+// Insere vários aviamentos de uma vez (usado na importação do Linx).
+export async function addAviamentosBulk(items: { cod: string; nome: string; preco?: number; fornecedor?: string }[]): Promise<string | null> {
+  if (!items.length) return null;
+  const rows = items.map(a => ({ codigo: a.cod, nome: a.nome, preco: a.preco || 0, fornecedor: a.fornecedor || "" }));
+  const { error } = await sb().from("aviamentos").insert(rows);
+  if (error) { console.error("addAviamentosBulk:", error); return error.message || "Erro ao importar aviamentos"; }
+  invalidateCache("aviamentos");
+  return null;
 }
 export async function removeAviamento(cod: string) {
   const { error } = await sb().from("aviamentos").delete().eq("codigo", cod);
