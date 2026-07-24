@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js necessita unsafe-inline para HMR em dev
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://notcdmsqbbtuhsgtupck.supabase.co", // Bucket de imagens
+    "img-src 'self' data: https://notcdmsqbbtuhsgtupck.supabase.co https://austral.vteximg.com.br https://austral.vtexassets.com", // Bucket Supabase + fotos do site VTEX
     "font-src 'self' data:",
     "connect-src 'self' https://notcdmsqbbtuhsgtupck.supabase.co wss://notcdmsqbbtuhsgtupck.supabase.co",
     "frame-ancestors 'none'",

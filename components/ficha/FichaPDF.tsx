@@ -6,6 +6,7 @@ type Props = {
   pv: Record<string, { p1: string; p2: string; p3: string }>;
   an: Record<string, { texto: string; video: string }>;
   img: string | null; imgModelo: string | null; imgModoMedir?: string | null;
+  imgFrente?: string | null; imgCostas?: string | null;
   hasEstamparia: boolean; estamparia?: any; pantones?: Record<string, string>;
   obs?: string; statusLib?: string; tecCad?: any[]; tabelaEspecial?: boolean;
   sections?: { ficha: boolean; estamparia: boolean; liberacao: boolean; graduacao: boolean };
@@ -27,7 +28,7 @@ const warn = "#D97706";
 const danger = "#DC2626";
 const white = "#FFFFFF";
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras, provaInfo }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, imgFrente, imgCostas, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras, provaInfo }: Props) {
   const sec = sections || { ficha: true, estamparia: true, liberacao: true, graduacao: true };
   const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s, a) => s + (a.valor * a.qtd), 0);
@@ -374,6 +375,29 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           </div>
         ))}
       </>)}
+
+      {/* ══════════ LIBERAÇÃO — Foto do produto (frente | costas) ══════════ */}
+      {sec.liberacao && (imgFrente || imgCostas) && (
+        <div className="print-page" style={pb()}>
+          <PageHead title="FOTO DO PRODUTO" sub={statusLib || "Pendente"} bg={modelagemColor} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0 16px", marginBottom: "10px" }}>
+            <Field label="Referência" value={row.ref} />
+            <Field label="Descrição" value={row.desc} />
+            <Field label="Coleção" value={row.colecao} />
+            <Field label="Grade" value={row.grade} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            {([["Frente", imgFrente], ["Costas", imgCostas]] as [string, string | null | undefined][]).map(([lbl, url]) => (
+              <div key={lbl} style={{ border: `0.5px solid ${line}`, borderRadius: "6px", overflow: "hidden" }}>
+                <div style={{ fontSize: "8px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: muted, padding: "5px 8px", borderBottom: `0.5px solid ${line}`, background: bg }}>{lbl}</div>
+                <div style={{ height: "360px", display: "flex", alignItems: "center", justifyContent: "center", background: white }}>
+                  {url ? <img src={url} alt={lbl} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: "9px", color: light }}>Sem foto</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ══════════ LIBERAÇÃO — Pág 1: Tabela de Medidas + Fotos ══════════ */}
       {sec.liberacao && tm && pts.length > 0 && (() => {

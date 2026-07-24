@@ -15,6 +15,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [img, setImg] = useState<string | null>(null);
   const [imgModelo, setImgModelo] = useState<string | null>(null);
   const [imgModoMedir, setImgModoMedir] = useState<string | null>(null);
+  const [imgFrente, setImgFrente] = useState<string | null>(null);
+  const [imgCostas, setImgCostas] = useState<string | null>(null);
   const [up, setUp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fichaId, setFichaId] = useState<number | null>(null);
@@ -23,6 +25,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [exportSections, setExportSections] = useState<{ ficha: boolean; estamparia: boolean; liberacao: boolean; graduacao: boolean }>({ ficha: true, estamparia: true, liberacao: true, graduacao: true });
   const fr = useRef<HTMLInputElement>(null);
   const mrr = useRef<HTMLInputElement>(null);
+  const frenteRef = useRef<HTMLInputElement>(null);
+  const costasRef = useRef<HTMLInputElement>(null);
   const estImgRef = useRef<HTMLInputElement>(null);
   const [estImgTarget, setEstImgTarget] = useState<{ type: string; key: string } | null>(null);
 
@@ -137,6 +141,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       }
       if (ficha) {
         setFichaId(ficha.id); setImg(ficha.imagem_url); setImgModelo(ficha.imagem_modelo);
+        setImgFrente(ficha.imagem_frente || null); setImgCostas(ficha.imagem_costas || null);
         const ficTec = ficha.tecidos || [];
         if (ficTec.length > 0) {
           // Se o primeiro tecido da ficha está vazio mas o produto tem tecido, preenche
@@ -227,7 +232,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     setPendingSave(false);
     setAutoSaveStatus("saving");
     try {
-      const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, pilotagem: pil, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
+      const fichaData = { id: fichaId, tecidos: tec, aviamentos: avi, pilotagem: pil, observacoes: obs, imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir, imagem_frente: imgFrente, imagem_costas: imgCostas, provas: pv, anotacoes: an, pantones: varCodigos, tingimento: varTingimento, qtdMost, statusLiberacao: statusLib, ncm, estamparia: { ...estamparia, numVariantes: numVars }, provaInfo, custoDet, obsCusto, tabelaEspecialAtiva: tEsp, pontosEspeciais: tEsp ? ptsEsp : undefined, gradEspecial: tEsp ? gradEsp : undefined };
       const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
       if (!newId) throw new Error("Falha ao salvar a ficha técnica.");
       setFichaId(newId);
@@ -270,7 +275,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tec, avi, pil, obs, pv, an, provaInfo, estamparia, varCodigos, varTingimento, qtdMost, statusLib, ncm, numVars, custoDet, obsCusto, tEsp, img, imgModelo, imgModoMedir]);
+  }, [tec, avi, pil, obs, pv, an, provaInfo, estamparia, varCodigos, varTingimento, qtdMost, statusLib, ncm, numVars, custoDet, obsCusto, tEsp, img, imgModelo, imgModoMedir, imgFrente, imgCostas]);
 
   const exportPDF = () => { setShowExportDlg(true); };
   const doExport = () => {
@@ -411,7 +416,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} imgModoMedir={imgModoMedir} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} provaInfo={provaInfo} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} imgModoMedir={imgModoMedir} imgFrente={imgFrente} imgCostas={imgCostas} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} provaInfo={provaInfo} />
       </div>
     );
   }
@@ -1033,6 +1038,26 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {tab === "liberacao" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
           <div style={{ background: modelagemColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO DE {_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO') ? 'PRODUÇÃO' : _s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO') ? 'MOSTRUÁRIO' : 'DESENVOLVIMENTO'}</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
           <div className="apple-card"><div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
+
+          {/* Foto do produto — frente e costas lado a lado */}
+          <div className="apple-card p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-3">Foto do produto</div>
+            <input ref={frenteRef} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_frente", setImgFrente, imgFrente)} />
+            <input ref={costasRef} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_costas", setImgCostas, imgCostas)} />
+            <div className="grid grid-cols-2 gap-4">
+              {([["Frente", imgFrente, setImgFrente, frenteRef, "imagem_frente"], ["Costas", imgCostas, setImgCostas, costasRef, "imagem_costas"]] as [string, string|null, (v:any)=>void, any, string][]).map(([lbl, url, setter, ref, field]) => (
+                <div key={field}>
+                  <div className="text-[11px] font-medium text-[var(--label-tertiary)] mb-1.5 text-center">{lbl}</div>
+                  <div onClick={() => ref.current?.click()} className="relative border border-[var(--separator)] rounded-xl overflow-hidden cursor-pointer hover:border-[var(--system-blue)] transition-colors aspect-[3/4] flex items-center justify-center bg-[var(--bg-secondary)]">
+                    {url
+                      ? <img src={url} alt={lbl} className="w-full h-full object-contain" />
+                      : <div className="text-center text-[var(--label-quaternary)]"><svg className="mx-auto mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span className="text-[11px]">Adicionar foto</span></div>}
+                    {url && <button onClick={e => { e.stopPropagation(); setter(null); if (fichaId) saveFichaImagem(fichaId, field, ""); }} className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center" title="Remover"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="apple-card px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Status da liberação</span>

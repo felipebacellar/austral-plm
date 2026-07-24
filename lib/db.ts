@@ -238,6 +238,8 @@ export async function fetchFicha(ref: string, colecao?: string | null) {
     imagem_url: data.imagem_url || null,
     imagem_modelo: data.imagem_modelo || null,
     imagem_modo_medir: data.imagem_modo_medir || null,
+    imagem_frente: data.imagem_frente || null,
+    imagem_costas: data.imagem_costas || null,
     observacoes: data.observacoes || "", obsFechamento: data.obs_fechamento || "", ncm: data.ncm || "",
     pantones: (data.pantones as Record<string,string>) || {},
     statusLiberacao: data.status_liberacao || "",
@@ -294,6 +296,8 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
     custo_det: f.custoDet || null,
     obs_custo: f.obsCusto || "",
     tingimento: f.tingimento || null,
+    imagem_frente: f.imagem_frente || "",
+    imagem_costas: f.imagem_costas || "",
   };
   let fid = f.id;
   if (!fid) {
