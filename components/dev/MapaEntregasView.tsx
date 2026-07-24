@@ -157,7 +157,7 @@ function MultiSelect({ label, options, selected, onChange }: {
 
 /* ── Entry Card ── */
 function EntregaCard({ item, imageMode, onClick }: { item: any; imageMode: "desenho" | "foto"; onClick: () => void }) {
-  const img = imageMode === "foto" ? (item.imagem_modelo || item.imagem_url) : item.imagem_url;
+  const img = imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
   const sColor = statusColor(item.status);
   const sLabel = statusLabel(item.status);
   const totalQtd = item.variantes.reduce((s: number, v: any) => s + (v.qtd || 0), 0);
@@ -323,7 +323,7 @@ export default function MapaEntregasView() {
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
-  const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_modelo || item.imagem_url) : item.imagem_url;
+  const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
 
   if (loading) return (
     <div className="plm-loading"><div className="plm-loading-spinner" /><span>Carregando mapa de entregas...</span></div>

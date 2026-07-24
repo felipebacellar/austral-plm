@@ -248,7 +248,9 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
     return Object.entries(g).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
-  const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_modelo || item.imagem_url) : item.imagem_url;
+  // Modo foto: prioriza a foto do produto (do site), depois foto de modelo, e por
+  // fim o desenho técnico. Modo desenho: sempre o desenho técnico.
+  const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
 
   const clearAll = () => { setFilters({}); setSearch(""); };
 

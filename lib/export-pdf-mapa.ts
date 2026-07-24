@@ -75,7 +75,7 @@ export async function exportMapaColecaoPDF(
   const date = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   const imgUrlOf = (it: any) =>
-    imageMode === "foto" ? (it.imagem_modelo || it.imagem_url) : it.imagem_url;
+    imageMode === "foto" ? (it.imagem_frente || it.imagem_modelo || it.imagem_url) : it.imagem_url;
 
   // Pre-load all images in parallel
   const imgDataMap: Record<string, ImgResult | null> = {};
