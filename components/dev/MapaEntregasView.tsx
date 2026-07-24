@@ -156,8 +156,14 @@ function MultiSelect({ label, options, selected, onChange }: {
 }
 
 /* ── Entry Card ── */
+function fotosDe(item: any, imageMode: "desenho" | "foto"): string[] {
+  if (imageMode === "foto" && item.imagem_frente && item.imagem_costas) return [item.imagem_frente, item.imagem_costas];
+  const s = imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
+  return s ? [s] : [];
+}
+
 function EntregaCard({ item, imageMode, onClick }: { item: any; imageMode: "desenho" | "foto"; onClick: () => void }) {
-  const img = imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
+  const fotos = fotosDe(item, imageMode);
   const sColor = statusColor(item.status);
   const sLabel = statusLabel(item.status);
   const totalQtd = item.variantes.reduce((s: number, v: any) => s + (v.qtd || 0), 0);
@@ -178,10 +184,12 @@ function EntregaCard({ item, imageMode, onClick }: { item: any; imageMode: "dese
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.07)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; }}
     >
       {/* Imagem */}
-      <div style={{ width: "100%", aspectRatio: "4/3", background: "#f8f8fa", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={item.ref} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      <div style={{ width: "100%", aspectRatio: "4/3", background: "#f8f8fa", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, overflow: "hidden" }}>
+        {fotos.length ? (
+          fotos.map((u, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={u} alt={item.ref} style={{ width: fotos.length > 1 ? "50%" : "100%", height: "100%", objectFit: "contain" }} />
+          ))
         ) : (
           <div style={{ textAlign: "center", color: "var(--label-tertiary)" }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" style={{ opacity: 0.3 }}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -323,8 +331,6 @@ export default function MapaEntregasView() {
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
-  const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
-
   if (loading) return (
     <div className="plm-loading"><div className="plm-loading-spinner" /><span>Carregando mapa de entregas...</span></div>
   );
@@ -344,10 +350,12 @@ export default function MapaEntregasView() {
             boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
             maxWidth: 680, width: "90vw", overflow: "hidden",
           }}>
-            <div style={{ background: "#fff", padding: 16, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
-              {imgOf(zoom) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imgOf(zoom)} alt={zoom.ref} style={{ maxWidth: "100%", maxHeight: "50vh", objectFit: "contain" }} />
+            <div style={{ background: "#fff", padding: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, minHeight: 300 }}>
+              {fotosDe(zoom, imageMode).length ? (
+                fotosDe(zoom, imageMode).map((u, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={u} alt={zoom.ref} style={{ maxWidth: fotosDe(zoom, imageMode).length > 1 ? "48%" : "100%", maxHeight: "50vh", objectFit: "contain" }} />
+                ))
               ) : (
                 <div style={{ color: "var(--label-tertiary)", fontSize: 13 }}>Sem imagem</div>
               )}

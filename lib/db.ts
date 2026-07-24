@@ -559,7 +559,7 @@ export async function deleteCalendarioTarefa(id: number): Promise<string | null>
 export async function fetchMapaColecao() {
   const [prodsRes, fichasRes, tecidosRes, ficTecidosRes] = await Promise.all([
     sb().from("produtos").select("*").order("grupo").order("ref"),
-    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente"),
+    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas"),
     sb().from("tecidos").select("nome, composicao"),
     sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)"),
   ]);
@@ -568,10 +568,12 @@ export async function fetchMapaColecao() {
   const imgMap: Record<string, string> = {};
   const fotoMap: Record<string, string> = {};
   const frenteMap: Record<string, string> = {};
+  const costasMap: Record<string, string> = {};
   (fichasRes.data || []).forEach((f: any) => {
     if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
     if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
     if (f.imagem_frente) frenteMap[f.produto_ref] = f.imagem_frente;
+    if (f.imagem_costas) costasMap[f.produto_ref] = f.imagem_costas;
   });
 
   const tecidoCompMap: Record<string, string> = {};
@@ -606,6 +608,7 @@ export async function fetchMapaColecao() {
     imagem_url: imgMap[p.ref] || "",
     imagem_modelo: fotoMap[p.ref] || "",
     imagem_frente: frenteMap[p.ref] || "",
+    imagem_costas: costasMap[p.ref] || "",
     cores: coresMap[p.ref] || [],
     fichas_por_colecao: fichasPorColecaoMap[p.ref] || {},
   }));
@@ -615,7 +618,7 @@ export async function fetchMapaColecao() {
 export async function fetchMapaEntregas() {
   const [prodsRes, fichasRes, tecidosRes, varComprasRes] = await Promise.all([
     sb().from("produtos").select("*"),
-    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente"),
+    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas"),
     sb().from("tecidos").select("nome, composicao"),
     sb().from("produto_variante_compras").select("*"),
   ]);
@@ -623,10 +626,12 @@ export async function fetchMapaEntregas() {
   const imgMap: Record<string, string> = {};
   const fotoMap: Record<string, string> = {};
   const frenteMap: Record<string, string> = {};
+  const costasMap: Record<string, string> = {};
   (fichasRes.data || []).forEach((f: any) => {
     if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
     if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
     if (f.imagem_frente) frenteMap[f.produto_ref] = f.imagem_frente;
+    if (f.imagem_costas) costasMap[f.produto_ref] = f.imagem_costas;
   });
 
   const tecidoCompMap: Record<string, string> = {};
@@ -648,7 +653,7 @@ export async function fetchMapaEntregas() {
       operacao: prod.operacao || "", categoria: prod.categoria || "",
       subcategoria: prod.subcategoria || "", tipo: prod.tipo || "",
       linha: prod.linha || "", drop: prod.drop_num || "", estilista: prod.estilista || "",
-      imagem_url: imgMap[prod.ref] || "", imagem_modelo: fotoMap[prod.ref] || "", imagem_frente: frenteMap[prod.ref] || "",
+      imagem_url: imgMap[prod.ref] || "", imagem_modelo: fotoMap[prod.ref] || "", imagem_frente: frenteMap[prod.ref] || "", imagem_costas: costasMap[prod.ref] || "",
     };
     if (vc.data_entrega1 && (vc.qtd_compra1 || 0) > 0) {
       const key = `${prod.ref}|${vc.data_entrega1}|1`;

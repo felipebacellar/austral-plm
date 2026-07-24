@@ -251,6 +251,12 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
   // Modo foto: prioriza a foto do produto (do site), depois foto de modelo, e por
   // fim o desenho técnico. Modo desenho: sempre o desenho técnico.
   const imgOf = (item: any) => imageMode === "foto" ? (item.imagem_frente || item.imagem_modelo || item.imagem_url) : item.imagem_url;
+  // No modo foto, se houver frente E costas, mostra as duas lado a lado; senão, imagem única.
+  const fotosOf = (item: any): string[] => {
+    if (imageMode === "foto" && item.imagem_frente && item.imagem_costas) return [item.imagem_frente, item.imagem_costas];
+    const s = imgOf(item);
+    return s ? [s] : [];
+  };
 
   const clearAll = () => { setFilters({}); setSearch(""); };
 
@@ -290,10 +296,12 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
             maxWidth: 700, width: "90vw", overflow: "hidden",
             display: "flex", flexDirection: "column",
           }}>
-            <div style={{ background: "#fff", padding: 16, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 360 }}>
-              {imgOf(zoom) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imgOf(zoom)} alt={zoom.ref} style={{ maxWidth: "100%", maxHeight: "55vh", objectFit: "contain" }} />
+            <div style={{ background: "#fff", padding: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, minHeight: 360 }}>
+              {fotosOf(zoom).length ? (
+                fotosOf(zoom).map((u, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={u} alt={zoom.ref} style={{ maxWidth: fotosOf(zoom).length > 1 ? "48%" : "100%", maxHeight: "55vh", objectFit: "contain" }} />
+                ))
               ) : (
                 <div style={{ color: "var(--label-tertiary)", textAlign: "center", fontSize: 13 }}>Sem imagem</div>
               )}
@@ -454,7 +462,7 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
             {gItems.map(item => {
-              const img = imgOf(item);
+              const fotos = fotosOf(item);
               return (
                 <div key={item.ref}
                   onClick={() => setZoom(item)}
@@ -468,10 +476,12 @@ export default function MapaColecaoView({ rows: _rows }: Props) {
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 20px rgba(0,0,0,0.13)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.07)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; }}
                 >
-                  <div style={{ width: "100%", aspectRatio: "4/3", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    {img ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={img} alt={item.ref} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  <div style={{ width: "100%", aspectRatio: "4/3", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, overflow: "hidden" }}>
+                    {fotos.length ? (
+                      fotos.map((u, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={u} alt={item.ref} style={{ width: fotos.length > 1 ? "50%" : "100%", height: "100%", objectFit: "contain" }} />
+                      ))
                     ) : (
                       <div style={{ textAlign: "center", color: "var(--label-tertiary)" }}>
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" style={{ opacity: 0.35 }}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
