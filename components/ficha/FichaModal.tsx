@@ -5,6 +5,7 @@ import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
+import { etiquetasParaGradeLinha } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
 
@@ -110,15 +111,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       setTecCad(tecs);
       const mkAvi = (cod: string) => { const c = aviCad.find((x: any) => x.cod === cod); return c ? { item: c.nome, cod: c.cod, qtd: 1, valor: c.preco, local: c.localizacao_padrao || "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" } : null; };
       const aviBase = (() => {
-        const l = (row.linha || "").toUpperCase().trim();
-        const g = (row.grade || "").toUpperCase().trim();
-        const tamCodes: string[] =
-          l === "CASUAL" && g === "PP-GG"  ? ["ET0052","ET0053","ET0054","ET0055","ET0056"] :
-          l === "CASUAL" && g === "XPP-GG" ? ["ET0051","ET0052","ET0053","ET0054","ET0055","ET0056"] :
-          l === "CASUAL" && g === "38-46"  ? ["ET0057","ET0058","ET0059","ET0060","ET0061"] :
-          l === "BLACK"  && g === "PP-GG"  ? ["ET0087","ET0088","ET0089","ET0090","ET0091"] :
-          l === "BLACK"  && g === "XPP-GG" ? ["ET0086","ET0087","ET0088","ET0089","ET0090","ET0091"] :
-          l === "BLACK"  && g === "38-46"  ? ["ET0092","ET0093","ET0094","ET0095","ET0096"] : [];
+        // Etiquetas de tamanho por grade × linha (comparação normalizada — trata
+        // "PP AO GG"/"PP - GG"/"PP-GG" como equivalentes). Regras em lib/etiquetas-tamanho.
+        const tamCodes: string[] = etiquetasParaGradeLinha(row.grade, row.linha);
         let base: any[] = ficha?.aviamentos?.length ? [...ficha.aviamentos] : [];
         if (!base.some((a: any) => a.cod === "AD0001"))
           base = [mkAvi("AD0001") || DEFAULT_AVI[0], ...base];
