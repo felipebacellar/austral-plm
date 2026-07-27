@@ -20,12 +20,17 @@ export type LinxProduto = {
   linha?: string;
 };
 
+export type LinxAviamentoCor = { cor: string; ref_cor_fabricante?: string };
 export type LinxAviamento = {
   codigo: string;
   nome: string;
   fornecedor?: string;
   custo?: number;
   unidade?: string;
+  // Campos que o BI ainda vai adicionar ao /aviamentos (hoje vêm undefined;
+  // ficam prontos para quando forem incluídos).
+  referencia_fabricante?: string;
+  cores?: LinxAviamentoCor[];
 };
 
 export type LinxEstoqueItem = {

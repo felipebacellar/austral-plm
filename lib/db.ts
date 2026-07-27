@@ -73,7 +73,7 @@ export async function fetchAviamentos() {
   if (cached) return cached;
   const { data, error } = await sb().from("aviamentos").select("*").order("nome");
   if (error) console.error("fetchAviamentos:", error);
-  const result = (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "" }));
+  const result = (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "", cores_fabricante: a.cores_fabricante || [] }));
   toCache("aviamentos", result);
   return result;
 }
@@ -89,15 +89,19 @@ export async function addAviamento(a: { cod: string; nome: string; preco: number
   invalidateCache("aviamentos");
   return null;
 }
-export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string; unidade?: string }) {
+export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string; unidade?: string; cores_fabricante?: { cor: string; ref: string }[] }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
   invalidateCache("aviamentos");
 }
 // Insere vários aviamentos de uma vez (usado na importação do Linx).
-export async function addAviamentosBulk(items: { cod: string; nome: string; preco?: number; fornecedor?: string }[]): Promise<string | null> {
+export async function addAviamentosBulk(items: { cod: string; nome: string; preco?: number; fornecedor?: string; codigo_fornecedor?: string; unidade?: string; cores_disponiveis?: string[]; cores_fabricante?: { cor: string; ref: string }[] }[]): Promise<string | null> {
   if (!items.length) return null;
-  const rows = items.map(a => ({ codigo: a.cod, nome: a.nome, preco: a.preco || 0, fornecedor: a.fornecedor || "" }));
+  const rows = items.map(a => ({
+    codigo: a.cod, nome: a.nome, preco: a.preco || 0, fornecedor: a.fornecedor || "",
+    codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "",
+    cores_disponiveis: a.cores_disponiveis || [], cores_fabricante: a.cores_fabricante || [],
+  }));
   const { error } = await sb().from("aviamentos").insert(rows);
   if (error) { console.error("addAviamentosBulk:", error); return error.message || "Erro ao importar aviamentos"; }
   invalidateCache("aviamentos");

@@ -42,7 +42,8 @@ export async function fetchLinxCadastros(): Promise<LinxCadastros> {
   return json.cadastros as LinxCadastros;
 }
 
-export type LinxAviamentoItem = { codigo: string; nome: string; fornecedor?: string; custo?: number; unidade?: string };
+export type LinxAviamentoCorItem = { cor: string; ref_cor_fabricante?: string };
+export type LinxAviamentoItem = { codigo: string; nome: string; fornecedor?: string; custo?: number; unidade?: string; referencia_fabricante?: string; cores?: LinxAviamentoCorItem[] };
 
 // Retorna { available, aviamentos }. available=false = endpoint ainda não
 // publicado pelo BI (a tela mostra aviso em vez de erro).

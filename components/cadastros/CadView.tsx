@@ -40,15 +40,35 @@ export default function CadView(){
         setImportMsg({tipo:"erro",texto:"O endpoint de aviamentos ainda não está disponível na API do Linx (aguardando o BI publicar)."});
         setImporting(false);return;
       }
-      const existentes=new Set(aviamentos.map((a:any)=>String(a.cod).toUpperCase()));
-      const faltando=linxAv.filter(a=>a.codigo&&!existentes.has(String(a.codigo).toUpperCase()))
-        .map(a=>({cod:String(a.codigo).toUpperCase(),nome:(a.nome||"").toUpperCase(),preco:a.custo||0,fornecedor:(a.fornecedor||"").toUpperCase()}));
+      // Normaliza cores do Linx -> nomes (cores_disponiveis) + refs por cor (cores_fabricante)
+      const mapCores=(a:any)=>{
+        const cs=Array.isArray(a.cores)?a.cores:[];
+        const nomes=cs.map((c:any)=>String(c.cor||"").toUpperCase()).filter(Boolean);
+        const refs=cs.filter((c:any)=>c.cor).map((c:any)=>({cor:String(c.cor).toUpperCase(),ref:String(c.ref_cor_fabricante||"").toUpperCase()}));
+        return {nomes,refs};
+      };
+      const existentesMap=new Map(aviamentos.map((a:any)=>[String(a.cod).toUpperCase(),a]));
+      const faltando=linxAv.filter(a=>a.codigo&&!existentesMap.has(String(a.codigo).toUpperCase()))
+        .map(a=>{const {nomes,refs}=mapCores(a);return {cod:String(a.codigo).toUpperCase(),nome:(a.nome||"").toUpperCase(),preco:a.custo||0,fornecedor:(a.fornecedor||"").toUpperCase(),codigo_fornecedor:(a.referencia_fabricante||"").toUpperCase(),unidade:(a.unidade||"").toUpperCase(),cores_disponiveis:nomes,cores_fabricante:refs};});
       if(faltando.length){
         const err=await addAviamentosBulk(faltando);
         if(err){setImportMsg({tipo:"erro",texto:"Erro ao importar aviamentos: "+err});setImporting(false);return;}
       }
+      // Enriquece os que já existem: preenche ref. do fabricante e cores só quando estiverem vazias (não sobrescreve edição manual).
+      let enriquecidos=0;
+      for(const a of linxAv){
+        const ex:any=existentesMap.get(String(a.codigo||"").toUpperCase());
+        if(!ex)continue;
+        const {nomes,refs}=mapCores(a);
+        const patch:any={};
+        if(a.referencia_fabricante&&!ex.codigo_fornecedor)patch.codigo_fornecedor=String(a.referencia_fabricante).toUpperCase();
+        if(nomes.length&&!(ex.cores_disponiveis||[]).length)patch.cores_disponiveis=nomes;
+        if(refs.length&&!(ex.cores_fabricante||[]).length)patch.cores_fabricante=refs;
+        if(Object.keys(patch).length){await updateAviamento(ex.cod,patch);enriquecidos++;}
+      }
       const a=await fetchAviamentos();setAviamentos(a);
-      setImportMsg({tipo:"ok",texto:faltando.length?`Importado do Linx — Aviamentos: +${faltando.length}`:"Nada novo — os aviamentos já estão atualizados com o Linx."});
+      const partes=[];if(faltando.length)partes.push(`+${faltando.length} novos`);if(enriquecidos)partes.push(`${enriquecidos} atualizados`);
+      setImportMsg({tipo:"ok",texto:partes.length?`Importado do Linx — Aviamentos: ${partes.join(", ")}`:"Nada novo — os aviamentos já estão atualizados com o Linx."});
     }catch(e:any){
       setImportMsg({tipo:"erro",texto:"Erro ao importar aviamentos: "+(e.message||"tente novamente")});
     }finally{
@@ -276,12 +296,15 @@ export default function CadView(){
                     <td className="px-2 py-1.5">
                       <div className="relative z-50">
                         <div className="flex flex-wrap gap-1 items-center">
-                          {(a.cores_disponiveis||[]).map((c:string)=>(
-                            <span key={c} className="inline-flex items-center gap-1 text-[10px] font-medium bg-[var(--bg-tertiary)] border border-[var(--separator)] rounded-md px-1.5 py-0.5 leading-none">
-                              {c}
+                          {(a.cores_disponiveis||[]).map((c:string)=>{
+                            const refCor=(a.cores_fabricante||[]).find((x:any)=>String(x.cor).toUpperCase()===String(c).toUpperCase())?.ref;
+                            return (
+                            <span key={c} title={refCor?`Ref. cor fabricante: ${refCor}`:undefined} className="inline-flex items-center gap-1 text-[10px] font-medium bg-[var(--bg-tertiary)] border border-[var(--separator)] rounded-md px-1.5 py-0.5 leading-none">
+                              {c}{refCor&&<span className="text-[9px] font-mono text-[var(--system-blue)]">· {refCor}</span>}
                               <button onClick={()=>{const next=(a.cores_disponiveis||[]).filter((x:string)=>x!==c);saveAv(a.cod,{cores_disponiveis:next});}} className="text-[var(--label-quaternary)] hover:text-red-500 leading-none">×</button>
                             </span>
-                          ))}
+                            );
+                          })}
                           <button onClick={()=>setAvCoresOpen(avCoresOpen===a.cod?null:a.cod)} className="text-[11px] text-[var(--system-blue)] border border-dashed border-[var(--system-blue)] rounded-md px-1.5 py-0.5 hover:opacity-70 leading-none">+</button>
                         </div>
                         {avCoresOpen===a.cod&&(
