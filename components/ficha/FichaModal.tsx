@@ -5,7 +5,7 @@ import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
-import { etiquetasParaGradeLinha } from "@/lib/etiquetas-tamanho";
+import { aviamentosAutomaticos } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import FichaPDF from "./FichaPDF";
 
@@ -111,14 +111,16 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       setTecCad(tecs);
       const mkAvi = (cod: string) => { const c = aviCad.find((x: any) => x.cod === cod); return c ? { item: c.nome, cod: c.cod, qtd: 1, valor: c.preco, local: c.localizacao_padrao || "", var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" } : null; };
       const aviBase = (() => {
-        // Etiquetas de tamanho por grade × linha (comparação normalizada — trata
-        // "PP AO GG"/"PP - GG"/"PP-GG" como equivalentes). Regras em lib/etiquetas-tamanho.
-        const tamCodes: string[] = etiquetasParaGradeLinha(row.grade, row.linha);
+        // Aviamentos automáticos: tag da linha + etiquetas de tamanho da grade×linha
+        // (comparação normalizada — "PP AO GG"/"PP - GG"/"PP-GG" equivalem). Regras
+        // em lib/etiquetas-tamanho. Cada código faltante é adicionado individualmente.
+        const autoCodes: string[] = aviamentosAutomaticos(row.grade, row.linha);
         let base: any[] = ficha?.aviamentos?.length ? [...ficha.aviamentos] : [];
         if (!base.some((a: any) => a.cod === "AD0001"))
           base = [mkAvi("AD0001") || DEFAULT_AVI[0], ...base];
-        if (tamCodes.length && !base.some((a: any) => tamCodes.includes(a.cod)))
-          base = [...base, ...tamCodes.map(mkAvi).filter(Boolean)];
+        const faltantes = autoCodes.filter(cod => !base.some((a: any) => a.cod === cod));
+        if (faltantes.length)
+          base = [...base, ...faltantes.map(mkAvi).filter(Boolean)];
         return base.length ? base : [mkAvi("AD0001") || DEFAULT_AVI[0]];
       })();
       setAvi(aviBase.map((a: any) => {
