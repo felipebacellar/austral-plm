@@ -1,19 +1,39 @@
 // Helpers client-side para consumir a rota interna /api/linx/* (que por sua vez
 // fala com o Linx server-side). A chave do Linx NUNCA passa por aqui.
 
+export type EstoquePedido = {
+  numero: string;
+  cor: string;
+  corNome: string;
+  qtd: number;
+  data: string;
+  fornecedor?: string;
+  situacao?: string;
+};
+
 export type EstoqueDetalhe = {
   ref: string;
   total: number;
+  futuro: number;
   porCor: { cor: string; nome: string; qtd: number }[];
   porFilial: { filial: string; qtd: number }[];
+  pedidos: EstoquePedido[];
   semDados?: boolean;
 };
 
-export async function fetchEstoqueTotals(): Promise<Record<string, number>> {
+// Totais para a lista: estoque atual (totals) e a receber / futuro (futuros),
+// ambos indexados por produto_pai (= produtos.ref).
+export async function fetchEstoqueTotals(): Promise<{
+  totals: Record<string, number>;
+  futuros: Record<string, number>;
+}> {
   const res = await fetch("/api/linx/estoque");
   if (!res.ok) throw new Error("Falha ao carregar estoque do Linx.");
   const json = await res.json();
-  return (json.totals || {}) as Record<string, number>;
+  return {
+    totals: (json.totals || {}) as Record<string, number>,
+    futuros: (json.futuros || {}) as Record<string, number>,
+  };
 }
 
 export async function fetchEstoqueDetalhe(ref: string): Promise<EstoqueDetalhe> {

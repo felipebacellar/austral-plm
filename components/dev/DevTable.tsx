@@ -11,6 +11,13 @@ import { STATUS_ESTILO, STATUS_COMPRAS_OPTS } from "@/lib/constants";
 import { fmtBRL } from "@/lib/utils";
 import ScrollTable from "@/components/ui/ScrollTable";
 
+// "2026-03-13" -> "13/03/26" (compacto para a lista de pedidos)
+function fmtDataBR(iso?: string): string {
+  if (!iso) return "";
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : String(iso);
+}
+
 type Props = { rows: any[]; setRows: (fn: any) => void; onOpenFicha: (row: any) => void; userEmail?: string; readOnly?: boolean; permPrefix?: string; hiddenColumns?: string[] };
 const FC = COLUMNS.filter(c => c.type === "select" && c.cad && c.key !== "colecao");
 const ALWAYS_VISIBLE = ["ref"];
@@ -92,9 +99,11 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const [cloneRef, setCloneRef] = useState("");
   const ac = Object.values(fl).filter(Boolean).length;
 
-  // Estoque atual do Linx (map ref -> total). Carregado via rota server-side
-  // /api/linx/estoque (a chave do Linx nunca chega ao browser).
+  // Estoque atual (map ref -> total) e futuro/a receber (map ref -> pendente),
+  // ambos do Linx via rota server-side /api/linx/estoque (a chave nunca chega
+  // ao browser).
   const [estoqueMap, setEstoqueMap] = useState<Record<string, number> | null>(null);
+  const [futuroMap, setFuturoMap] = useState<Record<string, number>>({});
   const [estoqueDetalhe, setEstoqueDetalhe] = useState<import("@/lib/linx-client").EstoqueDetalhe | null>(null);
   const [estoqueDetalheRef, setEstoqueDetalheRef] = useState<string | null>(null);
   const [estoqueDetalheLoading, setEstoqueDetalheLoading] = useState(false);
@@ -103,7 +112,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     let active = true;
     import("@/lib/linx-client").then(({ fetchEstoqueTotals }) =>
       fetchEstoqueTotals()
-        .then(m => { if (active) setEstoqueMap(m); })
+        .then(({ totals, futuros }) => { if (active) { setEstoqueMap(totals); setFuturoMap(futuros); } })
         .catch(() => { if (active) setEstoqueMap({}); })
     );
     return () => { active = false; };
@@ -498,8 +507,8 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
           <span className={c.computed ? "text-[var(--label-tertiary)] italic" : ""}>{c.label}</span>
         </th>
       ))}
-      <th style={{width:110,minWidth:110,textAlign:"right"}}>
-        <span className="inline-flex items-center gap-1" title="Estoque atual no Linx (soma de todas as cores e filiais)">
+      <th style={{width:120,minWidth:120,textAlign:"right"}}>
+        <span className="inline-flex items-center gap-1" title="Estoque atual no Linx (todas as cores e filiais). Em verde, o que está a receber (pedidos de compra/produção pendentes).">
           Estoque
           <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(0,122,255,0.1)] text-[var(--system-blue)]">Linx</span>
         </span>
@@ -544,16 +553,25 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
         })}
         <td style={{textAlign:"right"}}>{(() => {
           if (estoqueMap === null) return <span className="text-[12px] text-[var(--label-quaternary)] px-2.5 tabnum">…</span>;
-          const total = estoqueMap[String(row.ref).trim()];
-          if (total === undefined) return <span className="text-[13px] text-[var(--label-quaternary)] px-2.5">—</span>;
+          const rk = String(row.ref).trim();
+          const total = estoqueMap[rk];
+          const futuro = futuroMap[rk] || 0;
+          if (total === undefined && futuro === 0) return <span className="text-[13px] text-[var(--label-quaternary)] px-2.5">—</span>;
+          const atual = total ?? 0;
           return (
             <button
-              onClick={() => abrirEstoqueDetalhe(String(row.ref).trim())}
-              title="Ver estoque por cor e filial"
-              className="text-[13px] px-2.5 py-1.5 tabnum font-semibold rounded-md hover:bg-[rgba(0,122,255,0.08)] transition-colors"
-              style={{ color: total > 0 ? "var(--system-blue)" : "var(--label-tertiary)" }}
+              onClick={() => abrirEstoqueDetalhe(rk)}
+              title="Ver estoque por cor e filial + pedidos a receber"
+              className="px-2.5 py-1 rounded-md hover:bg-[rgba(0,122,255,0.08)] transition-colors inline-flex flex-col items-end leading-tight"
             >
-              {total.toLocaleString("pt-BR")}
+              <span className="text-[13px] tabnum font-semibold" style={{ color: atual > 0 ? "var(--system-blue)" : "var(--label-tertiary)" }}>
+                {atual.toLocaleString("pt-BR")}
+              </span>
+              {futuro > 0 && (
+                <span className="text-[11px] tabnum font-semibold" style={{ color: "var(--system-green)" }} title="A receber (pedidos pendentes)">
+                  +{futuro.toLocaleString("pt-BR")}
+                </span>
+              )}
             </button>
           );
         })()}</td>
@@ -579,10 +597,32 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
               <div className="py-8 text-center text-[13px] text-[var(--label-tertiary)]">Este produto não tem estoque no Linx.</div>
             ) : (
               <div className="flex flex-col gap-5">
-                <div className="rounded-xl px-4 py-3" style={{ background: "rgba(0,122,255,0.08)" }}>
-                  <div className="text-[11px] font-medium text-[var(--label-secondary)]">Total em estoque</div>
-                  <div className="text-[26px] font-bold tabnum" style={{ color: "var(--system-blue)" }}>{estoqueDetalhe.total.toLocaleString("pt-BR")}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl px-4 py-3" style={{ background: "rgba(0,122,255,0.08)" }}>
+                    <div className="text-[11px] font-medium text-[var(--label-secondary)]">Estoque atual</div>
+                    <div className="text-[26px] font-bold tabnum" style={{ color: "var(--system-blue)" }}>{estoqueDetalhe.total.toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="rounded-xl px-4 py-3" style={{ background: "rgba(52,199,89,0.10)" }}>
+                    <div className="text-[11px] font-medium text-[var(--label-secondary)]">A receber (futuro)</div>
+                    <div className="text-[26px] font-bold tabnum" style={{ color: "var(--system-green)" }}>{(estoqueDetalhe.futuro || 0).toLocaleString("pt-BR")}</div>
+                  </div>
                 </div>
+
+                {estoqueDetalhe.pedidos && estoqueDetalhe.pedidos.length > 0 && (
+                  <div>
+                    <div className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)] mb-2">Pedidos a receber</div>
+                    <div className="flex flex-col gap-1.5">
+                      {estoqueDetalhe.pedidos.map((p, i) => (
+                        <div key={`${p.numero}-${p.cor}-${i}`} className="flex items-center gap-2 text-[13px]">
+                          <span className="tabnum text-[var(--label-tertiary)]" style={{ minWidth: 74 }}>{p.numero}</span>
+                          <span className="text-[var(--label-secondary)] flex-1 truncate">{p.corNome}<span className="text-[var(--label-quaternary)]"> ({p.cor})</span></span>
+                          <span className="text-[11px] text-[var(--label-tertiary)] tabnum">{fmtDataBR(p.data)}</span>
+                          <span className="tabnum font-semibold" style={{ color: "var(--system-green)", minWidth: 44, textAlign: "right" }}>+{p.qtd.toLocaleString("pt-BR")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <div className="text-[12px] font-semibold uppercase text-[var(--label-tertiary)] mb-2">Por cor</div>

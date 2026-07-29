@@ -49,6 +49,18 @@ export type LinxEstoqueItem = {
   est_6: number;
 };
 
+export type LinxPedidoProduto = {
+  produto_pai: string;
+  cor: string;
+  numero_pedido: string;
+  quantidade: number;
+  quantidade_pendente: number;
+  data_programada: string;
+  situacao?: string;
+  fornecedor?: string;
+  tipo_compra?: string;
+};
+
 export type LinxCustos = Record<string, number>;
 export type LinxCores = Record<string, string>;
 export type LinxTamanhos = Record<string, string[]>;
@@ -110,6 +122,12 @@ export async function getEstoque(filiais?: string[]): Promise<LinxEstoqueItem[]>
 
 export async function getCustos(produtos?: string[]): Promise<LinxCustos> {
   return fetchLinx<LinxCustos>("/custos", { produtos: produtos?.join(",") });
+}
+
+// Pedidos de compra / ordens de produção de produto acabado ainda pendentes de
+// entrega (quantidade_pendente > 0). Usado para o "estoque futuro / a receber".
+export async function getPedidosProduto(): Promise<LinxPedidoProduto[]> {
+  return fetchLinx<LinxPedidoProduto[]>("/pedidos-produto", undefined, { revalidateSeconds: 300 });
 }
 
 export async function getCores(): Promise<LinxCores> {
