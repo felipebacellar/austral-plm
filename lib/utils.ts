@@ -10,3 +10,8 @@ export function fmtBRL(v: number | null | undefined, opts: { mult?: boolean; dec
   if (mult) return v.toFixed(decimals).replace(".", ",") + "×";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
+
+/** Nome de exibição do usuário: usa o nome cadastrado ou cai para a parte antes do @ do e-mail. */
+export function nomeUsuario(user: { user_metadata?: { nome?: string }; email?: string | null } | null | undefined): string {
+  return user?.user_metadata?.nome || user?.email?.split("@")[0] || "Usuário";
+}

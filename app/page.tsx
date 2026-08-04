@@ -9,15 +9,17 @@ import DashboardView from "@/components/dashboard/DashboardView";
 import LoginModal from "@/components/auth/LoginModal";
 import SetNewPasswordModal from "@/components/auth/SetNewPasswordModal";
 import UsersModal from "@/components/settings/UsersModal";
+import AlertaFichaModal, { type Alerta } from "@/components/ui/AlertaFichaModal";
 import ExplosaoView from "@/components/compras/ExplosaoView";
 import ControleFluxoView from "@/components/dev/ControleFluxoView";
 import MapaColecaoView from "@/components/dev/MapaColecaoView";
 import MapaEntregasView from "@/components/dev/MapaEntregasView";
 import EtiquetasLineView from "@/components/dev/EtiquetasLineView";
 import CalendarioView from "@/components/calendario/CalendarioView";
-import { fetchProdutos, fetchAllVariantes, fetchVariantesPorColecao } from "@/lib/db";
+import { fetchProdutos, fetchAllVariantes, fetchVariantesPorColecao, fetchAlertasPendentes, marcarAlertaCiente } from "@/lib/db";
 import { COMPRAS_STATUS_ALLOW } from "@/lib/constants";
 import { subscribeRealtime } from "@/lib/realtime";
+import { nomeUsuario } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
 const TABS = [
@@ -56,6 +58,7 @@ export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
+  const [alertaFila, setAlertaFila] = useState<Alerta[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -67,6 +70,20 @@ export default function Home() {
   }, []);
 
   useEffect(() => { if (user) loadData(); }, [loadData, user]);
+
+  /* ── Alertas pendentes: avisos de alteração em fichas liberadas que este
+     usuário ainda não deu "ciente" (inclusive de quando estava offline) ── */
+  useEffect(() => {
+    if (!user) return;
+    fetchAlertasPendentes(user.id).then(setAlertaFila);
+  }, [user]);
+
+  const alertaAtual = alertaFila[0];
+  const handleAlertaCiente = async () => {
+    if (!user || !alertaAtual) return;
+    await marcarAlertaCiente(alertaAtual.id, user.id);
+    setAlertaFila(prev => prev.slice(1));
+  };
 
   /* ── Realtime: sincroniza produtos e variantes entre usuários ── */
   useEffect(() => {
@@ -130,6 +147,22 @@ export default function Home() {
       if (rowsTimer) clearTimeout(rowsTimer);
       unsub();
     };
+  }, [user]);
+
+  /* ── Realtime: popup de alerta pros outros usuários quando alguém altera
+     campo/cor/tecido/aviamento de um SKU já liberado/repilotando ── */
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeRealtime("alertas-sync", [
+      {
+        table: "alertas",
+        onInsert: (row) => {
+          if (row.alterado_por_user_id === user.id) return; // não avisa quem fez a própria alteração
+          setAlertaFila(prev => [...prev, row]);
+        },
+      },
+    ]);
+    return unsub;
   }, [user]);
 
   const handleFichaSave = async (updatedRow: any, variantesChanged = true) => {
@@ -249,7 +282,7 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, borderLeft: "1px solid var(--separator)", paddingLeft: 12 }}>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--label-primary)", lineHeight: 1.3 }}>
-                  {user.user_metadata?.nome || user.email?.split("@")[0]}
+                  {nomeUsuario(user)}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--label-tertiary)", lineHeight: 1.2 }}>{user.email}</div>
               </div>
@@ -302,6 +335,7 @@ export default function Home() {
 
       {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} onSave={handleFichaSave} />}
       {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
+      {alertaAtual && <AlertaFichaModal alerta={alertaAtual} total={alertaFila.length} onCiente={handleAlertaCiente} />}
     </div>
   );
 }

@@ -675,3 +675,50 @@ export async function fetchMapaEntregas() {
     a.data_entrega.localeCompare(b.data_entrega) || a.ref.localeCompare(b.ref)
   );
 }
+
+// ══ ALERTAS DE ALTERAÇÃO EM FICHA/SKU LIBERADO ══
+// Popup bloqueante para os outros usuários quando um SKU já em MOSTRUÁRIO
+// LIBERADO / PRODUÇÃO LIBERADA / REPILOTANDO PRODUÇÃO tem campo/cor/tecido/
+// aviamento alterado. Persistido: fica pendente por usuário até ele dar
+// "ciente" (tabela alerta_ciente), mesmo que estivesse offline na hora.
+export type NovoAlerta = {
+  produtoRef: string;
+  categoria: "CAMPO" | "STATUS" | "COR" | "TECIDO" | "AVIAMENTO";
+  campo: string;
+  valorAnterior: string;
+  valorNovo: string;
+  statusProduto: string;
+  alteradoPorNome: string;
+  alteradoPorUserId: string;
+};
+
+export async function criarAlerta(a: NovoAlerta) {
+  const { error } = await sb().from("alertas").insert({
+    produto_ref: a.produtoRef,
+    categoria: a.categoria,
+    campo: a.campo,
+    valor_anterior: a.valorAnterior,
+    valor_novo: a.valorNovo,
+    status_produto: a.statusProduto,
+    alterado_por_nome: a.alteradoPorNome,
+    alterado_por_user_id: a.alteradoPorUserId,
+  });
+  if (error) console.error("criarAlerta:", error);
+}
+
+export async function fetchAlertasPendentes(userId: string): Promise<any[]> {
+  const { data: acks, error: ackErr } = await sb().from("alerta_ciente").select("alerta_id").eq("user_id", userId);
+  if (ackErr) { console.error("fetchAlertasPendentes (ciente):", ackErr); return []; }
+  const ackedIds = (acks || []).map((a: any) => a.alerta_id);
+
+  let q = sb().from("alertas").select("*").neq("alterado_por_user_id", userId).order("created_at", { ascending: true });
+  if (ackedIds.length) q = q.not("id", "in", `(${ackedIds.join(",")})`);
+  const { data, error } = await q;
+  if (error) { console.error("fetchAlertasPendentes:", error); return []; }
+  return data || [];
+}
+
+export async function marcarAlertaCiente(alertaId: number, userId: string) {
+  const { error } = await sb().from("alerta_ciente").insert({ alerta_id: alertaId, user_id: userId });
+  if (error) console.error("marcarAlertaCiente:", error);
+}

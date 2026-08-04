@@ -4,11 +4,14 @@ import InlineCell from "@/components/ui/InlineCell";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import COLUMNS from "@/lib/columns";
-import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto, cloneProduto, bulkUpdateStatus } from "@/lib/db";
+import { fetchCadastros, fetchTecidos, fetchTabelasComPontos, updateProdutoField, insertProduto, deleteProduto, cloneProduto, bulkUpdateStatus, criarAlerta } from "@/lib/db";
 import { useAuth } from "@/lib/auth-context";
 import { exportToExcel, fmtExcelDate } from "@/lib/export-excel";
 import { STATUS_ESTILO, STATUS_COMPRAS_OPTS } from "@/lib/constants";
-import { fmtBRL } from "@/lib/utils";
+import { fmtBRL, nomeUsuario } from "@/lib/utils";
+
+// Status em que qualquer alteração dispara o popup de alerta pros outros usuários.
+const STATUS_ALERTA = [STATUS_ESTILO.MOSTARIO_LIBERADO, STATUS_ESTILO.PRODUCAO_LIBERADA, STATUS_ESTILO.REPILOTANDO_PRODUCAO] as string[];
 import ScrollTable from "@/components/ui/ScrollTable";
 
 // "2026-03-13" -> "13/03/26" (compacto para a lista de pedidos)
@@ -204,6 +207,23 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
     return r;
   }, [rows, fl, q, sort, colecaoAtiva]);
 
+  // Popup de alerta pros outros usuários quando um SKU já liberado/repilotando tem campo alterado.
+  const alertarCampoAlterado = (prevRow: any, campoKey: string, valorAnterior: any, valorNovo: any) => {
+    if (!prevRow || !user || !STATUS_ALERTA.includes(prevRow.status)) return;
+    if (String(valorAnterior ?? "") === String(valorNovo ?? "")) return;
+    const label = COLUMNS.find(c => c.key === campoKey)?.label || campoKey;
+    criarAlerta({
+      produtoRef: prevRow.ref,
+      categoria: campoKey === "status" ? "STATUS" : "CAMPO",
+      campo: label,
+      valorAnterior: String(valorAnterior ?? ""),
+      valorNovo: String(valorNovo ?? ""),
+      statusProduto: prevRow.status,
+      alteradoPorNome: nomeUsuario(user),
+      alteradoPorUserId: user.id,
+    });
+  };
+
   const upd = async (id:number, k:string, v:string|number) => {
     // Validate unique ref
     if (k === "ref" && v) {
@@ -231,6 +251,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
       setRows((p:any[]) => p.map((r:any) => r.id === id && prevRow ? { ...r, [k]: prevRow[k] } : r));
       return;
     }
+    alertarCampoAlterado(prevRow, k, prevRow?.[k], v);
 
     if (tecidoInfo) {
       const err2 = await updateProdutoField(id, "forn_tecido", tecidoInfo.forn);
@@ -299,6 +320,7 @@ export default function DevTable({ rows, setRows, onOpenFicha, userEmail, readOn
   const handleBulkStatus = async () => {
     if (!bulkStatus || selected.size === 0) return;
     const ids = Array.from(selected);
+    ids.forEach(id => alertarCampoAlterado(rows.find((r:any) => r.id === id), "status", rows.find((r:any) => r.id === id)?.status, bulkStatus));
     setRows((p:any[]) => p.map((r:any) => ids.includes(r.id) ? { ...r, status: bulkStatus } : r));
     const error = await bulkUpdateStatus(ids, bulkStatus);
     if (error) {

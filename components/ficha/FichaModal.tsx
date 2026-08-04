@@ -3,11 +3,17 @@ import { useState, useRef, useEffect } from "react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas } from "@/lib/db";
+import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { aviamentosAutomaticos } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
+import { useAuth } from "@/lib/auth-context";
+import { nomeUsuario } from "@/lib/utils";
+import { STATUS_ESTILO } from "@/lib/constants";
 import FichaPDF from "./FichaPDF";
+
+// Status em que qualquer alteração de cor/tecido/aviamento dispara o popup de alerta.
+const STATUS_ALERTA = [STATUS_ESTILO.MOSTARIO_LIBERADO, STATUS_ESTILO.PRODUCAO_LIBERADA, STATUS_ESTILO.REPILOTANDO_PRODUCAO] as string[];
 
 type Props = { row: any; onClose: () => void; onSave: (r: any, variantesChanged?: boolean) => void };
 
@@ -57,7 +63,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const isLoaded = useRef(false);
   const saveRef = useRef<(confirmed?: boolean) => Promise<void>>();
   const lastCoresRef = useRef<string>("");
+  const baselineRef = useRef<{ tec: any[]; avi: any[] }>({ tec: [], avi: [] });
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
+  const { user } = useAuth();
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
@@ -123,14 +131,16 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           base = [...base, ...faltantes.map(mkAvi).filter(Boolean)];
         return base.length ? base : [mkAvi("AD0001") || DEFAULT_AVI[0]];
       })();
-      setAvi(aviBase.map((a: any) => {
+      const aviComputed = aviBase.map((a: any) => {
         const cat = aviCad.find((c: any) => c.cod === a.cod);
         const cores = cat?.cores_disponiveis || [];
         const autoColor = cores.length === 1 ? cores[0] : "";
         const varPatch: Record<string, string> = {};
         if (autoColor) (["var01","var02","var03","var04","var05","var06"] as const).forEach(k => { if (!a[k]) varPatch[k] = autoColor; });
         return { ...a, ...varPatch, imagem: cat?.imagem || "", cores_disponiveis: cores, fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" };
-      }));
+      });
+      setAvi(aviComputed);
+      let tecComputed: any[] = [];
       // Carrega imagem do modo de medir da tabela de medidas
       if (row.tab_medidas && tabs) {
         const t = tabs.find((t: any) => t.nome === row.tab_medidas);
@@ -146,10 +156,11 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           if ((!first.artigo || first.artigo === "") && row.tecido) {
             ficTec[0] = { ...first, artigo: row.tecido, forn: row.forn_tecido || "" };
           }
-          setTec(ficTec);
+          tecComputed = ficTec;
         } else {
-          setTec(row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : []);
+          tecComputed = row.tecido ? [{ artigo: row.tecido, forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }] : [];
         }
+        setTec(tecComputed);
         if (ficha.pilotagem?.length) setPil(ficha.pilotagem);
         setObs(ficha.observacoes || "");
         if (ficha.provas) setPv(ficha.provas);
@@ -170,8 +181,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       }
       /* Se não há ficha, cria linha inicial de tecido */
       if (!ficha) {
-        setTec([{ artigo: row.tecido || "", forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }]);
+        tecComputed = [{ artigo: row.tecido || "", forn: row.forn_tecido || "", preco: 0, cores: ["", "", "", ""] }];
+        setTec(tecComputed);
       }
+      baselineRef.current = { tec: tecComputed, avi: aviComputed };
       if (row.tab_medidas) {
         const [p, g] = await Promise.all([
           fetchPontosByTabelaNome(row.tab_medidas),
@@ -218,6 +231,49 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     return null;
   };
 
+  // Popup de alerta pros outros usuários: compara o estado atual de tecidos/
+  // aviamentos com o baseline (última versão salva/carregada) e dispara um
+  // alerta por diferença encontrada, só quando o SKU já está liberado/repilotando.
+  const alertarFichaAlterada = () => {
+    if (!user || !STATUS_ALERTA.includes(row.status)) return;
+    const baseline = baselineRef.current;
+    const alertas: { categoria: "COR" | "TECIDO" | "AVIAMENTO"; campo: string; de: string; para: string }[] = [];
+
+    const maxTec = Math.max(baseline.tec.length, tec.length);
+    for (let i = 0; i < maxTec; i++) {
+      const before = baseline.tec[i], after = tec[i];
+      if (!before || !after) continue; // linha adicionada/removida — fora do escopo v1
+      const label = after.artigo || before.artigo || `#${i + 1}`;
+      if ((before.artigo || "") !== (after.artigo || "")) alertas.push({ categoria: "TECIDO", campo: `Tecido ${label} — artigo`, de: before.artigo || "", para: after.artigo || "" });
+      if ((before.forn || "") !== (after.forn || "")) alertas.push({ categoria: "TECIDO", campo: `Tecido ${label} — fornecedor`, de: before.forn || "", para: after.forn || "" });
+      if (Number(before.preco || 0) !== Number(after.preco || 0)) alertas.push({ categoria: "TECIDO", campo: `Tecido ${label} — preço`, de: String(before.preco ?? ""), para: String(after.preco ?? "") });
+      const coresAntes = (before.cores || []).filter(Boolean).join(", ");
+      const coresDepois = (after.cores || []).filter(Boolean).join(", ");
+      if (coresAntes !== coresDepois) alertas.push({ categoria: "COR", campo: `Cores — tecido ${label}`, de: coresAntes, para: coresDepois });
+    }
+
+    const maxAvi = Math.max(baseline.avi.length, avi.length);
+    for (let i = 0; i < maxAvi; i++) {
+      const before = baseline.avi[i], after = avi[i];
+      if (!before || !after) continue;
+      const label = after.item || before.item || `#${i + 1}`;
+      if ((before.cod || "") !== (after.cod || "")) alertas.push({ categoria: "AVIAMENTO", campo: `Aviamento ${label} — código`, de: before.cod || "", para: after.cod || "" });
+      if (Number(before.qtd ?? 1) !== Number(after.qtd ?? 1)) alertas.push({ categoria: "AVIAMENTO", campo: `Aviamento ${label} — quantidade`, de: String(before.qtd ?? ""), para: String(after.qtd ?? "") });
+      if ((before.local || "") !== (after.local || "")) alertas.push({ categoria: "AVIAMENTO", campo: `Aviamento ${label} — localização`, de: before.local || "", para: after.local || "" });
+    }
+
+    alertas.forEach(a => criarAlerta({
+      produtoRef: row.ref,
+      categoria: a.categoria,
+      campo: a.campo,
+      valorAnterior: a.de,
+      valorNovo: a.para,
+      statusProduto: row.status,
+      alteradoPorNome: nomeUsuario(user),
+      alteradoPorUserId: user.id,
+    }));
+  };
+
   const save = async (confirmed = false) => {
     const autoStatus = autoStatusFor(statusLib);
     // Se vai mudar o status do produto automaticamente, pedir confirmação (só no save manual)
@@ -233,7 +289,18 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       const newId = await upsertFicha(row.ref, fichaData, isClassic ? selectedColecao : null);
       if (!newId) throw new Error("Falha ao salvar a ficha técnica.");
       setFichaId(newId);
-      if (autoStatus) await updateProdutoField(row.id, "status", autoStatus);
+      alertarFichaAlterada();
+      baselineRef.current = { tec, avi };
+      if (autoStatus) {
+        if (user && STATUS_ALERTA.includes(row.status)) {
+          criarAlerta({
+            produtoRef: row.ref, categoria: "STATUS", campo: "Status atual",
+            valorAnterior: row.status, valorNovo: autoStatus, statusProduto: row.status,
+            alteradoPorNome: nomeUsuario(user), alteradoPorUserId: user.id,
+          });
+        }
+        await updateProdutoField(row.id, "status", autoStatus);
+      }
       // Variantes só derivam das cores dos tecidos — evita recarregar a lista
       // inteira de variantes do sistema a cada auto-save (a cada 1.5s de edição)
       // quando o que mudou foi só, por exemplo, uma observação ou o NCM.
