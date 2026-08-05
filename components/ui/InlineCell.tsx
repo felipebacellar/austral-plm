@@ -22,11 +22,19 @@ function fmtDate(v: string | number): string {
 export default function InlineCell({ value, type, options, isStatus, onChange, displayFn, displayEl }: Props) {
   const [editing, setEditing] = useState(false);
   const [tmp, setTmp] = useState(value);
+  const [query, setQuery] = useState("");
+  const [activeIdx, setActiveIdx] = useState(0);
   const ref = useRef<HTMLInputElement | HTMLSelectElement>(null);
   const cancelling = useRef(false);
 
   useEffect(() => { if (editing && ref.current) ref.current.focus(); }, [editing]);
   useEffect(() => { setTmp(value); }, [value]);
+  // Ao entrar em edição de um select, pré-preenche a busca com o valor atual
+  // (selecionado, pra digitar já substitui) e reseta o destaque do teclado.
+  useEffect(() => {
+    if (editing && type === "select") { setQuery(String(value ?? "")); setActiveIdx(0); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   const cancel = () => { cancelling.current = true; setTmp(value); setEditing(false); };
   const commit = (v: string | number) => {
@@ -43,13 +51,49 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
   if (editing) {
     const cls = "w-full text-[13px] px-2.5 py-1.5 rounded-lg bg-white border border-[var(--system-blue)] shadow-[0_0_0_3px_rgba(0,122,255,0.15)] outline-none";
     if (type === "select") {
+      const opts = options || [];
+      const norm = (s: string) => s.toLowerCase();
+      const filtered = query.trim() === "" ? opts : opts.filter(o => norm(o).includes(norm(query)));
       return (
-        <select ref={ref as any} className={cls} value={tmp as string}
-          onChange={e => { setTmp(e.target.value); commit(e.target.value); }}
-          onBlur={() => commit(tmp)}>
-          <option value="">—</option>
-          {(options || []).map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
+        <div className="relative">
+          <input
+            ref={ref as any}
+            type="text"
+            className={cls}
+            value={query}
+            placeholder="Digite para buscar…"
+            onFocus={e => e.currentTarget.select()}
+            onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
+            onBlur={() => {
+              const exact = opts.find(o => norm(o) === norm(query));
+              if (exact) commit(exact);
+              else if (query.trim() === "") commit("");
+              else cancel();
+            }}
+            onKeyDown={e => {
+              if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, filtered.length - 1)); }
+              else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, 0)); }
+              else if (e.key === "Enter") {
+                e.preventDefault();
+                if (filtered[activeIdx]) commit(filtered[activeIdx]);
+                else if (query.trim() === "") commit("");
+              } else if (e.key === "Escape") cancel();
+            }}
+          />
+          <div className="absolute z-10 left-0 right-0 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[var(--separator)] bg-[var(--bg-primary)] shadow-lg">
+            <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => commit("")}
+              className="w-full text-left px-2.5 py-1.5 text-[13px] text-[var(--label-tertiary)] hover:bg-[var(--bg-hover)]">—</button>
+            {filtered.length === 0 && (
+              <div className="px-2.5 py-1.5 text-[13px] text-[var(--label-quaternary)]">Nenhum resultado</div>
+            )}
+            {filtered.map((o, i) => (
+              <button key={o} type="button" onMouseDown={e => e.preventDefault()} onClick={() => commit(o)}
+                className={`w-full text-left px-2.5 py-1.5 text-[13px] ${i === activeIdx ? "bg-[var(--system-blue)] text-white" : "hover:bg-[var(--bg-hover)]"}`}>
+                {o}
+              </button>
+            ))}
+          </div>
+        </div>
       );
     }
     if (type === "date") {
