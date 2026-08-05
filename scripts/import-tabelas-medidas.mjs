@@ -92,18 +92,36 @@ for (let i = 0; i < rowsGrad.length; i++) {
 
   // O código do ponto identifica a medida na prova da ficha (as medições são
   // indexadas por ele), então precisa ser único dentro da tabela. O arquivo tem
-  // casos de dois pontos distintos com o mesmo código — renomeia o repetido e
-  // avisa, em vez de perder a linha.
-  const usados = new Set();
-  for (const p of pontos) {
-    if (!usados.has(p.cod)) { usados.add(p.cod); continue; }
-    const m = p.cod.match(/^([A-Za-z]+)(\d*)$/);
-    let n = m && m[2] ? Number(m[2]) : 1;
-    let novo;
-    do { n++; novo = `${m ? m[1] : p.cod}${n}`; } while (usados.has(novo));
-    renomeados.push(`${String(r[0]).trim()}: "${p.cod}" -> "${novo}" (${p.desc})`);
-    p.cod = novo;
-    usados.add(novo);
+  // casos de dois pontos distintos com o mesmo código — resolve e avisa, em vez
+  // de perder a linha.
+  //
+  // A convenção do arquivo para variantes de um mesmo ponto é "letra" + "letra1"
+  // (ex. E/E1 = entre cavas frente/costas, K/K1 = carcela). Quando o repetido
+  // já vem com sufixo numérico (dois "J1"), o PRIMEIRO recebe a letra pura
+  // ("J") e o segundo mantém o "J1" — restaurando essa convenção.
+  const contagem = {};
+  pontos.forEach(p => { contagem[p.cod] = (contagem[p.cod] || 0) + 1; });
+  const usados = new Set(pontos.map(p => p.cod));
+  for (const cod of Object.keys(contagem).filter(c => contagem[c] > 1)) {
+    const m = cod.match(/^([A-Za-z]+)(\d+)$/);
+    const primeiro = pontos.find(p => p.cod === cod);
+    if (m && !usados.has(m[1])) {
+      renomeados.push(`${String(r[0]).trim()}: "${cod}" -> "${m[1]}" (${primeiro.desc})`);
+      primeiro.cod = m[1];
+      usados.add(m[1]);
+      continue;
+    }
+    // Sem letra pura livre: numera as ocorrências extras
+    const dups = pontos.filter(p => p.cod === cod).slice(1);
+    const raiz = m ? m[1] : cod;
+    let n = m ? Number(m[2]) : 1;
+    for (const p of dups) {
+      let novo;
+      do { n++; novo = `${raiz}${n}`; } while (usados.has(novo));
+      renomeados.push(`${String(r[0]).trim()}: "${p.cod}" -> "${novo}" (${p.desc})`);
+      p.cod = novo;
+      usados.add(novo);
+    }
   }
 
   blocos[chave(r[0])] = { nomeBloco: String(r[0]).trim(), tamanhos, base, pontos };
