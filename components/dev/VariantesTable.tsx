@@ -9,12 +9,13 @@ import ScrollTable from "@/components/ui/ScrollTable";
 import { useToast } from "@/components/ui/Toast";
 
 // Colunas ESTILO
-const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"tecido",label:"Tecido",w:200},{key:"composicao",label:"Composição",w:160},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
+const VC=[{key:"ref",label:"Referência",w:120},{key:"desc",label:"Descrição",w:260},{key:"cor",label:"Cor",w:180},{key:"colecao",label:"Coleção",w:140},{key:"tecido",label:"Tecido",w:200},{key:"composicao",label:"Composição",w:160},{key:"forn_tecido",label:"Forn. tecido",w:140},{key:"status",label:"Status",w:180},{key:"fornecedor",label:"Fornecedor",w:140},{key:"grupo",label:"Grupo",w:120},{key:"subgrupo",label:"Subgrupo",w:200},{key:"_ficha",label:"Ficha",w:70}];
 // Colunas COMPRAS
 const VC_COMPRAS=[
   {key:"ref",           label:"Referência",     w:120},
   {key:"desc",          label:"Descrição",       w:260},
   {key:"cor",           label:"Cor",             w:180},
+  {key:"colecao",       label:"Coleção",         w:140},
   {key:"qtd_compra1",   label:"Qtd. Compra 1",  w:115, colType:"number"},
   {key:"pedido1",       label:"Pedido 1",        w:120, colType:"text"  },
   {key:"data_entrega1", label:"Entrega 1",       w:115, colType:"date"  },
@@ -131,54 +132,53 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
   // Build variant rows, merging per-variant compra data from vcMap
   const vr = useMemo(() => {
     const o: any[] = [];
-    // Se filtro de coleção ativo, clássicos usam cores da temporada correspondente
-    const colecaoFiltro = fl["colecao"] || "";
+    const mkCompraFields = (vc: any) => ({
+      qtd_compra1:   vc.qtd_compra1   ?? null,
+      pedido1:       vc.pedido1       ?? "",
+      data_entrega1: vc.data_entrega1 ?? "",
+      qtd_compra2:   vc.qtd_compra2   ?? null,
+      pedido2:       vc.pedido2       ?? "",
+      data_entrega2: vc.data_entrega2 ?? "",
+    });
     rows.forEach((p: any) => {
       const isClassic = (p.ref || "").startsWith("11") || /cl.ssic/i.test(p.colecao || "");
-      const coresTemporada = colecaoFiltro && isClassic ? (variantesPorColecao[p.ref]?.[colecaoFiltro] || []) : null;
-      const cores = coresTemporada ?? variantes[p.ref] ?? [];
-      if (!cores.length) {
-        const vc = vcMap[`${p.id}:—`] ?? {};
-        o.push({
-          ...p, cor: "—", _vid: `${p.ref}-`,
-          qtd_compra1:   vc.qtd_compra1   ?? null,
-          pedido1:       vc.pedido1       ?? "",
-          data_entrega1: vc.data_entrega1 ?? "",
-          qtd_compra2:   vc.qtd_compra2   ?? null,
-          pedido2:       vc.pedido2       ?? "",
-          data_entrega2: vc.data_entrega2 ?? "",
-        });
-      } else {
-        cores.forEach(x => {
-          const vc = vcMap[`${p.id}:${x}`] ?? {};
-          o.push({
-            ...p, cor: x, _vid: `${p.ref}-${x}`,
-            qtd_compra1:   vc.qtd_compra1   ?? null,
-            pedido1:       vc.pedido1       ?? "",
-            data_entrega1: vc.data_entrega1 ?? "",
-            qtd_compra2:   vc.qtd_compra2   ?? null,
-            pedido2:       vc.pedido2       ?? "",
-            data_entrega2: vc.data_entrega2 ?? "",
+      if (isClassic) {
+        // Clássicos: uma linha por (temporada, cor) — cada cor pertence à
+        // temporada da ficha em que foi cadastrada, não à coleção do produto.
+        const porTemporada = variantesPorColecao[p.ref] || {};
+        const temporadas = Object.keys(porTemporada);
+        if (!temporadas.length) {
+          const vc = vcMap[`${p.id}:—`] ?? {};
+          o.push({ ...p, cor: "—", _vid: `${p.ref}-`, ...mkCompraFields(vc) });
+        } else {
+          temporadas.forEach(temporada => {
+            (porTemporada[temporada] || []).forEach(x => {
+              const vc = vcMap[`${p.id}:${x}`] ?? {};
+              o.push({ ...p, cor: x, colecao: temporada, _vid: `${p.ref}-${temporada}-${x}`, ...mkCompraFields(vc) });
+            });
           });
-        });
+        }
+      } else {
+        const cores = variantes[p.ref] ?? [];
+        if (!cores.length) {
+          const vc = vcMap[`${p.id}:—`] ?? {};
+          o.push({ ...p, cor: "—", _vid: `${p.ref}-`, ...mkCompraFields(vc) });
+        } else {
+          cores.forEach(x => {
+            const vc = vcMap[`${p.id}:${x}`] ?? {};
+            o.push({ ...p, cor: x, _vid: `${p.ref}-${x}`, ...mkCompraFields(vc) });
+          });
+        }
       }
     });
     return o;
-  }, [rows, variantes, variantesPorColecao, vcMap, fl]);
+  }, [rows, variantes, variantesPorColecao, vcMap]);
 
   const filtered = useMemo(() => {
     let r = vr;
     Object.entries(fl).forEach(([k,v]) => {
       if (!v) return;
-      if (k === "colecao") {
-        // Clássicos: incluir se têm cores cadastradas para essa temporada
-        r = r.filter(x => x[k] === v || (
-          ((x.ref||"").startsWith("11") || /cl.ssic/i.test(x.colecao||"")) &&
-          (variantesPorColecao[x.ref]?.[v]?.length ?? 0) > 0
-        ));
-      } else {
-        r = r.filter(x => x[k] === v);
-      }
+      r = r.filter(x => x[k] === v);
     });
     if(q){ const s=q.toLowerCase(); r=r.filter(x=>(x.ref+x.desc+x.cor+x.tecido+x.composicao+x.fornecedor).toLowerCase().includes(s)); }
     if (sort) {
@@ -189,7 +189,7 @@ export default function VariantesTable({rows, variantes, variantesPorColecao={},
       });
     }
     return r;
-  }, [vr, fl, q, sort, variantesPorColecao]);
+  }, [vr, fl, q, sort]);
 
   const uv = (k: string): string[] => Array.from(new Set(vr.map(r => r[k]).filter(Boolean))).sort();
   const sf2 = (k: string, v: string) => setFl(p => { const n={...p}; if(v) n[k]=v; else delete n[k]; return n; });

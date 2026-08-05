@@ -219,8 +219,25 @@ export async function upsertVarianteCompra(produtoId: number, cor: string, field
 
 // ══ FICHAS TÉCNICAS ══
 export async function fetchFichasColecoes(ref: string): Promise<string[]> {
-  const { data } = await sb().from("fichas_tecnicas").select("colecao").eq("produto_ref", ref).not("colecao", "is", null);
+  const { data } = await sb().from("fichas_tecnicas").select("colecao, ordem").eq("produto_ref", ref).not("colecao", "is", null).order("ordem", { ascending: true }).order("id", { ascending: true });
   return (data || []).map((f: any) => f.colecao).filter(Boolean);
+}
+
+// Persiste a nova ordem dos pills de temporada (arrastar-e-soltar na ficha).
+// Temporadas ainda não salvas (criadas via "+ Adicionar temporada" mas sem
+// nenhum save ainda) simplesmente não têm linha pra atualizar — no-op.
+export async function reorderFichaColecoes(ref: string, colecoesEmOrdem: string[]): Promise<void> {
+  await Promise.all(colecoesEmOrdem.map((colecao, i) =>
+    sb().from("fichas_tecnicas").update({ ordem: i }).eq("produto_ref", ref).eq("colecao", colecao)
+  ));
+}
+
+// Exclui a ficha de uma temporada específica de um clássico (tecidos,
+// aviamentos, provas etc. são apagados via ON DELETE CASCADE).
+export async function deleteFichaColecao(ref: string, colecao: string): Promise<string | null> {
+  const { error } = await sb().from("fichas_tecnicas").delete().eq("produto_ref", ref).eq("colecao", colecao);
+  if (error) { console.error("deleteFichaColecao:", error); return error.message || "Erro ao excluir temporada"; }
+  return null;
 }
 
 export async function fetchFicha(ref: string, colecao?: string | null) {

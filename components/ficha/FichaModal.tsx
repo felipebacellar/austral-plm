@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, fetchFichasColecoes, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
+import { fetchFicha, fetchFichasColecoes, reorderFichaColecoes, deleteFichaColecao, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { aviamentosAutomaticos } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
@@ -94,6 +94,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [colecaoOpts, setColecaoOpts] = useState<string[]>([]);
   const [newColecaoMode, setNewColecaoMode] = useState(false);
   const [colecaoCadOpts, setColecaoCadOpts] = useState<string[]>([]);
+  const [editandoTemporadas, setEditandoTemporadas] = useState(false);
+  const draggedTemporadaRef = useRef<string | null>(null);
 
   /* Carrega temporadas disponíveis e opções de cadastro para refs clássicas */
   useEffect(() => {
@@ -105,6 +107,36 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.ref, isClassic]);
+
+  const moverTemporada = (destino: string) => {
+    const origem = draggedTemporadaRef.current;
+    draggedTemporadaRef.current = null;
+    if (!origem || origem === destino) return;
+    setColecaoOpts(prev => {
+      const semOrigem = prev.filter(c => c !== origem);
+      const idx = semOrigem.indexOf(destino);
+      const nova = [...semOrigem.slice(0, idx), origem, ...semOrigem.slice(idx)];
+      reorderFichaColecoes(row.ref, nova);
+      return nova;
+    });
+  };
+
+  const excluirTemporada = async (colecao: string) => {
+    if (colecaoOpts.length <= 1) return;
+    const confirmed = await confirm({
+      title: "Excluir temporada?",
+      message: `Isso apaga tecidos, aviamentos, fotos e provas da temporada "${colecao}". Não pode ser desfeito.`,
+      confirmLabel: "Excluir",
+      cancelLabel: "Cancelar",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+    const err = await deleteFichaColecao(row.ref, colecao);
+    if (err) return;
+    const restantes = colecaoOpts.filter(c => c !== colecao);
+    setColecaoOpts(restantes);
+    if (selectedColecao === colecao) setSelectedColecao(restantes[0] || null);
+  };
 
   useEffect(() => {
     (async () => {
@@ -593,15 +625,40 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--separator)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--label-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Temporada:</span>
               {colecaoOpts.map(c => (
-                <button key={c} onClick={() => { setSelectedColecao(c); setNewColecaoMode(false); }}
-                  style={{
-                    fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, border: "1.5px solid",
-                    cursor: "pointer", transition: "all .15s",
-                    background: selectedColecao === c ? "var(--system-blue)" : "var(--bg-primary)",
-                    borderColor: selectedColecao === c ? "var(--system-blue)" : "var(--separator)",
-                    color: selectedColecao === c ? "#fff" : "var(--label-primary)",
-                  }}>{c}</button>
+                <div key={c}
+                  draggable={editandoTemporadas}
+                  onDragStart={() => { draggedTemporadaRef.current = c; }}
+                  onDragOver={e => editandoTemporadas && e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); moverTemporada(c); }}
+                  style={{ display: "flex", alignItems: "center", gap: 2, cursor: editandoTemporadas ? "grab" : undefined }}
+                >
+                  <button onClick={() => { if (!editandoTemporadas) { setSelectedColecao(c); setNewColecaoMode(false); } }}
+                    style={{
+                      fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, border: "1.5px solid",
+                      cursor: editandoTemporadas ? "grab" : "pointer", transition: "all .15s",
+                      background: selectedColecao === c ? "var(--system-blue)" : "var(--bg-primary)",
+                      borderColor: selectedColecao === c ? "var(--system-blue)" : "var(--separator)",
+                      color: selectedColecao === c ? "#fff" : "var(--label-primary)",
+                    }}>{c}</button>
+                  {editandoTemporadas && (
+                    <button onClick={() => excluirTemporada(c)} disabled={colecaoOpts.length <= 1}
+                      title={colecaoOpts.length <= 1 ? "Precisa sobrar pelo menos uma temporada" : `Excluir ${c}`}
+                      style={{
+                        fontSize: 11, width: 20, height: 20, borderRadius: "50%", border: "1px solid var(--separator)",
+                        background: "var(--bg-tertiary)", color: "var(--label-secondary)",
+                        cursor: colecaoOpts.length <= 1 ? "not-allowed" : "pointer",
+                        opacity: colecaoOpts.length <= 1 ? 0.4 : 1,
+                      }}>✕</button>
+                  )}
+                </div>
               ))}
+              <button onClick={() => setEditandoTemporadas(p => !p)}
+                title={editandoTemporadas ? "Concluir edição" : "Reordenar/excluir temporadas"}
+                style={{
+                  fontSize: 12, padding: "4px 10px", borderRadius: 20, border: "1.5px solid var(--separator)",
+                  background: editandoTemporadas ? "var(--system-blue)" : "transparent",
+                  color: editandoTemporadas ? "#fff" : "var(--label-secondary)", cursor: "pointer",
+                }}>{editandoTemporadas ? "Concluir" : "✎ Editar"}</button>
               {!newColecaoMode ? (
                 <button onClick={() => setNewColecaoMode(true)}
                   style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, border: "1.5px dashed var(--separator)", background: "transparent", color: "var(--system-blue)", cursor: "pointer" }}>
