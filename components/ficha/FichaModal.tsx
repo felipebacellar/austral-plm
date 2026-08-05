@@ -333,7 +333,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       setFichaId(newId);
       alertarFichaAlterada();
       baselineRef.current = { tec, avi };
-      if (autoStatus) {
+      // Só mexe no status (e só avisa) se ele realmente muda. Sem isso, abrir a
+      // ficha já disparava o auto-save e gerava um alerta "X → X" para todo
+      // mundo, mesmo sem ninguém ter alterado nada.
+      if (autoStatus && autoStatus !== row.status) {
         if (user && STATUS_ALERTA.includes(row.status)) {
           criarAlerta({
             produtoRef: row.ref, categoria: "STATUS", campo: "Status atual",
