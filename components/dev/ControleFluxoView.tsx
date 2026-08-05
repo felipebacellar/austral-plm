@@ -27,7 +27,6 @@ const PRODUCAO_COLS = [
 ];
 
 const PRE_PRODUCAO_COLS = [
-  { field: "prev_entrega_pre_producao", label: "Prev. Entrega Pré-Prod.", type: "date", width: 160 },
   { field: "data_entrega_pre_producao", label: "Data Entrega Pré-Prod.",  type: "date", width: 150 },
   { field: "data_retorno_pre_producao", label: "Data Retorno Pré-Prod.",  type: "date", width: 150 },
   { field: "status_pre_producao",       label: "Status Pré-Produção",     type: "select", width: 200,
