@@ -15,14 +15,33 @@ export function invalidateCache(key?: string) {
   if (key) delete _cache[key]; else Object.keys(_cache).forEach(k => delete _cache[k]);
 }
 
+// A API do Supabase devolve no máximo 1000 linhas por requisição, sem avisar
+// que cortou. Toda leitura de tabela inteira precisa paginar — sem isso o dado
+// some silenciosamente (foi o que escondeu os tecidos de P a Z, incluindo o
+// "TABHAE1054 - SPINNING PLUS", do campo de seleção).
+const PAGINA = 1000;
+async function selectAll<T = any>(
+  build: (de: number, ate: number) => PromiseLike<{ data: T[] | null; error: any }>,
+  rotulo: string,
+): Promise<T[]> {
+  const todas: T[] = [];
+  for (let de = 0; ; de += PAGINA) {
+    const { data, error } = await build(de, de + PAGINA - 1);
+    if (error) { console.error(`${rotulo}:`, error); break; }
+    const lote = data || [];
+    todas.push(...lote);
+    if (lote.length < PAGINA) break;
+  }
+  return todas;
+}
+
 // ══ CADASTROS ══
 export async function fetchCadastros() {
   const cached = fromCache<Record<string, string[]>>("cadastros");
   if (cached) return cached;
-  const { data, error } = await sb().from("cadastros").select("*").order("nome");
-  if (error) console.error("fetchCadastros:", error);
+  const data = await selectAll((de, ate) => sb().from("cadastros").select("*").order("nome").range(de, ate), "fetchCadastros");
   const g: Record<string, string[]> = {};
-  (data || []).forEach((i: any) => { if (!g[i.tabela]) g[i.tabela] = []; g[i.tabela].push(i.nome); });
+  data.forEach((i: any) => { if (!g[i.tabela]) g[i.tabela] = []; g[i.tabela].push(i.nome); });
   toCache("cadastros", g);
   return g;
 }
@@ -50,9 +69,8 @@ export async function addCadastrosBulk(tabela: string, nomes: string[]): Promise
 export async function fetchTecidos() {
   const cached = fromCache<any[]>("tecidos");
   if (cached) return cached;
-  const { data, error } = await sb().from("tecidos").select("*").order("nome");
-  if (error) console.error("fetchTecidos:", error);
-  const result = (data || []).map((t: any) => ({ nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "" }));
+  const data = await selectAll((de, ate) => sb().from("tecidos").select("*").order("nome").range(de, ate), "fetchTecidos");
+  const result = data.map((t: any) => ({ nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "" }));
   toCache("tecidos", result);
   return result;
 }
@@ -71,9 +89,8 @@ export async function removeTecido(nome: string) {
 export async function fetchAviamentos() {
   const cached = fromCache<any[]>("aviamentos");
   if (cached) return cached;
-  const { data, error } = await sb().from("aviamentos").select("*").order("nome");
-  if (error) console.error("fetchAviamentos:", error);
-  const result = (data || []).map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "", cores_fabricante: a.cores_fabricante || [] }));
+  const data = await selectAll((de, ate) => sb().from("aviamentos").select("*").order("nome").range(de, ate), "fetchAviamentos");
+  const result = data.map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "", cores_fabricante: a.cores_fabricante || [] }));
   toCache("aviamentos", result);
   return result;
 }
@@ -115,16 +132,14 @@ export async function removeAviamento(cod: string) {
 
 // ══ PRODUTOS ══
 export async function fetchProdutos() {
-  const [prodsRes, tecidosRes] = await Promise.all([
-    sb().from("produtos").select("*").order("ref"),
-    sb().from("tecidos").select("nome, composicao"),
+  const [data, tecidos] = await Promise.all([
+    selectAll((de, ate) => sb().from("produtos").select("*").order("ref").range(de, ate), "fetchProdutos"),
+    selectAll((de, ate) => sb().from("tecidos").select("nome, composicao").range(de, ate), "fetchProdutos/tecidos"),
   ]);
-  const { data, error } = prodsRes;
-  if (error) console.error("fetchProdutos:", error);
 
   const tecidoCompMap: Record<string, string> = {};
-  (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
-  return (data || []).map((p: any) => ({
+  tecidos.forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
+  return data.map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "", tecido: p.tecido || "",
     composicao: p.composicao || tecidoCompMap[p.tecido] || "",
     forn_tecido: p.forn_tecido || "", status: p.status || "",
@@ -196,10 +211,9 @@ export async function bulkUpdateStatus(ids: number[], status: string): Promise<s
 
 // ══ COMPRAS POR VARIANTE ══
 export async function fetchVarianteCompras(): Promise<Record<string, any>> {
-  const { data, error } = await sb().from("produto_variante_compras").select("*");
-  if (error) console.error("fetchVarianteCompras:", error);
+  const data = await selectAll((de, ate) => sb().from("produto_variante_compras").select("*").range(de, ate), "fetchVarianteCompras");
   const map: Record<string, any> = {};
-  (data || []).forEach((r: any) => {
+  data.forEach((r: any) => {
     map[`${r.produto_id}:${r.cor}`] = r;
   });
   return map;
@@ -411,21 +425,17 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
 
 // ══ EXPLOSÃO DE AVIAMENTOS ══
 export async function fetchExplosaoData() {
-  const [fichasRes, avFichasRes, avLibRes, comprasVarRes] = await Promise.all([
-    sb().from("fichas_tecnicas").select("id, produto_ref, qtd_most_var01, qtd_most_var02, qtd_most_var03, qtd_most_var04, qtd_most_var05, qtd_most_var06"),
-    sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao, var01"),
-    sb().from("aviamentos").select("codigo, nome, fornecedor, preco, imagem, codigo_fornecedor"),
-    sb().from("produto_variante_compras").select("produto_id, cor, qtd_compra1, qtd_compra2"),
+  const [fichas, avFichas, avLib, comprasVar] = await Promise.all([
+    selectAll((de, ate) => sb().from("fichas_tecnicas").select("id, produto_ref, qtd_most_var01, qtd_most_var02, qtd_most_var03, qtd_most_var04, qtd_most_var05, qtd_most_var06").range(de, ate), "fetchExplosaoData/fichas"),
+    selectAll((de, ate) => sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao, var01").range(de, ate), "fetchExplosaoData/avFichas"),
+    selectAll((de, ate) => sb().from("aviamentos").select("codigo, nome, fornecedor, preco, imagem, codigo_fornecedor").range(de, ate), "fetchExplosaoData/avLib"),
+    selectAll((de, ate) => sb().from("produto_variante_compras").select("produto_id, cor, qtd_compra1, qtd_compra2").range(de, ate), "fetchExplosaoData/comprasVar"),
   ]);
-  if (fichasRes.error) console.error("fetchExplosaoData fichas:", fichasRes.error);
-  if (avFichasRes.error) console.error("fetchExplosaoData avFichas:", avFichasRes.error);
-  if (avLibRes.error) console.error("fetchExplosaoData avLib:", avLibRes.error);
-  if (comprasVarRes.error) console.error("fetchExplosaoData comprasVar:", comprasVarRes.error);
   return {
-    fichas: (fichasRes.data || []) as { id: number; produto_ref: string; qtd_most_var01: number|null; qtd_most_var02: number|null; qtd_most_var03: number|null; qtd_most_var04: number|null; qtd_most_var05: number|null; qtd_most_var06: number|null }[],
-    avFichas: (avFichasRes.data || []) as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string; var01: string }[],
-    avLib: (avLibRes.data || []) as { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string; codigo_fornecedor: string }[],
-    comprasVar: (comprasVarRes.data || []) as { produto_id: number; cor: string; qtd_compra1: number|null; qtd_compra2: number|null }[],
+    fichas: fichas as { id: number; produto_ref: string; qtd_most_var01: number|null; qtd_most_var02: number|null; qtd_most_var03: number|null; qtd_most_var04: number|null; qtd_most_var05: number|null; qtd_most_var06: number|null }[],
+    avFichas: avFichas as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string; var01: string }[],
+    avLib: avLib as { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string; codigo_fornecedor: string }[],
+    comprasVar: comprasVar as { produto_id: number; cor: string; qtd_compra1: number|null; qtd_compra2: number|null }[],
   };
 }
 
@@ -497,8 +507,8 @@ export async function fetchTabelasComPontos() {
   if (error) {
     // Fallback: fetch all points in parallel, group by tabela_id
     const tabelas = await fetchTabelasMedidas();
-    const { data: pontos } = await sb().from("tabela_medida_pontos").select("tabela_id");
-    const tabelasComPontos = new Set((pontos || []).map((p: any) => p.tabela_id));
+    const pontos = await selectAll((de, ate) => sb().from("tabela_medida_pontos").select("tabela_id").range(de, ate), "fetchTabelasComPontos");
+    const tabelasComPontos = new Set(pontos.map((p: any) => p.tabela_id));
     return tabelas.filter((t: any) => tabelasComPontos.has(t.id)).map((t: any) => t.nome);
   }
   return (data || []).map((t: any) => t.nome);
@@ -506,9 +516,9 @@ export async function fetchTabelasComPontos() {
 
 // Fetch all product variants (ref -> cores[]) from ficha_tecidos
 export async function fetchAllVariantes(): Promise<Record<string, string[]>> {
-  const { data: tecidos } = await sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id");
+  const tecidos = await selectAll((de, ate) => sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id").range(de, ate), "fetchAllVariantes");
   const result: Record<string, string[]> = {};
-  (tecidos || []).forEach((t: any) => {
+  tecidos.forEach((t: any) => {
     const ref = t.fichas_tecnicas?.produto_ref;
     if (!ref || !t.cores?.length) return;
     if (!result[ref]) result[ref] = [];
@@ -519,9 +529,9 @@ export async function fetchAllVariantes(): Promise<Record<string, string[]>> {
 
 // Fetch season-specific variants for classic refs: ref -> colecao -> cores[]
 export async function fetchVariantesPorColecao(): Promise<Record<string, Record<string, string[]>>> {
-  const { data: tecidos } = await sb().from("ficha_tecidos").select("cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id");
+  const tecidos = await selectAll((de, ate) => sb().from("ficha_tecidos").select("cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id").range(de, ate), "fetchVariantesPorColecao");
   const result: Record<string, Record<string, string[]>> = {};
-  (tecidos || []).forEach((t: any) => {
+  tecidos.forEach((t: any) => {
     const ref = t.fichas_tecnicas?.produto_ref;
     const col = t.fichas_tecnicas?.colecao;
     if (!ref || !col || !t.cores?.length) return;
@@ -534,9 +544,7 @@ export async function fetchVariantesPorColecao(): Promise<Record<string, Record<
 
 // ══ CONTROLE DE FLUXO ══
 export async function fetchControleFluxo() {
-  const { data, error } = await sb().from("controle_fluxo").select("*");
-  if (error) console.error("fetchControleFluxo:", error);
-  return (data || []) as Record<string, any>[];
+  return await selectAll<Record<string, any>>((de, ate) => sb().from("controle_fluxo").select("*").range(de, ate), "fetchControleFluxo");
 }
 
 export async function upsertControleFluxo(produto_ref: string, field: string, value: string | null): Promise<string | null> {
@@ -560,9 +568,7 @@ export type CalendarioTarefa = {
 };
 
 export async function fetchCalendarioTarefas(): Promise<CalendarioTarefa[]> {
-  const { data, error } = await sb().from("calendario_tarefas").select("*").order("data_inicio");
-  if (error) { console.error("fetchCalendarioTarefas:", error); return []; }
-  return (data || []) as CalendarioTarefa[];
+  return await selectAll<CalendarioTarefa>((de, ate) => sb().from("calendario_tarefas").select("*").order("data_inicio").range(de, ate), "fetchCalendarioTarefas");
 }
 
 export async function createCalendarioTarefa(t: Omit<CalendarioTarefa, "id">): Promise<{ data: CalendarioTarefa | null; error: string | null }> {
@@ -585,19 +591,18 @@ export async function deleteCalendarioTarefa(id: number): Promise<string | null>
 
 // ══ MAPA DE COLEÇÃO ══
 export async function fetchMapaColecao() {
-  const [prodsRes, fichasRes, tecidosRes, ficTecidosRes] = await Promise.all([
-    sb().from("produtos").select("*").order("grupo").order("ref"),
-    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas"),
-    sb().from("tecidos").select("nome, composicao"),
-    sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)"),
+  const [prods, fichas, tecidos, ficTecidos] = await Promise.all([
+    selectAll((de, ate) => sb().from("produtos").select("*").order("grupo").order("ref").range(de, ate), "fetchMapaColecao/produtos"),
+    selectAll((de, ate) => sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas").range(de, ate), "fetchMapaColecao/fichas"),
+    selectAll((de, ate) => sb().from("tecidos").select("nome, composicao").range(de, ate), "fetchMapaColecao/tecidos"),
+    selectAll((de, ate) => sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)").range(de, ate), "fetchMapaColecao/ficha_tecidos"),
   ]);
-  if (prodsRes.error) console.error("fetchMapaColecao:", prodsRes.error);
 
   const imgMap: Record<string, string> = {};
   const fotoMap: Record<string, string> = {};
   const frenteMap: Record<string, string> = {};
   const costasMap: Record<string, string> = {};
-  (fichasRes.data || []).forEach((f: any) => {
+  fichas.forEach((f: any) => {
     if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
     if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
     if (f.imagem_frente) frenteMap[f.produto_ref] = f.imagem_frente;
@@ -605,11 +610,11 @@ export async function fetchMapaColecao() {
   });
 
   const tecidoCompMap: Record<string, string> = {};
-  (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
+  tecidos.forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
 
   const coresMap: Record<string, string[]> = {};
   const fichasPorColecaoMap: Record<string, Record<string, string[]>> = {};
-  (ficTecidosRes.data || []).forEach((t: any) => {
+  ficTecidos.forEach((t: any) => {
     const ref = t.fichas_tecnicas?.produto_ref;
     const fichaColecao = t.fichas_tecnicas?.colecao;
     if (!ref || !t.cores?.length) return;
@@ -623,7 +628,7 @@ export async function fetchMapaColecao() {
     }
   });
 
-  return (prodsRes.data || []).map((p: any) => ({
+  return prods.map((p: any) => ({
     id: p.id, ref: p.ref, desc: p.descricao || "",
     tecido: p.tecido || "", forn_tecido: p.forn_tecido || "",
     composicao: p.composicao || tecidoCompMap[p.tecido] || "",
@@ -644,18 +649,18 @@ export async function fetchMapaColecao() {
 
 // ══ MAPA DE ENTREGAS ══
 export async function fetchMapaEntregas() {
-  const [prodsRes, fichasRes, tecidosRes, varComprasRes] = await Promise.all([
-    sb().from("produtos").select("*"),
-    sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas"),
-    sb().from("tecidos").select("nome, composicao"),
-    sb().from("produto_variante_compras").select("*"),
+  const [prods, fichas, tecidos, varCompras] = await Promise.all([
+    selectAll((de, ate) => sb().from("produtos").select("*").range(de, ate), "fetchMapaEntregas/produtos"),
+    selectAll((de, ate) => sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas").range(de, ate), "fetchMapaEntregas/fichas"),
+    selectAll((de, ate) => sb().from("tecidos").select("nome, composicao").range(de, ate), "fetchMapaEntregas/tecidos"),
+    selectAll((de, ate) => sb().from("produto_variante_compras").select("*").range(de, ate), "fetchMapaEntregas/varCompras"),
   ]);
 
   const imgMap: Record<string, string> = {};
   const fotoMap: Record<string, string> = {};
   const frenteMap: Record<string, string> = {};
   const costasMap: Record<string, string> = {};
-  (fichasRes.data || []).forEach((f: any) => {
+  fichas.forEach((f: any) => {
     if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
     if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
     if (f.imagem_frente) frenteMap[f.produto_ref] = f.imagem_frente;
@@ -663,14 +668,14 @@ export async function fetchMapaEntregas() {
   });
 
   const tecidoCompMap: Record<string, string> = {};
-  (tecidosRes.data || []).forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
+  tecidos.forEach((t: any) => { if (t.composicao) tecidoCompMap[t.nome] = t.composicao; });
 
   const prodMap: Record<number, any> = {};
-  (prodsRes.data || []).forEach((p: any) => { prodMap[p.id] = p; });
+  prods.forEach((p: any) => { prodMap[p.id] = p; });
 
   const entryMap: Record<string, any> = {};
 
-  (varComprasRes.data || []).forEach((vc: any) => {
+  varCompras.forEach((vc: any) => {
     const prod = prodMap[vc.produto_id];
     if (!prod) return;
     const base = {
@@ -731,15 +736,14 @@ export async function criarAlerta(a: NovoAlerta) {
 }
 
 export async function fetchAlertasPendentes(userId: string): Promise<any[]> {
-  const { data: acks, error: ackErr } = await sb().from("alerta_ciente").select("alerta_id").eq("user_id", userId);
-  if (ackErr) { console.error("fetchAlertasPendentes (ciente):", ackErr); return []; }
-  const ackedIds = (acks || []).map((a: any) => a.alerta_id);
+  const acks = await selectAll((de, ate) => sb().from("alerta_ciente").select("alerta_id").eq("user_id", userId).range(de, ate), "fetchAlertasPendentes/ciente");
+  const ackedIds = acks.map((a: any) => a.alerta_id);
 
-  let q = sb().from("alertas").select("*").neq("alterado_por_user_id", userId).order("created_at", { ascending: true });
-  if (ackedIds.length) q = q.not("id", "in", `(${ackedIds.join(",")})`);
-  const { data, error } = await q;
-  if (error) { console.error("fetchAlertasPendentes:", error); return []; }
-  return data || [];
+  return await selectAll((de, ate) => {
+    let q = sb().from("alertas").select("*").neq("alterado_por_user_id", userId).order("created_at", { ascending: true });
+    if (ackedIds.length) q = q.not("id", "in", `(${ackedIds.join(",")})`);
+    return q.range(de, ate);
+  }, "fetchAlertasPendentes");
 }
 
 export async function marcarAlertaCiente(alertaId: number, userId: string) {
