@@ -10,6 +10,7 @@ import { COR_PALETTE } from "@/lib/cor-palette";
 import { useAuth } from "@/lib/auth-context";
 import { nomeUsuario } from "@/lib/utils";
 import { STATUS_ESTILO } from "@/lib/constants";
+import { tamanhosParaExibir, valorNoTamanho, calcularDaBase, num as tamNum } from "@/lib/tamanhos";
 import FichaPDF from "./FichaPDF";
 
 // Status em que qualquer alteração de cor/tecido/aviamento dispara o popup de alerta.
@@ -69,6 +70,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
   const [pts, setPts] = useState<any[]>([]);
   const [grad, setGrad] = useState<any[]>([]);
+  // Esquema de tamanhos da tabela de medidas do produto
+  const [tabTamanhos, setTabTamanhos] = useState<string[]>([]);
+  const [tabBase, setTabBase] = useState("");
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
   const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string; tipo: string }>>({ p1: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" }, p2: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" }, p3: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" } });
@@ -223,7 +227,9 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           fetchGraduacoesByTabelaNome(row.tab_medidas),
         ]);
         setPts(p);
-        setGrad(g);
+        setGrad(g.linhas);
+        setTabTamanhos(g.tamanhos);
+        setTabBase(g.base);
         if (!ficha?.provas) { const init: any = {}; p.forEach((pt: any) => { init[pt.cod] = { p1: "", p2: "", p3: "" }; }); setPv(init); }
       }
       setIsDataLoaded(true);
@@ -473,32 +479,19 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const TECNICAS_OPTS = ["SILK ZERO TOQUE", "SILK TRADICIONAL", "SILK HD", "SUBLIMAÇÃO", "TRANSFER", "DTF", "DTG", "BORDADO", "LASER", "HOT STAMPING"];
 
   /* ── Tabela Especial helpers ── */
-  const fmtN = (n: number) => n % 1 === 0 ? n.toString() : n.toFixed(1).replace(/\.0$/, "");
-  const autoCalc = (r: any) => {
-    const m = parseFloat(String(r.m).replace(",", ".")), a1 = parseFloat(String(r.a1).replace(",", ".")), a2 = parseFloat(String(r.a2).replace(",", "."));
-    if (isNaN(m) || isNaN(a1) || isNaN(a2)) return r;
-    return { ...r, xpp: fmtN(m - 3 * a1), p: fmtN(m - a1), pp: fmtN(m - 2 * a1), g: fmtN(m + a2), gg: fmtN(m + 2 * a2) };
-  };
-  const xppOf = (g: any) => {
-    if (g.xpp) return g.xpp;
-    const pp = parseFloat(String(g.pp || "").replace(",", "."));
-    const a1 = parseFloat(String(g.a1 || "").replace(",", "."));
-    if (!isNaN(pp) && !isNaN(a1)) return fmtN(pp - a1);
-    return "";
-  };
   const toggleEsp = () => {
     if (!tEsp) {
       if (!ptsEsp.length && pts.length) setPtsEsp(pts.map(p => ({ ...p })));
-      if (!gradEsp.length && grad.length) setGradEsp(grad.map(g => autoCalc({ ...g })));
+      if (!gradEsp.length && grad.length) setGradEsp(grad.map(g => ({ ...g, valores: { ...g.valores }, ampliacoes: { ...g.ampliacoes } })));
     }
     setTEsp(!tEsp);
   };
-  const updGradEsp = (i: number, k: string, v: string) => {
+  // Ao editar o valor da base numa tabela especial, os demais tamanhos são
+  // recalculados acumulando as ampliações a partir dela.
+  const updGradEspBase = (i: number, v: string) => {
     setGradEsp(prev => prev.map((g, j) => {
       if (j !== i) return g;
-      const upd = { ...g, [k]: v };
-      if (["m", "a1", "a2"].includes(k)) return autoCalc(upd);
-      return upd;
+      return { ...g, valores: calcularDaBase(g, gradTamanhos, gradBase, v) };
     }));
   };
   const updPtsEsp = (i: number, k: string, v: string) => {
@@ -507,12 +500,18 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   /* pontos ativos e grad ativos (especial ou original) */
   const ptsAtivo = tEsp ? ptsEsp : pts;
   const gradAtivo = tEsp ? gradEsp : grad;
+  /* Colunas de tamanho da graduação: as da grade do produto, dentro do que a
+     tabela define (tamanhos de ponta que a grade pede — XPP, XGG — são
+     derivados por valorNoTamanho). */
+  const gradTamanhos = tamanhosParaExibir(tabTamanhos, row.grade);
+  const gradBase = tabBase || tabTamanhos[Math.floor(tabTamanhos.length / 2)] || "";
+  const valorGrad = (g: any, t: string) => valorNoTamanho(g, t, tabTamanhos);
 
   // Print mode — render only the PDF component
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} imgModoMedir={imgModoMedir} imgFrente={imgFrente} imgCostas={imgCostas} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} provaInfo={provaInfo} />
+        <FichaPDF row={row} tec={tec} avi={avi} pil={pil} pts={tEsp ? ptsEsp : pts} grad={tEsp ? gradEsp : grad} pv={pv} an={an} img={img} imgModelo={imgModelo} imgModoMedir={imgModoMedir} imgFrente={imgFrente} imgCostas={imgCostas} hasEstamparia={hasEstamparia} estamparia={estamparia} pantones={varCodigos} obs={obs} statusLib={statusLib} tecCad={tecCad} tabelaEspecial={tEsp} sections={exportSections} ncm={ncm} vcCompras={vcCompras} provaInfo={provaInfo} gradTamanhos={gradTamanhos} gradBase={gradBase} tabTamanhos={tabTamanhos} />
       </div>
     );
   }
@@ -1158,7 +1157,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         {/* ═══ LIBERAÇÃO ═══ */}
         {tab === "liberacao" && (<div className="px-3 sm:px-6 py-4 sm:py-6 space-y-5">
           <div style={{ background: modelagemColor }} className="text-white rounded-xl px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[13px] font-bold">TABELA DE MEDIDAS — LIBERAÇÃO DE {_s.includes('PRODUÇÃO') || _s.includes('PRODUCAO') ? 'PRODUÇÃO' : _s.includes('MOSTRUÁRIO') || _s.includes('MOSTRUARIO') ? 'MOSTRUÁRIO' : 'DESENVOLVIMENTO'}</span><span className="text-[12px]"><span className="text-white/50">Coleção</span> <span className="font-semibold ml-1">{row.colecao}</span></span></div>
-          <div className="apple-card"><div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", "M"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
+          <div className="apple-card"><div className="grid grid-cols-1 sm:grid-cols-2">{([["Referência", row.ref], ["Descrição", row.desc], ["Tabela base", tm], ["Tamanho", gradBase || "—"], ["Tecido", row.tecido], ["Fornecedor", row.fornecedor], ["Estilista", row.estilista], ["Grade", row.grade]] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}</div></div>
 
           {/* Foto do produto — frente e costas lado a lado */}
           <div className="apple-card p-4">
@@ -1301,44 +1300,37 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             {gradAtivo.length > 0 && isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Graduação — {tEsp ? "Especial" : tm}</span>
-                  {tEsp && <span className="text-[10px] text-[var(--system-orange)]">Edite M e ampliações — XPP, PP, P, G, GG são calculados</span>}
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)]">Graduação — {tEsp ? "Especial" : tm}{row.grade ? ` · grade ${row.grade}` : ""}</span>
+                  {tEsp && <span className="text-[10px] text-[var(--system-orange)]">Edite {gradBase} — os outros tamanhos são calculados</span>}
                 </div>
                 <div className="apple-card overflow-hidden overflow-x-auto">
                   <table className="plm-table">
                     <thead><tr>
-                      <th>Descrição</th><th className="text-center w-16">XPP</th><th className="text-center w-16">PP</th><th className="text-center w-16">P</th>
-                      <th className="text-center w-16 !bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]">M</th>
-                      <th className="text-center w-16">G</th><th className="text-center w-16">GG</th>
-                      <th className="text-center w-14">Ampl. ←</th><th className="text-center w-14">Ampl. →</th>
+                      <th>Descrição</th>
+                      {gradTamanhos.map(t => (
+                        <th key={t} className={`text-center w-16 ${t === gradBase ? "!bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]" : ""}`}>{t}</th>
+                      ))}
                       <th className="text-center w-24">Tolerância</th>
                     </tr></thead>
                     <tbody>{gradAtivo.map((g: any, i: number) => (
                       <tr key={i}>
                         <td className="font-medium px-3">{g.desc}</td>
-                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{xppOf(g)}</td>
-                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.pp}</td>
-                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.p}</td>
-                        <td className={`text-center tabnum font-bold px-1 ${tEsp ? "bg-[rgba(255,159,10,0.04)]" : "bg-[rgba(0,122,255,0.03)]"}`}>{tEsp
-                          ? <input type="text" value={g.m} onChange={e => updGradEsp(i, "m", e.target.value)} className="w-14 text-center text-[13px] tabnum font-bold border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
-                          : g.m
-                        }</td>
-                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.g}</td>
-                        <td className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{g.gg}</td>
-                        <td className={`text-center tabnum text-[12px] px-1 border-l border-[var(--separator)] ${tEsp ? "" : "text-[var(--label-secondary)]"}`}>{tEsp
-                          ? <input type="text" value={g.a1} onChange={e => updGradEsp(i, "a1", e.target.value)} className="w-12 text-center text-[12px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
-                          : g.a1
-                        }</td>
-                        <td className={`text-center tabnum text-[12px] px-1 ${tEsp ? "" : "text-[var(--label-secondary)]"}`}>{tEsp
-                          ? <input type="text" value={g.a2} onChange={e => updGradEsp(i, "a2", e.target.value)} className="w-12 text-center text-[12px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
-                          : g.a2
-                        }</td>
+                        {gradTamanhos.map(t => (
+                          t === gradBase ? (
+                            <td key={t} className={`text-center tabnum font-bold px-1 ${tEsp ? "bg-[rgba(255,159,10,0.04)]" : "bg-[rgba(0,122,255,0.03)]"}`}>{tEsp
+                              ? <input type="text" value={g.valores?.[t] ?? ""} onChange={e => updGradEspBase(i, e.target.value)} className="w-14 text-center text-[13px] tabnum font-bold border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
+                              : valorGrad(g, t)
+                            }</td>
+                          ) : (
+                            <td key={t} className="text-center tabnum px-2" style={tEsp ? { background: "rgba(0,122,255,0.02)", color: "var(--label-tertiary)" } : {}}>{valorGrad(g, t)}</td>
+                          )
+                        ))}
                         <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{g.tol}</td>
                       </tr>
                     ))}</tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? "XPP, PP, P, G, GG são calculados automaticamente a partir de M e das ampliações. As tabelas originais nos cadastros não são afetadas." : "Ampliação: diferença entre tamanhos (←M / M→) — XPP calculado como PP − Ampl. ←"}</p>
+                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? `Os demais tamanhos são calculados a partir de ${gradBase} e das ampliações. As tabelas originais nos cadastros não são afetadas.` : `Tamanhos exibidos conforme a grade do produto. Base: ${gradBase}.`}</p>
               </div>
             )}
             {/* Fotos das Provas — 3 por prova */}
@@ -1516,20 +1508,24 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
         {/* ═══ GRADUAÇÃO DE PRODUÇÃO ═══ */}
         {tab === "graduacao" && isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (() => {
-          const getMeasuredM = (g: any): string => {
+          // A base da graduação de produção é a medida REAL da prova aprovada
+          // (última disponível), não o valor de tabela.
+          const getMedidaBase = (g: any): string => {
+            const doTabela = valorGrad(g, gradBase);
             const pt = ptsAtivo.find((p: any) => p.desc?.toUpperCase() === g.desc?.toUpperCase());
-            if (!pt) return g.m || "";
+            if (!pt) return doTabela;
             const vals = pv[pt.cod];
-            if (!vals) return g.m || "";
-            return vals.p3 || vals.p2 || vals.p1 || g.m || "";
+            if (!vals) return doTabela;
+            return vals.p3 || vals.p2 || vals.p1 || doTabela;
           };
-          const calcRow = (g: any) => {
-            const mStr = getMeasuredM(g);
-            const m = parseFloat(String(mStr).replace(",", "."));
-            const a1 = parseFloat(String(g.a1).replace(",", "."));
-            const a2 = parseFloat(String(g.a2).replace(",", "."));
-            if (isNaN(m) || isNaN(a1) || isNaN(a2)) return { xpp: g.xpp, pp: g.pp, p: g.p, mVal: mStr, g: g.g, gg: g.gg };
-            return { xpp: fmtN(m - 3 * a1), pp: fmtN(m - 2 * a1), p: fmtN(m - a1), mVal: mStr, g: fmtN(m + a2), gg: fmtN(m + 2 * a2) };
+          const calcRow = (g: any): Record<string, string> => {
+            const medida = getMedidaBase(g);
+            if (isNaN(tamNum(medida))) {
+              const out: Record<string, string> = {};
+              gradTamanhos.forEach(t => { out[t] = valorGrad(g, t); });
+              return out;
+            }
+            return calcularDaBase(g, gradTamanhos, gradBase, medida);
           };
           const isOutsideTol = (val: string, base: string, tol: string) => {
             const v = parseFloat(val), b = parseFloat(base), t = parseFloat(tol);
@@ -1558,7 +1554,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                   ["Grade", row.grade],
                   ["Grupo", row.grupo],
                   ["Tabela Base", tm],
-                  ["Tamanho", "M"],
+                  ["Tamanho", gradBase || "—"],
                   ["Tecido", row.tecido],
                   ["Composição", row.composicao],
                 ] as [string, any][]).map(([l, v]) => <F key={l} l={l} v={v} />)}
@@ -1574,34 +1570,30 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                   <thead>
                     <tr>
                       <th rowSpan={2} className="text-left min-w-[180px]">Descrição</th>
-                      <th colSpan={6} className="text-center bg-[rgba(45,181,100,0.08)] text-[#2a7a4a]" style={{ borderBottom: "2px solid #2DB56444" }}>GRADUAÇÃO</th>
-                      <th colSpan={2} className="text-center" style={{ borderBottom: "2px solid var(--separator)" }}>Ampliação</th>
+                      <th colSpan={gradTamanhos.length} className="text-center bg-[rgba(45,181,100,0.08)] text-[#2a7a4a]" style={{ borderBottom: "2px solid #2DB56444" }}>GRADUAÇÃO</th>
                       <th rowSpan={2} className="text-center w-24">Tolerância</th>
                     </tr>
                     <tr>
-                      {(["XPP","PP","P"] as const).map(s => <th key={s} className="text-center w-16 bg-[rgba(45,181,100,0.04)] text-[#2a7a4a]">{s}</th>)}
-                      <th className="text-center w-16 bg-[rgba(255,204,0,0.18)] text-[#856500] font-bold">M</th>
-                      {(["G","GG"] as const).map(s => <th key={s} className="text-center w-16 bg-[rgba(45,181,100,0.04)] text-[#2a7a4a]">{s}</th>)}
-                      <th className="text-center w-14 text-[var(--label-secondary)]">←</th>
-                      <th className="text-center w-14 text-[var(--label-secondary)]">→</th>
+                      {gradTamanhos.map(t => (
+                        <th key={t} className={`text-center w-16 ${t === gradBase ? "bg-[rgba(255,204,0,0.18)] text-[#856500] font-bold" : "bg-[rgba(45,181,100,0.04)] text-[#2a7a4a]"}`}>{t}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {gradAtivo.map((g: any, i: number) => {
                       const calc = calcRow(g);
-                      const mOutside = isOutsideTol(calc.mVal, g.m, g.tol);
+                      const baseOutside = isOutsideTol(calc[gradBase], valorGrad(g, gradBase), g.tol);
                       return (
                         <tr key={i}>
                           <td className="font-medium px-3">{g.desc}</td>
-                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.xpp || "—"}</td>
-                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.pp || "—"}</td>
-                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.p || "—"}</td>
-                          <td className={`text-center tabnum text-[13px] font-bold px-2 ${mOutside ? "bg-red-100 text-red-600" : "bg-[rgba(255,204,0,0.14)] text-[#856500]"}`}>{calc.mVal || g.m || "—"}</td>
-                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.g || "—"}</td>
-                          <td className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc.gg || "—"}</td>
-                          <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-2">{g.a1 || "—"}</td>
-                          <td className="text-center tabnum text-[12px] text-[var(--label-secondary)] px-2">{g.a2 || "—"}</td>
-                          <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{g.tol ? `${g.tol} OU -` : "—"}</td>
+                          {gradTamanhos.map(t => (
+                            t === gradBase ? (
+                              <td key={t} className={`text-center tabnum text-[13px] font-bold px-2 ${baseOutside ? "bg-red-100 text-red-600" : "bg-[rgba(255,204,0,0.14)] text-[#856500]"}`}>{calc[t] || "—"}</td>
+                            ) : (
+                              <td key={t} className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc[t] || "—"}</td>
+                            )
+                          ))}
+                          <td className="text-center text-[12px] text-[var(--label-secondary)] px-2">{g.tol || "—"}</td>
                         </tr>
                       );
                     })}
@@ -1611,7 +1603,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             )}
 
             <p className="text-[11px] text-[var(--label-tertiary)]">
-              Coluna M = medida real da prova aprovada. Demais tamanhos calculados a partir de M ± ampliação.
+              Coluna {gradBase} = medida real da prova aprovada. Demais tamanhos calculados a partir dela somando as ampliações.
               {statusLib === "APROVADO COM RESTRIÇÃO" && <span className="ml-1 text-orange-500 font-semibold">Liberado com restrição — verificar pontos em vermelho antes de produção.</span>}
             </p>
           </div>

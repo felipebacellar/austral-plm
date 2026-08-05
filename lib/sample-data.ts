@@ -19,8 +19,6 @@ export const SAMPLE_CAD: Record<string, any> = {
   tecido:[{nome:"MOLETOM COPAT",forn:"COPAT",comp:"80% CO, 20% PES",preco:""},{nome:"ETBQP - QUÊNIA",forn:"HUDTELFA",comp:"98% CO, 2% PUE",preco:"14.90"},{nome:"LINHO PIENZA ECO",forn:"MN",comp:"100% LI",preco:""},{nome:"GAZE FLAMÊ K2",forn:"K2",comp:"100% CO",preco:""},{nome:"MALHA 30/01",forn:"STICLE",comp:"100% CO",preco:""},{nome:"500/4717.0.000 NEW HYBRID MEGAFLEX",forn:"CANATIBA",comp:"",preco:""}],
 };
 
-// TABELA_PONTOS moved to lib/tabela-pontos.ts (47 tables with measurement points)
-
 export function getVariantes(rows: any[]): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   rows.forEach(row => {

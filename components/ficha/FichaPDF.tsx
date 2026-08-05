@@ -1,5 +1,6 @@
 "use client";
 import { COR_PALETTE } from "@/lib/cor-palette";
+import { valorNoTamanho, calcularDaBase, num as tamNum } from "@/lib/tamanhos";
 
 type Props = {
   row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[];
@@ -13,6 +14,7 @@ type Props = {
   ncm?: string;
   vcCompras?: Record<string, any>;
   provaInfo?: Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string; tipo: string }>;
+  gradTamanhos?: string[]; gradBase?: string; tabTamanhos?: string[];
 };
 
 /* ── Design tokens ── */
@@ -28,7 +30,7 @@ const warn = "#D97706";
 const danger = "#DC2626";
 const white = "#FFFFFF";
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, imgFrente, imgCostas, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras, provaInfo }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, imgFrente, imgCostas, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras, provaInfo, gradTamanhos = [], gradBase = "", tabTamanhos = [] }: Props) {
   const sec = sections || { ficha: true, estamparia: true, liberacao: true, graduacao: true };
   const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s, a) => s + (a.valor * a.qtd), 0);
@@ -460,8 +462,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0 16px", marginBottom: "10px", borderTop: `0.5px solid ${line}`, paddingTop: "6px" }}>
             <Field label="Grupo" value={row.grupo} />
             <Field label="Tabela Base" value={tm} />
-            <Field label="Padrão" value="M" />
-            <Field label="Tamanho" value="M" />
+            <Field label="Padrão" value={gradBase || "—"} />
+            <Field label="Tamanho" value={gradBase || "—"} />
             <Field label="Tecido" value={row.tecido} />
             <Field label="Composição" value={compOf(row.tecido)} />
           </div>
@@ -659,23 +661,28 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
 
       {/* ══════════ GRADUAÇÃO DE PRODUÇÃO ══════════ */}
       {sec.graduacao && grad.length > 0 && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (fichaType === "producao") && (() => {
-        const fmtGN = (n: number) => n % 1 === 0 ? n.toString() : n.toFixed(1).replace(/\.0$/, "");
-        const getMeasuredM = (g: any): string => {
+        const valorGrad = (g: any, t: string) => valorNoTamanho(g, t, tabTamanhos);
+        // A base é a medida real da prova aprovada; os demais tamanhos saem dela
+        // acumulando as ampliações (que variam por tamanho).
+        const getMedidaBase = (g: any): string => {
+          const doTabela = valorGrad(g, gradBase);
           const pt = pts.find((p: any) => p.desc?.toUpperCase() === g.desc?.toUpperCase());
-          if (!pt) return g.m || "";
+          if (!pt) return doTabela;
           const vals = pv[pt.cod];
-          if (!vals) return g.m || "";
-          return vals.p3 || vals.p2 || vals.p1 || g.m || "";
+          if (!vals) return doTabela;
+          return vals.p3 || vals.p2 || vals.p1 || doTabela;
         };
-        const calcRow = (g: any) => {
-          const mStr = getMeasuredM(g);
-          const m = parseFloat(String(mStr).replace(",", "."));
-          const a1 = parseFloat(String(g.a1).replace(",", "."));
-          const a2 = parseFloat(String(g.a2).replace(",", "."));
-          if (isNaN(m) || isNaN(a1) || isNaN(a2)) return { xpp: g.xpp, pp: g.pp, p: g.p, mVal: mStr || g.m, g: g.g, gg: g.gg };
-          return { xpp: fmtGN(m - 3*a1), pp: fmtGN(m - 2*a1), p: fmtGN(m - a1), mVal: mStr, g: fmtGN(m + a2), gg: fmtGN(m + 2*a2) };
+        const calcRow = (g: any): Record<string, string> => {
+          const medida = getMedidaBase(g);
+          if (isNaN(tamNum(medida))) {
+            const out: Record<string, string> = {};
+            gradTamanhos.forEach(t => { out[t] = valorGrad(g, t); });
+            return out;
+          }
+          return calcularDaBase(g, gradTamanhos, gradBase, medida);
         };
         const gradColor = statusLib === "APROVADO COM RESTRIÇÃO" ? warn : success;
+        const wTam = gradTamanhos.length > 6 ? "28px" : "34px";
         return (
         <div className="print-page" style={pb()}>
           <PageHead title="GRADUAÇÃO DE PRODUÇÃO" sub={statusLib} bg={gradColor} />
@@ -688,7 +695,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <Field label="Grupo" value={row.grupo} />
             <Field label="Tabela Base" value={row.tab_medidas} />
             <Field label="Grade" value={row.grade} />
-            <Field label="Tamanho" value="M" />
+            <Field label="Tamanho" value={gradBase || "—"} />
             <Field label="Tecido" value={row.tecido} />
             <Field label="Composição" value={row.composicao} />
             <Field label="Coleção" value={row.colecao} />
@@ -698,42 +705,37 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           <table style={tbl}>
             <thead>
               <tr>
-                <th style={{ ...th, background: "#1a3a2a", color: white }} colSpan={7}>GRADUAÇÃO</th>
-                <th style={{ ...th }} colSpan={2}>Ampliação</th>
+                <th style={{ ...th, background: "#1a3a2a", color: white }} colSpan={gradTamanhos.length + 1}>GRADUAÇÃO</th>
                 <th style={{ ...th }}>Tolerância</th>
               </tr>
               <tr style={headRow}>
                 <th style={th}>Descrição</th>
-                <th style={{ ...th, textAlign: "center", width: "32px", background: "#e6f4ed", color: success }}>XPP</th>
-                <th style={{ ...th, textAlign: "center", width: "32px", background: "#e6f4ed", color: success }}>PP</th>
-                <th style={{ ...th, textAlign: "center", width: "32px", background: "#e6f4ed", color: success }}>P</th>
-                <th style={{ ...th, textAlign: "center", width: "36px", background: "#FEFCE8", color: warn, fontWeight: 800 }}>M</th>
-                <th style={{ ...th, textAlign: "center", width: "32px", background: "#e6f4ed", color: success }}>G</th>
-                <th style={{ ...th, textAlign: "center", width: "32px", background: "#e6f4ed", color: success }}>GG</th>
-                <th style={{ ...th, textAlign: "center", width: "26px" }}>←</th>
-                <th style={{ ...th, textAlign: "center", width: "26px" }}>→</th>
+                {gradTamanhos.map(t => (
+                  <th key={t} style={t === gradBase
+                    ? { ...th, textAlign: "center", width: wTam, background: "#FEFCE8", color: warn, fontWeight: 800 }
+                    : { ...th, textAlign: "center", width: wTam, background: "#e6f4ed", color: success }}>{t}</th>
+                ))}
                 <th style={{ ...th, textAlign: "center", width: "44px" }}>Tol.</th>
               </tr>
             </thead>
             <tbody>
               {grad.map((g: any, i: number) => {
                 const calc = calcRow(g);
-                const mBase = parseFloat(String(g.m).replace(",", "."));
-                const mReal = parseFloat(String(calc.mVal).replace(",", "."));
-                const tol = parseFloat(String(g.tol).replace(",", "."));
-                const mOutside = !isNaN(mBase) && !isNaN(mReal) && !isNaN(tol) && Math.abs(mReal - mBase) > tol;
+                const vBase = tamNum(valorGrad(g, gradBase));
+                const vReal = tamNum(calc[gradBase]);
+                const tol = tamNum(g.tol);
+                const baseOutside = !isNaN(vBase) && !isNaN(vReal) && !isNaN(tol) && Math.abs(vReal - vBase) > tol;
                 return (
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
                     <td style={{ ...td, fontWeight: 600 }}>{g.desc}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc.xpp || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc.pp || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc.p || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: mOutside ? "#FEE2E2" : "#FEFCE8", color: mOutside ? danger : warn }}>{calc.mVal || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc.g || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc.gg || "—"}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a1}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: muted }}>{g.a2}</td>
-                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{g.tol ? `${g.tol} OU -` : "—"}</td>
+                    {gradTamanhos.map(t => (
+                      t === gradBase ? (
+                        <td key={t} style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: baseOutside ? "#FEE2E2" : "#FEFCE8", color: baseOutside ? danger : warn }}>{calc[t] || "—"}</td>
+                      ) : (
+                        <td key={t} style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc[t] || "—"}</td>
+                      )
+                    ))}
+                    <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{g.tol || "—"}</td>
                   </tr>
                 );
               })}

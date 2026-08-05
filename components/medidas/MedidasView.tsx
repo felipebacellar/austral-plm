@@ -8,9 +8,20 @@ import {
 } from "@/lib/db";
 import { subscribeRealtime } from "@/lib/realtime";
 
-type Tabela = { id: number; nome: string };
+type Tabela = { id: number; nome: string; tamanhos?: string[]; tamanho_base?: string };
 type Ponto = { cod: string; desc: string; tabela: string; tol: string };
-type Grad = { desc: string; pp: string; p: string; m: string; g: string; gg: string; a1: string; a2: string; tol: string };
+type Grad = { desc: string; valores: Record<string, string>; ampliacoes: Record<string, string>; tol: string };
+
+// Esquemas de tamanho oferecidos ao criar uma tabela nova.
+const ESQUEMAS = [
+  { label: "38 a 48 (base 42)", tamanhos: ["38", "40", "42", "44", "46", "48"], base: "42" },
+  { label: "PP a GG (base M)", tamanhos: ["PP", "P", "M", "G", "GG"], base: "M" },
+];
+
+const mapPontos = (pts: any[]): Ponto[] =>
+  pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia }));
+const mapGrads = (grd: any[]): Grad[] =>
+  grd.map((g: any) => ({ desc: g.descricao, valores: g.valores || {}, ampliacoes: g.ampliacoes || {}, tol: g.tolerancia }));
 
 export default function MedidasView() {
   const [tabelas, setTabelas] = useState<Tabela[]>([]);
@@ -23,6 +34,7 @@ export default function MedidasView() {
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newEsquema, setNewEsquema] = useState(0);
   const [im1, setIm1] = useState<string | null>(null);
   const r1 = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<any>(null);
@@ -35,51 +47,15 @@ export default function MedidasView() {
       { table: "tabelas_medidas", onInsert: () => loadTabelas(), onDelete: () => loadTabelas() },
       {
         table: "tabela_medida_pontos",
-        onUpdate: (row) => {
-          if (sel && row.tabela_id === sel.id) {
-            fetchTabelaPontos(sel.id).then(pts =>
-              setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })))
-            );
-          }
-        },
-        onInsert: (row) => {
-          if (sel && row.tabela_id === sel.id) {
-            fetchTabelaPontos(sel.id).then(pts =>
-              setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })))
-            );
-          }
-        },
-        onDelete: () => {
-          if (sel) {
-            fetchTabelaPontos(sel.id).then(pts =>
-              setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })))
-            );
-          }
-        },
+        onUpdate: (row) => { if (sel && row.tabela_id === sel.id) fetchTabelaPontos(sel.id).then(pts => setPontos(mapPontos(pts))); },
+        onInsert: (row) => { if (sel && row.tabela_id === sel.id) fetchTabelaPontos(sel.id).then(pts => setPontos(mapPontos(pts))); },
+        onDelete: () => { if (sel) fetchTabelaPontos(sel.id).then(pts => setPontos(mapPontos(pts))); },
       },
       {
         table: "graduacoes",
-        onUpdate: (row) => {
-          if (sel && row.tabela_id === sel.id) {
-            fetchGraduacoes(sel.id).then(grd =>
-              setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })))
-            );
-          }
-        },
-        onInsert: (row) => {
-          if (sel && row.tabela_id === sel.id) {
-            fetchGraduacoes(sel.id).then(grd =>
-              setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })))
-            );
-          }
-        },
-        onDelete: () => {
-          if (sel) {
-            fetchGraduacoes(sel.id).then(grd =>
-              setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })))
-            );
-          }
-        },
+        onUpdate: (row) => { if (sel && row.tabela_id === sel.id) fetchGraduacoes(sel.id).then(grd => setGrad(mapGrads(grd))); },
+        onInsert: (row) => { if (sel && row.tabela_id === sel.id) fetchGraduacoes(sel.id).then(grd => setGrad(mapGrads(grd))); },
+        onDelete: () => { if (sel) fetchGraduacoes(sel.id).then(grd => setGrad(mapGrads(grd))); },
       },
     ]);
     return unsub;
@@ -97,9 +73,13 @@ export default function MedidasView() {
     setSec("base");
     setIm1((t as any).imagem_modo_medir || null);
     const [pts, grd] = await Promise.all([fetchTabelaPontos(t.id), fetchGraduacoes(t.id)]);
-    setPontos(pts.map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia })));
-    setGrad(grd.map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia })));
+    setPontos(mapPontos(pts));
+    setGrad(mapGrads(grd));
   };
+
+  // Tamanhos da tabela selecionada (a base ganha destaque nas colunas)
+  const tamanhos = sel?.tamanhos?.length ? sel.tamanhos : [];
+  const base = sel?.tamanho_base || "";
 
   const scheduleSave = useCallback((type: "pontos" | "grad", data: any[]) => {
     if (!sel) return;
@@ -130,12 +110,18 @@ export default function MedidasView() {
   };
 
   const addGrad = () => {
-    const updated = [...grad, { desc: "", pp: "", p: "", m: "", g: "", gg: "", a1: "", a2: "", tol: "1,0 + OU -" }];
+    const updated = [...grad, { desc: "", valores: {}, ampliacoes: {}, tol: "1,0 + OU -" }];
     setGrad(updated);
     scheduleSave("grad", updated);
   };
   const updateGrad = (i: number, field: string, val: string) => {
     const updated = grad.map((r, j) => j === i ? { ...r, [field]: val } : r);
+    setGrad(updated);
+    scheduleSave("grad", updated);
+  };
+  // Valor / ampliação são por tamanho (JSONB), não colunas fixas
+  const updateGradMapa = (i: number, campo: "valores" | "ampliacoes", tamanho: string, val: string) => {
+    const updated = grad.map((r, j) => j === i ? { ...r, [campo]: { ...r[campo], [tamanho]: val } } : r);
     setGrad(updated);
     scheduleSave("grad", updated);
   };
@@ -148,10 +134,11 @@ export default function MedidasView() {
   const handleCreate = async () => {
     const name = newName.trim().toUpperCase();
     if (!name) return;
-    const result = await createTabelaMedidas(name);
+    const esq = ESQUEMAS[newEsquema];
+    const result = await createTabelaMedidas(name, esq.tamanhos, esq.base);
     if (result) {
       await loadTabelas();
-      setSel({ id: result.id, nome: result.nome });
+      setSel({ id: result.id, nome: result.nome, tamanhos: esq.tamanhos, tamanho_base: esq.base });
       setPontos([]);
       setGrad([]);
       setSec("base");
@@ -215,6 +202,9 @@ export default function MedidasView() {
               <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleCreate()}
                 placeholder="Nome da tabela..." className="apple-input w-full text-[12px] py-1.5 mb-1.5" autoFocus />
+              <select value={newEsquema} onChange={e => setNewEsquema(Number(e.target.value))} className="apple-select w-full text-[12px] py-1.5 mb-1.5">
+                {ESQUEMAS.map((e, i) => <option key={e.label} value={i}>{e.label}</option>)}
+              </select>
               <div className="flex gap-1.5">
                 <button onClick={handleCreate} className="apple-btn-primary flex-1 text-[12px] py-1.5">Criar</button>
                 <button onClick={() => { setShowNew(false); setNewName(""); }} className="apple-btn-secondary flex-1 text-[12px] py-1.5">Cancelar</button>
@@ -240,12 +230,12 @@ export default function MedidasView() {
               <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                 <div>
                   <h3 className="text-[20px] font-bold tracking-[-0.02em]">{sel.nome}</h3>
-                  <p className="text-[13px] text-[var(--label-tertiary)] mt-0.5">Base M · {pontos.length} pontos{grad.length > 0 ? " · Graduação disponível" : ""}</p>
+                  <p className="text-[13px] text-[var(--label-tertiary)] mt-0.5">{tamanhos.length ? `${tamanhos[0]} a ${tamanhos[tamanhos.length - 1]} · base ${base}` : "Sem tamanhos"} · {pontos.length} pontos{grad.length > 0 ? " · Graduação disponível" : ""}</p>
                 </div>
                 <button onClick={handleDelete} className="text-[12px] text-[var(--system-red)] hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium">Excluir tabela</button>
               </div>
               <div className="seg-control">
-                <button onClick={() => setSec("base")} className={`seg-btn ${sec === "base" ? "active" : ""}`}>Tabela base (M)</button>
+                <button onClick={() => setSec("base")} className={`seg-btn ${sec === "base" ? "active" : ""}`}>Tabela base{base ? ` (${base})` : ""}</button>
                 <button onClick={() => setSec("grad")} className={`seg-btn ${sec === "grad" ? "active" : ""}`}>Graduação</button>
               </div>
             </div>
@@ -262,7 +252,7 @@ export default function MedidasView() {
                   <input ref={r1} type="file" accept="image/*" className="hidden" onChange={hi} />
                 </div>
                 <div className="border border-[var(--separator)] rounded-xl overflow-hidden mb-3">
-                  <table className="plm-table"><thead><tr><th className="text-center w-14">Cód</th><th>Descrição</th><th className="text-center w-20">Tabela (M)</th><th className="text-center w-28">Tolerância</th><th className="w-8"></th></tr></thead>
+                  <table className="plm-table"><thead><tr><th className="text-center w-14">Cód</th><th>Descrição</th><th className="text-center w-20">Tabela{base ? ` (${base})` : ""}</th><th className="text-center w-28">Tolerância</th><th className="w-8"></th></tr></thead>
                     <tbody>{pontos.map((p, i) => (<tr key={i}>
                       <td className="px-1 py-1"><input type="text" value={p.cod} onChange={e => updatePonto(i, "cod", e.target.value)} className={`${ic} w-12 text-center font-bold`} /></td>
                       <td className="px-1 py-1"><input type="text" value={p.desc} onChange={e => updatePonto(i, "desc", e.target.value)} className={`${ic} font-medium`} placeholder="Descrição do ponto" /></td>
@@ -277,31 +267,49 @@ export default function MedidasView() {
               </div>)}
 
               {sec === "grad" && (<div>
+                {tamanhos.length === 0 ? (
+                  <p className="text-[13px] text-[var(--label-tertiary)] py-6 text-center">Esta tabela não tem tamanhos definidos.</p>
+                ) : (<>
                 <div className="border border-[var(--separator)] rounded-xl overflow-hidden overflow-x-auto mb-3">
-                  <table className="plm-table"><thead><tr>
-                    <th>Descrição</th><th className="text-center w-16">PP</th><th className="text-center w-16">P</th>
-                    <th className="text-center w-16 !bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]">M</th>
-                    <th className="text-center w-16">G</th><th className="text-center w-16">GG</th>
-                    <th className="text-center w-14">Ampl. ←</th><th className="text-center w-14">Ampl. →</th>
-                    <th className="text-center w-24">Tolerância</th><th className="w-8"></th>
-                  </tr></thead>
+                  <table className="plm-table">
+                    <thead>
+                      <tr>
+                        <th rowSpan={2}>Descrição</th>
+                        <th colSpan={tamanhos.length} className="text-center">Graduação</th>
+                        <th colSpan={tamanhos.length} className="text-center">Ampliação</th>
+                        <th rowSpan={2} className="text-center w-24">Tolerância</th>
+                        <th rowSpan={2} className="w-8"></th>
+                      </tr>
+                      <tr>
+                        {tamanhos.map(t => (
+                          <th key={`v-${t}`} className={`text-center w-16 ${t === base ? "!bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]" : ""}`}>{t}</th>
+                        ))}
+                        {tamanhos.map(t => (
+                          <th key={`a-${t}`} className={`text-center w-14 text-[11px] ${t === base ? "!bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]" : ""}`}>{t}</th>
+                        ))}
+                      </tr>
+                    </thead>
                     <tbody>{grad.map((r, i) => (<tr key={i}>
                       <td className="px-1 py-1"><input type="text" value={r.desc} onChange={e => updateGrad(i, "desc", e.target.value)} className={`${ic} font-medium`} placeholder="Descrição" /></td>
-                      {(["pp", "p", "m", "g", "gg"] as const).map(sz => (
-                        <td key={sz} className={`px-1 py-1 ${sz === "m" ? "bg-[rgba(0,122,255,0.03)]" : ""}`}>
-                          <input type="text" value={r[sz]} onChange={e => updateGrad(i, sz, e.target.value)} className={`${ic} w-14 text-center tabnum ${sz === "m" ? "font-bold" : ""}`} placeholder="—" />
+                      {tamanhos.map(t => (
+                        <td key={`v-${t}`} className={`px-1 py-1 ${t === base ? "bg-[rgba(0,122,255,0.03)]" : ""}`}>
+                          <input type="text" value={r.valores?.[t] ?? ""} onChange={e => updateGradMapa(i, "valores", t, e.target.value)} className={`${ic} w-14 text-center tabnum ${t === base ? "font-bold" : ""}`} placeholder="—" />
                         </td>
                       ))}
-                      <td className="px-1 py-1"><input type="text" value={r.a1} onChange={e => updateGrad(i, "a1", e.target.value)} className={`${ic} w-12 text-center tabnum text-[12px]`} /></td>
-                      <td className="px-1 py-1"><input type="text" value={r.a2} onChange={e => updateGrad(i, "a2", e.target.value)} className={`${ic} w-12 text-center tabnum text-[12px]`} /></td>
+                      {tamanhos.map(t => (
+                        <td key={`a-${t}`} className={`px-1 py-1 ${t === base ? "bg-[rgba(0,122,255,0.03)]" : ""}`}>
+                          <input type="text" value={r.ampliacoes?.[t] ?? ""} onChange={e => updateGradMapa(i, "ampliacoes", t, e.target.value)} className={`${ic} w-12 text-center tabnum text-[12px]`} placeholder="—" />
+                        </td>
+                      ))}
                       <td className="px-1 py-1"><input type="text" value={r.tol} onChange={e => updateGrad(i, "tol", e.target.value)} className={`${ic} w-20 text-center text-[12px]`} /></td>
                       <td className="text-center"><button onClick={() => removeGrad(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] transition-colors">×</button></td>
                     </tr>))}
-                      {grad.length === 0 && <tr><td colSpan={10} className="py-8 text-center text-[var(--label-tertiary)]">Nenhuma graduação cadastrada</td></tr>}
+                      {grad.length === 0 && <tr><td colSpan={tamanhos.length * 2 + 3} className="py-8 text-center text-[var(--label-tertiary)]">Nenhuma graduação cadastrada</td></tr>}
                     </tbody></table>
                 </div>
                 <button onClick={addGrad} className="apple-btn-secondary text-[12px]">+ Adicionar linha</button>
-                <p className="text-[11px] text-[var(--label-tertiary)] mt-3">Ampliação: diferença entre tamanhos (←M / M→)</p>
+                <p className="text-[11px] text-[var(--label-tertiary)] mt-3">Ampliação: diferença de cada tamanho em relação ao vizinho na direção da base ({base || "—"}).</p>
+                </>)}
               </div>)}
             </div>
           </div>

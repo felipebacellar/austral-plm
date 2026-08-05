@@ -50,8 +50,7 @@ lib/
   types.ts                   ← TypeScript types (Produto, FichaTecnica, Tecido, etc.)
   columns.ts                 ← Column definitions for DevTable
   storage.ts                 ← Image upload/delete to Supabase Storage bucket "fichas-imagens"
-  tabela-pontos.ts           ← Hardcoded measurement point definitions
-  graduacoes.ts              ← Hardcoded size grade data (PP-P-M-G-GG)
+  tamanhos.ts                ← Size schemes: expand a grade into sizes, derive edge sizes, grade from base
 supabase/migration.sql       ← Full schema + seed data
 ```
 
@@ -76,7 +75,7 @@ All data access goes through `lib/db.ts`, which calls the Supabase client direct
 | `ficha_anotacoes` | Annotations per proof |
 | `tabelas_medidas` | Size table catalog |
 | `tabela_medida_pontos` | Measurement point specs per table |
-| `graduacoes` | Size grades (PP–GG values) per table |
+| `graduacoes` | Size grades per table — value + ampliação per size (JSONB), sizes declared on `tabelas_medidas.tamanhos`/`tamanho_base` |
 | `cadastros` | Generic registry keyed by `tabela` (grupo, subgrupo, cor, status…) |
 | `tecidos` | Fabric library |
 | `aviamentos` | Trims/notions library |

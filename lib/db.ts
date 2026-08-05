@@ -289,7 +289,7 @@ export async function fetchFicha(ref: string, colecao?: string | null) {
       sb().from("ficha_graduacao_especial").select("*").eq("ficha_id", fid).order("ordem"),
     ]);
     result.pontosEspeciais = (pe.data || []).map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia }));
-    result.gradEspecial = (ge.data || []).map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia }));
+    result.gradEspecial = (ge.data || []).map((g: any) => ({ desc: g.descricao, valores: g.valores || {}, ampliacoes: g.ampliacoes || {}, tol: g.tolerancia }));
   }
   return result;
 }
@@ -404,7 +404,7 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
   }
   if (f.tabelaEspecialAtiva && f.gradEspecial) {
     await sb().from("ficha_graduacao_especial").delete().eq("ficha_id", fid);
-    if (f.gradEspecial.length) await sb().from("ficha_graduacao_especial").insert(f.gradEspecial.map((g: any, i: number) => ({ ficha_id: fid, descricao: g.desc, pp: g.pp || "", p: g.p || "", m: g.m || "", g: g.g || "", gg: g.gg || "", ampliacao_esq: g.a1 || "", ampliacao_dir: g.a2 || "", tolerancia: g.tol || "1,0 + OU -", ordem: i })));
+    if (f.gradEspecial.length) await sb().from("ficha_graduacao_especial").insert(f.gradEspecial.map((g: any, i: number) => ({ ficha_id: fid, descricao: g.desc, valores: g.valores || {}, ampliacoes: g.ampliacoes || {}, tolerancia: g.tol || "1,0 + OU -", ordem: i })));
   }
   return fid;
 }
@@ -432,7 +432,7 @@ export async function fetchExplosaoData() {
 // ══ TABELAS DE MEDIDAS ══
 export async function fetchTabelasMedidas() {
   // Tenta buscar com imagem_modo_medir; se a coluna não existir, busca só id e nome
-  const { data, error } = await sb().from("tabelas_medidas").select("id, nome, imagem_modo_medir").order("nome");
+  const { data, error } = await sb().from("tabelas_medidas").select("id, nome, imagem_modo_medir, tamanhos, tamanho_base").order("nome");
   if (error) {
     const { data: fallback } = await sb().from("tabelas_medidas").select("id, nome").order("nome");
     return fallback || [];
@@ -453,8 +453,8 @@ export async function fetchGraduacoes(tabelaId: number) {
   if (error) console.error("fetchGraduacoes:", error);
   return data || [];
 }
-export async function createTabelaMedidas(nome: string) {
-  const { data, error } = await sb().from("tabelas_medidas").insert({ nome }).select().single();
+export async function createTabelaMedidas(nome: string, tamanhos: string[] = [], tamanhoBase = "") {
+  const { data, error } = await sb().from("tabelas_medidas").insert({ nome, tamanhos, tamanho_base: tamanhoBase }).select().single();
   if (error) console.error("createTabelaMedidas:", error);
   return data;
 }
@@ -468,7 +468,7 @@ export async function upsertPontos(tabelaId: number, pontos: any[]) {
 }
 export async function upsertGraduacoes(tabelaId: number, grads: any[]) {
   await sb().from("graduacoes").delete().eq("tabela_id", tabelaId);
-  if (grads.length) { const rows = grads.map((g, i) => ({ tabela_id: tabelaId, descricao: g.desc || g.descricao, pp: g.pp || "", p: g.p || "", m: g.m || "", g: g.g || "", gg: g.gg || "", ampliacao_esq: g.a1 || g.ampliacao_esq || "", ampliacao_dir: g.a2 || g.ampliacao_dir || "", tolerancia: g.tol || g.tolerancia || "1,0 + OU -", ordem: i })); await sb().from("graduacoes").insert(rows); }
+  if (grads.length) { const rows = grads.map((g, i) => ({ tabela_id: tabelaId, descricao: g.desc || g.descricao, valores: g.valores || {}, ampliacoes: g.ampliacoes || {}, tolerancia: g.tol || g.tolerancia || "1,0 + OU -", ordem: i })); await sb().from("graduacoes").insert(rows); }
 }
 export async function fetchPontosByTabelaNome(nome: string) {
   const { data: tab } = await sb().from("tabelas_medidas").select("id").eq("nome", nome).maybeSingle();
@@ -477,11 +477,18 @@ export async function fetchPontosByTabelaNome(nome: string) {
   return (data || []).map((p: any) => ({ cod: p.cod, desc: p.descricao, tabela: p.valor_base, tol: p.tolerancia }));
 }
 
-export async function fetchGraduacoesByTabelaNome(nome: string) {
-  const { data: tab } = await sb().from("tabelas_medidas").select("id").eq("nome", nome).maybeSingle();
-  if (!tab) return [];
+// Devolve a graduação junto com o esquema de tamanhos da tabela — a ficha
+// precisa saber quais tamanhos existem e qual é a base para montar as colunas.
+export async function fetchGraduacoesByTabelaNome(nome: string): Promise<{ tamanhos: string[]; base: string; linhas: any[] }> {
+  const vazio = { tamanhos: [], base: "", linhas: [] };
+  const { data: tab } = await sb().from("tabelas_medidas").select("id, tamanhos, tamanho_base").eq("nome", nome).maybeSingle();
+  if (!tab) return vazio;
   const { data } = await sb().from("graduacoes").select("*").eq("tabela_id", tab.id).order("ordem");
-  return (data || []).map((g: any) => ({ desc: g.descricao, pp: g.pp, p: g.p, m: g.m, g: g.g, gg: g.gg, a1: g.ampliacao_esq, a2: g.ampliacao_dir, tol: g.tolerancia }));
+  return {
+    tamanhos: tab.tamanhos || [],
+    base: tab.tamanho_base || "",
+    linhas: (data || []).map((g: any) => ({ desc: g.descricao, valores: g.valores || {}, ampliacoes: g.ampliacoes || {}, tol: g.tolerancia })),
+  };
 }
 
 // Fetch only tables that have at least 1 point
