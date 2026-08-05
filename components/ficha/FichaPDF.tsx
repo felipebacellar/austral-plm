@@ -198,60 +198,102 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
           </div>
         </div>
 
-        {/* ── Aviamentação ── */}
-        {avi.length > 0 && (
+        {/* ── Aviamentação ──
+             Tudo de aviamento (tabela + Total + galeria) tem de caber numa
+             folha só. O gargalo é a largura: com muitas colunas, o padding
+             padrao de 8px de cada lado consome ~190px dos 714 uteis e espreme
+             "Materia prima"/"Localizacao", que quebram em 3-4 linhas e esticam
+             a tabela. Por isso esta tabela usa padding e colunas enxutos, e a
+             galeria abaixo dimensiona as fotos conforme a sobra da folha. */}
+        {avi.length > 0 && (() => {
+          // Densidade conforme a quantidade de itens: fichas grandes apertam as
+          // linhas para a tabela inteira (com o Total) continuar numa folha só.
+          const denso = avi.length > 30 ? 2 : avi.length > 20 ? 1 : 0;
+          const padY = denso === 2 ? "1px" : denso === 1 ? "2px" : "3px";
+          const fItem = denso === 2 ? "6.5px" : denso === 1 ? "7.5px" : "8px";
+          const fSec = denso === 2 ? "6px" : denso === 1 ? "6.5px" : "7px";
+          const tdAvi: React.CSSProperties = { ...td, padding: `${padY} 4px`, fontSize: denso ? "8px" : "9px" };
+          const thAvi: React.CSSProperties = { ...th, padding: `${padY} 4px` };
+          const wVar = numVars >= 6 ? 38 : 44;
+          const alturaLinha = denso === 2 ? 21 : denso === 1 ? 26 : 31;
+          return (
           <div className="print-page" style={pb()}>
             <PageHead title="Aviamentação" />
-            <table style={tbl}>
+            <table style={{ ...tbl, tableLayout: "fixed", pageBreakInside: "avoid" }}>
               <thead><tr style={headRow}>
-                <th style={{ ...th, textAlign: "center", width: "20px" }}>#</th>
-                <th style={{ ...th, width: "65px" }}>Código</th><th style={th}>Matéria prima</th><th style={{ ...th, width: "70px" }}>Fornecedor</th><th style={{ ...th, width: "60px" }}>Cód. forn.</th><th style={{ ...th, textAlign: "center", width: "26px" }}>Qtd</th>
-                <th style={{ ...th, textAlign: "right", width: "45px" }}>Valor</th><th style={th}>Localização</th>
-                {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...th, textAlign: "center", width: "50px" }}>Var {String(i + 1).padStart(2, "0")}</th>)}
+                <th style={{ ...thAvi, textAlign: "center", width: "18px" }}>#</th>
+                <th style={{ ...thAvi, width: "58px" }}>Código</th><th style={thAvi}>Matéria prima</th><th style={{ ...thAvi, width: "62px" }}>Fornecedor</th><th style={{ ...thAvi, width: "52px" }}>Cód. forn.</th><th style={{ ...thAvi, textAlign: "center", width: "22px" }}>Qtd</th>
+                <th style={{ ...thAvi, textAlign: "right", width: "38px" }}>Valor</th><th style={{ ...thAvi, width: "120px" }}>Localização</th>
+                {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...thAvi, textAlign: "center", width: `${wVar}px` }}>Var {String(i + 1).padStart(2, "0")}</th>)}
               </tr></thead>
               <tbody>
                 {avi.map((a, i) => (
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 700, color: muted }}>{String(i+1).padStart(2,"0")}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "10px", fontWeight: 800, color: navy }}>{a.cod}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{a.item}</td>
-                    <td style={{ ...td, fontSize: "8px", color: muted }}>{a.fornecedor || "—"}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "8px", color: muted }}>{a.codigo_fornecedor || "—"}</td>
-                    <td style={{ ...td, textAlign: "center" }}>{a.qtd}</td>
-                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
-                    <td style={{ ...td, fontSize: "8px", color: muted }}>{a.local || "—"}</td>
-                    {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => <td key={k} style={{ ...td, textAlign: "center", fontSize: "7.5px" }}>{a[k] || "—"}</td>)}
+                    <td style={{ ...tdAvi, textAlign: "center", fontWeight: 700, color: muted }}>{String(i+1).padStart(2,"0")}</td>
+                    <td style={{ ...tdAvi, fontFamily: "monospace", fontSize: "8.5px", fontWeight: 800, color: navy }}>{a.cod}</td>
+                    <td style={{ ...tdAvi, fontWeight: 700, fontSize: fItem }}>{a.item}</td>
+                    <td style={{ ...tdAvi, fontSize: fSec, color: muted }}>{a.fornecedor || "—"}</td>
+                    <td style={{ ...tdAvi, fontFamily: "monospace", fontSize: fSec, color: muted }}>{a.codigo_fornecedor || "—"}</td>
+                    <td style={{ ...tdAvi, textAlign: "center" }}>{a.qtd}</td>
+                    <td style={{ ...tdAvi, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.valor > 0 ? a.valor.toFixed(2) : "—"}</td>
+                    <td style={{ ...tdAvi, fontSize: fSec, color: muted }}>{a.local || "—"}</td>
+                    {(["var01","var02","var03","var04","var05","var06"] as const).slice(0, numVars).map(k => <td key={k} style={{ ...tdAvi, textAlign: "center", fontSize: fSec }}>{a[k] || "—"}</td>)}
                   </tr>
                 ))}
               </tbody>
               <tfoot><tr>
-                <td colSpan={5} style={{ ...td, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", paddingTop: "6px" }}>Total</td>
-                <td style={{ ...td, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "10px", fontVariantNumeric: "tabular-nums", paddingTop: "6px" }}>R$ {avT.toFixed(2)}</td>
-                <td colSpan={numVars + 1} style={{ ...td, borderTop: `2px solid ${headerBg}` }} />
+                <td colSpan={5} style={{ ...tdAvi, fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "9px", paddingTop: "5px" }}>Total</td>
+                <td style={{ ...tdAvi, textAlign: "right", fontWeight: 800, borderTop: `2px solid ${headerBg}`, fontSize: "9px", fontVariantNumeric: "tabular-nums", paddingTop: "5px" }}>R$ {avT.toFixed(2)}</td>
+                <td colSpan={numVars + 1} style={{ ...tdAvi, borderTop: `2px solid ${headerBg}` }} />
               </tr></tfoot>
             </table>
 
-            {/* ── Galeria de imagens dos aviamentos ── */}
-            {avi.some(a => a.imagem) && (
-              <div style={{ marginTop: "16px" }}>
-                <div style={{ background: headerBg, color: "white", fontSize: "8px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 8px", borderRadius: "4px", marginBottom: "10px" }}>Referência Visual</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+            {/* ── Galeria de imagens dos aviamentos ──
+                 A foto encolhe conforme a folha vai enchendo: cada linha da
+                 tabela ocupa espaço, então o tamanho sai do que sobra. Assim a
+                 galeria nunca empurra a si mesma (nem o Total) para a página
+                 seguinte, por mais aviamentos que a ficha tenha. */}
+            {(() => {
+              const comFoto = avi.filter(a => a.imagem);
+              if (!comFoto.length) return null;
+              // Sobra da folha (≈1030px úteis) depois do cabeçalho, da tabela
+              // (~31px por linha, medido) e do título da galeria.
+              // 20% de folga sobre a altura estimada da tabela: textos longos
+              // quebram em duas linhas e a estimativa por si só ficaria curta —
+              // é preferível a foto sair menor do que a folha estourar.
+              const sobra = 1030 - 63 - (30 + avi.length * alturaLinha * 1.2) - 34;
+              const LEGENDA = 26; // código + nome sob cada foto
+              // Escolhe o arranjo (quantas por linha) que permite a maior foto
+              // cabendo na sobra: com pouco espaço, espalha mais por linha.
+              let lado = 0, porLinha = comFoto.length;
+              for (let pl = 1; pl <= comFoto.length; pl++) {
+                const linhas = Math.ceil(comFoto.length / pl);
+                const cand = Math.min(150, Math.floor(700 / pl) - 8, Math.floor(sobra / linhas) - LEGENDA);
+                if (cand > lado) { lado = cand; porLinha = pl; }
+              }
+              if (lado < 40) return null; // sem espaço util: omite a galeria em vez de estourar a folha
+              return (
+              <div style={{ marginTop: "12px", pageBreakInside: "avoid" }}>
+                <div style={{ background: headerBg, color: "white", fontSize: "8px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 8px", borderRadius: "4px", marginBottom: "8px" }}>Referência Visual</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                   {avi.map((a, i) => !a.imagem ? null : (
-                    <div key={i} style={{ width: "160px", textAlign: "center", position: "relative" }}>
+                    <div key={i} style={{ width: `${lado}px`, textAlign: "center", position: "relative" }}>
                       <div style={{ position: "relative" }}>
-                        <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "18px", height: "18px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "8px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(i+1).padStart(2,"0")}</span>
-                        <img src={a.imagem} alt={a.item} style={{ width: "160px", height: "160px", objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "4px" }}/>
+                        <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "16px", height: "16px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "7px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(i+1).padStart(2,"0")}</span>
+                        <img src={a.imagem} alt={a.item} style={{ width: `${lado}px`, height: `${lado}px`, objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "3px" }}/>
                       </div>
-                      <p style={{ fontSize: "9px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "3px", lineHeight: "1.3" }}>{a.cod}</p>
-                      <p style={{ fontSize: "6.5px", color: muted, marginTop: "1px", lineHeight: "1.3", wordBreak: "break-word" }}>{a.item}</p>
+                      <p style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "2px", lineHeight: "1.25" }}>{a.cod}</p>
+                      <p style={{ fontSize: "6px", color: muted, marginTop: "1px", lineHeight: "1.25", wordBreak: "break-word" }}>{a.item}</p>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
           </div>
-        )}
+          );
+        })()}
       </>)}
 
       {/* ══════════ ESTAMPARIA ══════════ */}
