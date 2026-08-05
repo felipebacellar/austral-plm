@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { uploadImage } from "@/lib/storage";
 import {
   fetchTabelasMedidas, fetchTabelaPontos, fetchGraduacoes,
@@ -7,10 +7,15 @@ import {
   upsertPontos, upsertGraduacoes, saveTabelaImagemModoMedir,
 } from "@/lib/db";
 import { subscribeRealtime } from "@/lib/realtime";
+import { calcularDaBase } from "@/lib/tamanhos";
 
 type Tabela = { id: number; nome: string; tamanhos?: string[]; tamanho_base?: string };
 type Ponto = { cod: string; desc: string; tabela: string; tol: string };
 type Grad = { desc: string; valores: Record<string, string>; ampliacoes: Record<string, string>; tol: string };
+
+// Borda mais forte marcando o início de cada grupo de colunas
+// (Graduação | Ampliação | Tolerância) na tabela de graduação.
+const GRUPO_INICIO = "!border-l-2 !border-l-[var(--separator)]";
 
 // Esquemas de tamanho oferecidos ao criar uma tabela nova.
 const ESQUEMAS = [
@@ -37,7 +42,9 @@ export default function MedidasView() {
   const [newEsquema, setNewEsquema] = useState(0);
   const [im1, setIm1] = useState<string | null>(null);
   const r1 = useRef<HTMLInputElement>(null);
-  const saveTimer = useRef<any>(null);
+  // Um timer por tipo: editar o valor base salva pontos E graduação (que dele
+  // deriva) — com um timer só, o segundo agendamento cancelaria o primeiro.
+  const saveTimers = useRef<Record<string, any>>({});
 
   useEffect(() => { loadTabelas(); }, []);
 
@@ -83,14 +90,30 @@ export default function MedidasView() {
 
   const scheduleSave = useCallback((type: "pontos" | "grad", data: any[]) => {
     if (!sel) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
+    if (saveTimers.current[type]) clearTimeout(saveTimers.current[type]);
+    saveTimers.current[type] = setTimeout(async () => {
       setSaving(true);
       if (type === "pontos") await upsertPontos(sel.id, data);
       else await upsertGraduacoes(sel.id, data);
       setSaving(false);
     }, 800);
   }, [sel]);
+
+  // A graduação é DERIVADA, não digitada: o valor do tamanho base vem da aba
+  // "Tabela base" e os demais são calculados acumulando as ampliações a partir
+  // dele — a mesma conta das fórmulas do arquivo oficial (vizinho ± |ampliação|).
+  // Só ampliação, descrição e tolerância são editáveis.
+  const comValoresCalculados = useCallback(
+    (linhas: Grad[], pts: Ponto[]): Grad[] =>
+      linhas.map((r, i) => ({
+        ...r,
+        valores: calcularDaBase(r as any, tamanhos, base, pts[i]?.tabela ?? r.valores?.[base] ?? ""),
+      })),
+    [tamanhos, base],
+  );
+
+  // O que a tela mostra (e o que é gravado): sempre os valores calculados.
+  const gradCalc = useMemo(() => comValoresCalculados(grad, pontos), [comValoresCalculados, grad, pontos]);
 
   const addPonto = () => {
     const next = String.fromCharCode(65 + pontos.length);
@@ -102,6 +125,8 @@ export default function MedidasView() {
     const updated = pontos.map((p, j) => j === i ? { ...p, [field]: val } : p);
     setPontos(updated);
     scheduleSave("pontos", updated);
+    // Mudar a medida base recalcula toda a graduação daquela linha.
+    if (field === "tabela") scheduleSave("grad", comValoresCalculados(grad, updated));
   };
   const removePonto = (i: number) => {
     const updated = pontos.filter((_, j) => j !== i);
@@ -112,23 +137,23 @@ export default function MedidasView() {
   const addGrad = () => {
     const updated = [...grad, { desc: "", valores: {}, ampliacoes: {}, tol: "1,0 + OU -" }];
     setGrad(updated);
-    scheduleSave("grad", updated);
+    scheduleSave("grad", comValoresCalculados(updated, pontos));
   };
   const updateGrad = (i: number, field: string, val: string) => {
     const updated = grad.map((r, j) => j === i ? { ...r, [field]: val } : r);
     setGrad(updated);
-    scheduleSave("grad", updated);
+    scheduleSave("grad", comValoresCalculados(updated, pontos));
   };
-  // Valor / ampliação são por tamanho (JSONB), não colunas fixas
-  const updateGradMapa = (i: number, campo: "valores" | "ampliacoes", tamanho: string, val: string) => {
-    const updated = grad.map((r, j) => j === i ? { ...r, [campo]: { ...r[campo], [tamanho]: val } } : r);
+  // Só a AMPLIAÇÃO é digitada — os valores da graduação saem dela + medida base.
+  const updateAmpliacao = (i: number, tamanho: string, val: string) => {
+    const updated = grad.map((r, j) => j === i ? { ...r, ampliacoes: { ...r.ampliacoes, [tamanho]: val } } : r);
     setGrad(updated);
-    scheduleSave("grad", updated);
+    scheduleSave("grad", comValoresCalculados(updated, pontos));
   };
   const removeGrad = (i: number) => {
     const updated = grad.filter((_, j) => j !== i);
     setGrad(updated);
-    scheduleSave("grad", updated);
+    scheduleSave("grad", comValoresCalculados(updated, pontos));
   };
 
   const handleCreate = async () => {
@@ -276,41 +301,57 @@ export default function MedidasView() {
                   <table className="plm-table">
                     <thead>
                       <tr>
+                        <th rowSpan={2} className="text-center w-12">Cód</th>
                         <th rowSpan={2}>Descrição</th>
-                        <th colSpan={tamanhos.length} className="text-center">Graduação</th>
-                        <th colSpan={tamanhos.length} className="text-center">Ampliação</th>
-                        <th rowSpan={2} className="text-center w-24">Tolerância</th>
+                        <th colSpan={tamanhos.length} className={`text-center ${GRUPO_INICIO} bg-[rgba(0,122,255,0.05)] !text-[var(--system-blue)]`}>
+                          Graduação <span className="font-normal normal-case tracking-normal text-[10px] opacity-70">(calculada)</span>
+                        </th>
+                        <th colSpan={tamanhos.length} className={`text-center ${GRUPO_INICIO} bg-[rgba(52,199,89,0.06)] !text-[#1a7a35]`}>
+                          Ampliação <span className="font-normal normal-case tracking-normal text-[10px] opacity-70">(editável)</span>
+                        </th>
+                        <th rowSpan={2} className={`text-center w-24 ${GRUPO_INICIO}`}>Tolerância</th>
                         <th rowSpan={2} className="w-8"></th>
                       </tr>
                       <tr>
-                        {tamanhos.map(t => (
-                          <th key={`v-${t}`} className={`text-center w-16 ${t === base ? "!bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]" : ""}`}>{t}</th>
+                        {tamanhos.map((t, k) => (
+                          <th key={`v-${t}`} className={`text-center w-16 ${k === 0 ? GRUPO_INICIO : ""} ${t === base ? "!bg-[rgba(0,122,255,0.12)] !text-[var(--system-blue)]" : "bg-[rgba(0,122,255,0.03)]"}`}>{t}</th>
                         ))}
-                        {tamanhos.map(t => (
-                          <th key={`a-${t}`} className={`text-center w-14 text-[11px] ${t === base ? "!bg-[rgba(0,122,255,0.06)] !text-[var(--system-blue)]" : ""}`}>{t}</th>
+                        {tamanhos.map((t, k) => (
+                          <th key={`a-${t}`} className={`text-center w-14 text-[11px] ${k === 0 ? GRUPO_INICIO : ""} ${t === base ? "!text-[var(--label-quaternary)]" : "!text-[#1a7a35]"} bg-[rgba(52,199,89,0.04)]`}>{t}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>{grad.map((r, i) => (<tr key={i}>
+                      <td className="px-1 py-1 text-center text-[12px] font-bold text-[var(--label-secondary)]">{pontos[i]?.cod || "—"}</td>
                       <td className="px-1 py-1"><input type="text" value={r.desc} onChange={e => updateGrad(i, "desc", e.target.value)} className={`${ic} font-medium`} placeholder="Descrição" /></td>
-                      {tamanhos.map(t => (
-                        <td key={`v-${t}`} className={`px-1 py-1 ${t === base ? "bg-[rgba(0,122,255,0.03)]" : ""}`}>
-                          <input type="text" value={r.valores?.[t] ?? ""} onChange={e => updateGradMapa(i, "valores", t, e.target.value)} className={`${ic} w-14 text-center tabnum ${t === base ? "font-bold" : ""}`} placeholder="—" />
+                      {/* Graduação: calculada — o base vem da Tabela base, os outros das ampliações */}
+                      {tamanhos.map((t, k) => (
+                        <td key={`v-${t}`} className={`px-1 py-1 text-center tabnum text-[13px] ${k === 0 ? GRUPO_INICIO : ""} ${t === base ? "bg-[rgba(0,122,255,0.10)] font-bold text-[var(--system-blue)]" : "bg-[rgba(0,122,255,0.02)] text-[var(--label-primary)]"}`}
+                          title={t === base ? `Medida base — editável na aba "Tabela base"` : `Calculado: ${t} = vizinho ± ampliação`}>
+                          {gradCalc[i]?.valores?.[t] || "—"}
                         </td>
                       ))}
-                      {tamanhos.map(t => (
-                        <td key={`a-${t}`} className={`px-1 py-1 ${t === base ? "bg-[rgba(0,122,255,0.03)]" : ""}`}>
-                          <input type="text" value={r.ampliacoes?.[t] ?? ""} onChange={e => updateGradMapa(i, "ampliacoes", t, e.target.value)} className={`${ic} w-12 text-center tabnum text-[12px]`} placeholder="—" />
+                      {/* Ampliação: o único campo digitado */}
+                      {tamanhos.map((t, k) => (
+                        <td key={`a-${t}`} className={`px-1 py-1 ${k === 0 ? GRUPO_INICIO : ""} bg-[rgba(52,199,89,0.03)]`}>
+                          {t === base ? (
+                            <div className="w-12 mx-auto text-center text-[12px] text-[var(--label-quaternary)]" title="A base é a referência — não tem ampliação">—</div>
+                          ) : (
+                            <input type="text" value={r.ampliacoes?.[t] ?? ""} onChange={e => updateAmpliacao(i, t, e.target.value)} className={`${ic} w-12 text-center tabnum text-[12px]`} placeholder="—" />
+                          )}
                         </td>
                       ))}
-                      <td className="px-1 py-1"><input type="text" value={r.tol} onChange={e => updateGrad(i, "tol", e.target.value)} className={`${ic} w-20 text-center text-[12px]`} /></td>
+                      <td className={`px-1 py-1 ${GRUPO_INICIO}`}><input type="text" value={r.tol} onChange={e => updateGrad(i, "tol", e.target.value)} className={`${ic} w-20 text-center text-[12px]`} /></td>
                       <td className="text-center"><button onClick={() => removeGrad(i)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] transition-colors">×</button></td>
                     </tr>))}
-                      {grad.length === 0 && <tr><td colSpan={tamanhos.length * 2 + 3} className="py-8 text-center text-[var(--label-tertiary)]">Nenhuma graduação cadastrada</td></tr>}
+                      {grad.length === 0 && <tr><td colSpan={tamanhos.length * 2 + 4} className="py-8 text-center text-[var(--label-tertiary)]">Nenhuma graduação cadastrada</td></tr>}
                     </tbody></table>
                 </div>
                 <button onClick={addGrad} className="apple-btn-secondary text-[12px]">+ Adicionar linha</button>
-                <p className="text-[11px] text-[var(--label-tertiary)] mt-3">Ampliação: diferença de cada tamanho em relação ao vizinho na direção da base ({base || "—"}).</p>
+                <div className="text-[11px] text-[var(--label-tertiary)] mt-3 leading-relaxed">
+                  <p><span className="font-semibold text-[var(--system-blue)]">Graduação</span> é calculada — não se digita. O tamanho base ({base || "—"}) vem da aba <span className="font-semibold">Tabela base</span>; os demais somam a ampliação a partir do vizinho.</p>
+                  <p><span className="font-semibold text-[#1a7a35]">Ampliação</span>: diferença de cada tamanho em relação ao vizinho na direção da base. Ex.: base {base || "—"} = 43 e ampliação −2 ⇒ o tamanho anterior fica 41; outra ampliação −2 ⇒ o anterior fica 39.</p>
+                </div>
                 </>)}
               </div>)}
             </div>
