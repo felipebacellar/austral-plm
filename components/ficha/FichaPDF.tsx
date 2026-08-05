@@ -490,7 +490,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                   <tr>
                     <th style={{ ...th, textAlign: "center", width: "26px" }} rowSpan={2}>Cód</th>
                     <th style={{ ...th }} rowSpan={2}>Descrição</th>
-                    <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800 }} rowSpan={2}>Tab.</th>
+                    <th style={{ ...th, textAlign: "center", width: "40px", fontWeight: 800 }} rowSpan={2}>{gradBase ? `Tab. (${gradBase})` : "Tab."}</th>
                     <th colSpan={2} style={{ ...th, textAlign: "center", background: `${col}18`, borderBottom: `2px solid ${col}`, padding: "3px 4px" }}>
                       <div style={{ fontWeight: 800, color: col, fontSize: "7.5px", letterSpacing: "0.06em" }}>PROVA {latestN}</div>
                       {pi?.tipo && <div style={{ fontSize: "7px", color: col, fontWeight: 700, textTransform: "uppercase" }}>{pi.tipo}</div>}

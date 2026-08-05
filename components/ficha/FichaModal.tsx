@@ -73,6 +73,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   // Esquema de tamanhos da tabela de medidas do produto
   const [tabTamanhos, setTabTamanhos] = useState<string[]>([]);
   const [tabBase, setTabBase] = useState("");
+  // Texto em digitação das datas de prova. O valor final é guardado em ISO
+  // (provaInfo[].data), mas enquanto a data está incompleta ela não converte —
+  // sem este rascunho o campo se apagaria a cada tecla.
+  const [dataProvaDraft, setDataProvaDraft] = useState<Record<string, string>>({});
   const [pv, setPv] = useState<Record<string, { p1: string; p2: string; p3: string }>>({});
   const [an, setAn] = useState<Record<string, { texto: string; video: string }>>({ p1: { texto: "", video: "" }, p2: { texto: "", video: "" }, p3: { texto: "", video: "" } });
   const [provaInfo, setProvaInfo] = useState<Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string; tipo: string }>>({ p1: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" }, p2: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" }, p3: { data: "", status: "", link: "", fotoFrente: "", fotoLado: "", fotoCostas: "", tipo: "" } });
@@ -1227,16 +1231,20 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                         <span className="text-[11px] font-bold tracking-[0.08em]">Prova {pi + 1}</span>
                         <input
                           type="text"
-                          value={info.data ? info.data.split('-').reverse().join('/') : ""}
+                          value={dataProvaDraft[pk] ?? (info.data ? info.data.split('-').reverse().join('/') : "")}
                           onChange={e => {
                             // aceita DD/MM/AAAA e converte para YYYY-MM-DD internamente
                             const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
                             let display = raw;
-                            if (raw.length > 4) display = raw.slice(0,2) + '/' + raw.slice(2,4) + '/' + raw.slice(4);
-                            else if (raw.length > 2) display = raw.slice(0,2) + '/' + raw.slice(2);
-                            const iso = raw.length === 8 ? `${raw.slice(4)}-${raw.slice(2,4)}-${raw.slice(0,2)}` : raw.length === 0 ? "" : info.data;
-                            setProvaInfo(prev => ({ ...prev, [pk]: { ...info, data: iso || "" } }));
+                            if (raw.length > 4) display = raw.slice(0, 2) + '/' + raw.slice(2, 4) + '/' + raw.slice(4);
+                            else if (raw.length > 2) display = raw.slice(0, 2) + '/' + raw.slice(2);
+                            setDataProvaDraft(prev => ({ ...prev, [pk]: display }));
+                            const iso = raw.length === 8 ? `${raw.slice(4)}-${raw.slice(2, 4)}-${raw.slice(0, 2)}` : "";
+                            setProvaInfo(prev => ({ ...prev, [pk]: { ...info, data: iso } }));
                           }}
+                          // Ao sair do campo, descarta o rascunho: volta a exibir o que foi
+                          // efetivamente salvo (data incompleta não é guardada).
+                          onBlur={() => setDataProvaDraft(prev => { const n = { ...prev }; delete n[pk]; return n; })}
                           placeholder="DD/MM/AAAA"
                           className="w-full text-[11px] tabnum border border-[var(--separator-opaque)] rounded-lg px-2 py-1.5 outline-none focus:border-[var(--system-blue)] text-center bg-[var(--bg-primary)] font-normal"
                         />
@@ -1278,7 +1286,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               <tr>
                 <th className="text-center w-12">Cód</th>
                 <th>Descrição</th>
-                <th className="text-center w-16">{tEsp ? <span className="text-[var(--system-orange)]">Tabela</span> : "Tabela"}</th>
+                <th className="text-center w-16">{tEsp ? <span className="text-[var(--system-orange)]">Tabela{gradBase ? ` (tam. ${gradBase})` : ""}</span> : `Tabela${gradBase ? ` (tam. ${gradBase})` : ""}`}</th>
                 <th className="text-center w-24 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)] border-l border-[var(--separator-opaque)]">Medida</th>
                 <th className="text-center w-24 !bg-[rgba(0,122,255,0.04)] !text-[var(--system-blue)]">Diferença</th>
                 <th className="text-center w-24 border-l border-[var(--separator-opaque)]">Medida</th><th className="text-center w-24">Diferença</th>
