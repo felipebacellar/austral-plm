@@ -30,7 +30,7 @@ const PRE_PRODUCAO_COLS = [
   { field: "data_entrega_pre_producao", label: "Data Entrega Pré-Prod.",  type: "date", width: 150 },
   { field: "data_retorno_pre_producao", label: "Data Retorno Pré-Prod.",  type: "date", width: 150 },
   { field: "status_pre_producao",       label: "Status Pré-Produção",     type: "select", width: 200,
-    options: ["","PRÉ-PRODUÇÃO LIBERADA","PRÉ PRODUÇÃO REPROVADA"] },
+    options: ["","LIBERADA","LIBERADA COM RESTRIÇÃO","REPROVADA - CORRIGIR","REPROVADA - NEGOCIAR"] },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -42,8 +42,10 @@ const STATUS_COLORS: Record<string, string> = {
   "MOSTRUÁRIO RECEBIDO - AGUARDANDO PROVA DE PRODUÇÃO": "#f97316",
   "PRODUÇÃO REPROVADA - AGUARDANDO REPILOTAGEM": "#ef4444",
   "PRODUÇÃO LIBERADA": "#22c55e",
-  "PRÉ-PRODUÇÃO LIBERADA": "#22c55e",
-  "PRÉ PRODUÇÃO REPROVADA": "#ef4444",
+  "LIBERADA": "#22c55e",
+  "LIBERADA COM RESTRIÇÃO": "#f97316",
+  "REPROVADA - CORRIGIR": "#ef4444",
+  "REPROVADA - NEGOCIAR": "#ef4444",
 };
 
 function fmtDate(v: string) {
