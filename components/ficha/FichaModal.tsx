@@ -1519,16 +1519,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
         {/* ═══ GRADUAÇÃO DE PRODUÇÃO ═══ */}
         {tab === "graduacao" && isProd && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (() => {
-          // A base da graduação de produção é a medida REAL da prova aprovada
-          // (última disponível), não o valor de tabela.
-          const getMedidaBase = (g: any): string => {
-            const doTabela = valorGrad(g, gradBase);
-            const pt = ptsAtivo.find((p: any) => p.desc?.toUpperCase() === g.desc?.toUpperCase());
-            if (!pt) return doTabela;
-            const vals = pv[pt.cod];
-            if (!vals) return doTabela;
-            return vals.p3 || vals.p2 || vals.p1 || doTabela;
-          };
+          // A base da graduação é a medida da TABELA BASE — não a medida
+          // aferida na prova. A prova registra o que veio da peça piloto; a
+          // graduação parte do que a tabela define para o tamanho base.
+          const getMedidaBase = (g: any): string => valorGrad(g, gradBase);
           const calcRow = (g: any): Record<string, string> => {
             const medida = getMedidaBase(g);
             if (isNaN(tamNum(medida))) {
@@ -1537,11 +1531,6 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               return out;
             }
             return calcularDaBase(g, gradTamanhos, gradBase, medida);
-          };
-          const isOutsideTol = (val: string, base: string, tol: string) => {
-            const v = parseFloat(val), b = parseFloat(base), t = parseFloat(tol);
-            if (isNaN(v) || isNaN(b) || isNaN(t)) return false;
-            return Math.abs(v - b) > t;
           };
           const gradColor = statusLib === "APROVADO COM RESTRIÇÃO" ? "#f97316" : "#2DB564";
           return (
@@ -1593,13 +1582,12 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                   <tbody>
                     {gradAtivo.map((g: any, i: number) => {
                       const calc = calcRow(g);
-                      const baseOutside = isOutsideTol(calc[gradBase], valorGrad(g, gradBase), g.tol);
                       return (
                         <tr key={i}>
                           <td className="font-medium px-3">{g.desc}</td>
                           {gradTamanhos.map(t => (
                             t === gradBase ? (
-                              <td key={t} className={`text-center tabnum text-[13px] font-bold px-2 ${baseOutside ? "bg-red-100 text-red-600" : "bg-[rgba(255,204,0,0.14)] text-[#856500]"}`}>{calc[t] || "—"}</td>
+                              <td key={t} className="text-center tabnum text-[13px] font-bold px-2 bg-[rgba(255,204,0,0.14)] text-[#856500]">{calc[t] || "—"}</td>
                             ) : (
                               <td key={t} className="text-center tabnum text-[13px] px-2 bg-[rgba(45,181,100,0.03)]">{calc[t] || "—"}</td>
                             )
@@ -1614,7 +1602,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             )}
 
             <p className="text-[11px] text-[var(--label-tertiary)]">
-              Coluna {gradBase} = medida real da prova aprovada. Demais tamanhos calculados a partir dela somando as ampliações.
+              Coluna {gradBase} = medida da tabela base. Demais tamanhos calculados a partir dela somando as ampliações.
               {statusLib === "APROVADO COM RESTRIÇÃO" && <span className="ml-1 text-orange-500 font-semibold">Liberado com restrição — verificar pontos em vermelho antes de produção.</span>}
             </p>
           </div>

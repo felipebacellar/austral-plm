@@ -716,16 +716,10 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
       {/* ══════════ GRADUAÇÃO DE PRODUÇÃO ══════════ */}
       {sec.graduacao && grad.length > 0 && (statusLib === "APROVADO" || statusLib === "APROVADO COM RESTRIÇÃO") && (fichaType === "producao") && (() => {
         const valorGrad = (g: any, t: string) => valorNoTamanho(g, t, tabTamanhos);
-        // A base é a medida real da prova aprovada; os demais tamanhos saem dela
-        // acumulando as ampliações (que variam por tamanho).
-        const getMedidaBase = (g: any): string => {
-          const doTabela = valorGrad(g, gradBase);
-          const pt = pts.find((p: any) => p.desc?.toUpperCase() === g.desc?.toUpperCase());
-          if (!pt) return doTabela;
-          const vals = pv[pt.cod];
-          if (!vals) return doTabela;
-          return vals.p3 || vals.p2 || vals.p1 || doTabela;
-        };
+        // A base é a medida da TABELA BASE — não a medida aferida na prova. Os
+        // demais tamanhos saem dela acumulando as ampliações (que variam por
+        // tamanho).
+        const getMedidaBase = (g: any): string => valorGrad(g, gradBase);
         const calcRow = (g: any): Record<string, string> => {
           const medida = getMedidaBase(g);
           if (isNaN(tamNum(medida))) {
@@ -775,16 +769,12 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <tbody>
               {grad.map((g: any, i: number) => {
                 const calc = calcRow(g);
-                const vBase = tamNum(valorGrad(g, gradBase));
-                const vReal = tamNum(calc[gradBase]);
-                const tol = tamNum(g.tol);
-                const baseOutside = !isNaN(vBase) && !isNaN(vReal) && !isNaN(tol) && Math.abs(vReal - vBase) > tol;
                 return (
                   <tr key={i} style={i % 2 ? { background: bg } : {}}>
                     <td style={{ ...td, fontWeight: 600 }}>{g.desc}</td>
                     {gradTamanhos.map(t => (
                       t === gradBase ? (
-                        <td key={t} style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: baseOutside ? "#FEE2E2" : "#FEFCE8", color: baseOutside ? danger : warn }}>{calc[t] || "—"}</td>
+                        <td key={t} style={{ ...td, textAlign: "center", fontWeight: 800, fontVariantNumeric: "tabular-nums", background: "#FEFCE8", color: warn }}>{calc[t] || "—"}</td>
                       ) : (
                         <td key={t} style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", background: "#f0faf4" }}>{calc[t] || "—"}</td>
                       )
