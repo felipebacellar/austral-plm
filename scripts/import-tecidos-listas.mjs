@@ -6,7 +6,8 @@ import * as XLSX from "xlsx";
 import fs from "node:fs";
 XLSX.set_fs(fs);
 
-const ARQUIVO = "C:/Users/produ/OneDrive - Austral (1)/Documentos Partilhados/22 - Inverno 27/LISTAS IV.xlsx";
+const PADRAO = "C:/Users/produ/OneDrive - Austral (1)/Documentos Partilhados/22 - Inverno 27/LISTAS IV.xlsx";
+const ARQUIVO = process.argv.find(a => a.toLowerCase().endsWith(".xlsx")) || PADRAO;
 const APLICAR = !process.argv.includes("--dry");
 
 const env = {};
