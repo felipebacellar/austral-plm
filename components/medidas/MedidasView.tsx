@@ -159,7 +159,9 @@ export default function MedidasView() {
   const hi = async (e: any) => {
     const file = e.target.files?.[0];
     if (!file || !sel) return;
-    const url = await uploadImage(file, `medidas/${sel.nome}/modo_de_medir`);
+    // Caminho pelo id da tabela: estável (não quebra se a tabela for renomeada)
+    // e sem acento/barra, que o Storage recusa.
+    const url = await uploadImage(file, `medidas/${sel.id}/modo_de_medir`);
     if (url) {
       setIm1(url);
       await saveTabelaImagemModoMedir(sel.id, url);

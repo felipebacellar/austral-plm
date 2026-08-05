@@ -28,12 +28,35 @@ function compressImage(file: File): Promise<Blob> {
   });
 }
 
+// O Storage do Supabase recusa chaves com acento ou caractere especial
+// ("Invalid key") — ex. um nome de tabela como "CALÇA CÓS ... C/ ELASTANO".
+// Normaliza cada segmento do caminho, preservando as barras que separam pastas.
+function sanitizePath(path: string): string {
+  const semAcento = (s: string) =>
+    s.normalize("NFD")
+      .split("")
+      // descarta as marcas de acento combinantes (U+0300–U+036F)
+      .filter(ch => { const c = ch.codePointAt(0) ?? 0; return c < 0x0300 || c > 0x036f; })
+      .join("");
+
+  return path
+    .split("/")
+    .map(seg =>
+      semAcento(seg)
+        .replace(/[^A-Za-z0-9._-]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_|_$/g, "")
+    )
+    .filter(Boolean)
+    .join("/");
+}
+
 export async function uploadImage(file: File, path: string): Promise<string | null> {
   const supabase = getSupabase();
 
   const compressed = await compressImage(file);
   const ext = "jpg";
-  const filename = `${path}/${Date.now()}.${ext}`;
+  const filename = `${sanitizePath(path)}/${Date.now()}.${ext}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
