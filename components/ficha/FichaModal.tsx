@@ -490,15 +490,18 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     }
     setTEsp(!tEsp);
   };
-  // Ao editar o valor da base numa tabela especial, os demais tamanhos são
-  // recalculados acumulando as ampliações a partir dela.
-  const updGradEspBase = (i: number, v: string) => {
-    setGradEsp(prev => prev.map((g, j) => {
-      if (j !== i) return g;
-      return { ...g, valores: calcularDaBase(g, gradTamanhos, gradBase, v) };
-    }));
+  // A medida do tamanho base é UMA só: aparece no quadro de medidas e na coluna
+  // base da graduação. Editar em qualquer um dos dois altera os dois e recalcula
+  // os demais tamanhos usando as AMPLIAÇÕES DA TABELA ORIGINAL (copiadas em
+  // toggleEsp) — a graduação da especial segue a original, só deslocada pela
+  // medida informada. Nada disso toca as tabelas do cadastro: a especial é
+  // gravada por ficha (ficha_pontos_especiais / ficha_graduacao_especial).
+  const updMedidaEsp = (i: number, v: string) => {
+    setPtsEsp(prev => prev.map((p, j) => j === i ? { ...p, tabela: v } : p));
+    setGradEsp(prev => prev.map((g, j) => j === i ? { ...g, valores: calcularDaBase(g, gradTamanhos, gradBase, v) } : g));
   };
   const updPtsEsp = (i: number, k: string, v: string) => {
+    if (k === "tabela") return updMedidaEsp(i, v);
     setPtsEsp(prev => prev.map((p, j) => j === i ? { ...p, [k]: v } : p));
   };
   /* pontos ativos e grad ativos (especial ou original) */
@@ -1326,7 +1329,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                         {gradTamanhos.map(t => (
                           t === gradBase ? (
                             <td key={t} className={`text-center tabnum font-bold px-1 ${tEsp ? "bg-[rgba(255,159,10,0.04)]" : "bg-[rgba(0,122,255,0.03)]"}`}>{tEsp
-                              ? <input type="text" value={g.valores?.[t] ?? ""} onChange={e => updGradEspBase(i, e.target.value)} className="w-14 text-center text-[13px] tabnum font-bold border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
+                              ? <input type="text" value={g.valores?.[t] ?? ""} onChange={e => updMedidaEsp(i, e.target.value)} className="w-14 text-center text-[13px] tabnum font-bold border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
                               : valorGrad(g, t)
                             }</td>
                           ) : (
@@ -1338,7 +1341,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     ))}</tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? `Os demais tamanhos são calculados a partir de ${gradBase} e das ampliações. As tabelas originais nos cadastros não são afetadas.` : `Tamanhos exibidos conforme a grade do produto. Base: ${gradBase}.`}</p>
+                <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{tEsp ? `Especial desta ficha: os demais tamanhos seguem as ampliações da tabela ${tm || "original"}, deslocadas pela medida de ${gradBase} que você informou. As tabelas do cadastro não são alteradas.` : `Tamanhos exibidos conforme a grade do produto. Base: ${gradBase}.`}</p>
               </div>
             )}
             {/* Fotos das Provas — 3 por prova */}
