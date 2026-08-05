@@ -80,6 +80,20 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
     <span style={{ display: "inline-block", fontSize: "7px", fontWeight: 700, color: white, background: color, padding: "2px 8px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>{text}</span>
   );
 
+  // Fecha a seção de aviamentos: o valor total em destaque e as observações.
+  const ResumoAviObs = () => (
+    <div style={{ display: "flex", gap: "8px", marginTop: "12px", pageBreakInside: "avoid" }}>
+      <div style={{ width: "130px", background: headerBg, borderRadius: "6px", padding: "8px 12px", color: white }}>
+        <div style={{ fontSize: "6.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7, marginBottom: "3px" }}>Total Aviamentos</div>
+        <div style={{ fontSize: "14px", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</div>
+      </div>
+      <div style={{ flex: 1, background: bg, borderRadius: "6px", padding: "8px 12px", border: `1px solid ${line}` }}>
+        <div style={{ fontSize: "6.5px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px" }}>Observações</div>
+        <div style={{ fontSize: "8px", color: obs ? navy : light, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{obs || "Nenhuma observação."}</div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="print-ficha" style={{ fontFamily: "'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif", fontSize: "9px", color: navy, lineHeight: 1.5 }}>
 
@@ -185,17 +199,11 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             </div>
           )}
 
-          {/* Custos + Obs */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            <div style={{ width: "130px", background: headerBg, borderRadius: "6px", padding: "8px 12px", color: white }}>
-              <div style={{ fontSize: "6.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7, marginBottom: "3px" }}>Total Aviamentos</div>
-              <div style={{ fontSize: "14px", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>R$ {avT.toFixed(2)}</div>
-            </div>
-            <div style={{ flex: 1, background: bg, borderRadius: "6px", padding: "8px 12px", border: `1px solid ${line}` }}>
-              <div style={{ fontSize: "6.5px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px" }}>Observações</div>
-              <div style={{ fontSize: "8px", color: obs ? navy : light, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{obs || "Nenhuma observação."}</div>
-            </div>
-          </div>
+          {/* Total de aviamentos + Observações: vão na página da Aviamentação,
+              junto do que resumem. Ficavam aqui no pé da ficha e transbordavam
+              para uma página só deles. Sem aviamentos não há aquela página,
+              então o bloco fica aqui mesmo. */}
+          {avi.length === 0 && <ResumoAviObs />}
         </div>
 
         {/* ── Aviamentação ──
@@ -208,14 +216,16 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         {avi.length > 0 && (() => {
           // Densidade conforme a quantidade de itens: fichas grandes apertam as
           // linhas para a tabela inteira (com o Total) continuar numa folha só.
-          const denso = avi.length > 30 ? 2 : avi.length > 20 ? 1 : 0;
+          const denso = avi.length > 26 ? 2 : avi.length > 16 ? 1 : 0;
           const padY = denso === 2 ? "1px" : denso === 1 ? "2px" : "3px";
           const fItem = denso === 2 ? "6.5px" : denso === 1 ? "7.5px" : "8px";
           const fSec = denso === 2 ? "6px" : denso === 1 ? "6.5px" : "7px";
-          const tdAvi: React.CSSProperties = { ...td, padding: `${padY} 4px`, fontSize: denso ? "8px" : "9px" };
+          // A entrelinha herdada (1.5) é o que mais pesa quando um texto quebra
+          // em duas linhas — apertá-la rende mais que reduzir o padding.
+          const tdAvi: React.CSSProperties = { ...td, padding: `${padY} 4px`, fontSize: denso ? "8px" : "9px", lineHeight: denso ? 1.15 : 1.35 };
           const thAvi: React.CSSProperties = { ...th, padding: `${padY} 4px` };
           const wVar = numVars >= 6 ? 38 : 44;
-          const alturaLinha = denso === 2 ? 21 : denso === 1 ? 26 : 31;
+          const alturaLinha = denso === 2 ? 18 : denso === 1 ? 23 : 31;
           return (
           <div className="print-page" style={pb()}>
             <PageHead title="Aviamentação" />
@@ -261,7 +271,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               // 20% de folga sobre a altura estimada da tabela: textos longos
               // quebram em duas linhas e a estimativa por si só ficaria curta —
               // é preferível a foto sair menor do que a folha estourar.
-              const sobra = 1030 - 63 - (30 + avi.length * alturaLinha * 1.2) - 34;
+              // 62px reservados para o bloco de Total + Observações no rodapé.
+              const sobra = 1030 - 63 - (30 + avi.length * alturaLinha * 1.2) - 34 - 62;
               const LEGENDA = 26; // código + nome sob cada foto
               // Escolhe o arranjo (quantas por linha) que permite a maior foto
               // cabendo na sobra: com pouco espaço, espalha mais por linha.
@@ -291,6 +302,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               );
             })()}
 
+            <ResumoAviObs />
           </div>
           );
         })()}
