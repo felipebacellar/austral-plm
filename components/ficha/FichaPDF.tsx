@@ -166,36 +166,37 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                     <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{t.preco > 0 ? `R$ ${t.preco.toFixed(2)}` : "—"}</td>
                     {Array.from({length: numVars}, (_, j) => { const cor = cs[j]; const pal = cor ? COR_PALETTE[cor] : null; return (<td key={j} style={{ ...td, textAlign: "center", padding: "3px 4px" }}>{cor ? <span style={{ display: "inline-block", padding: "2px 5px", borderRadius: "3px", fontSize: "7.5px", fontWeight: 700, background: pal?.bg || "#eee", color: pal?.text || "#333", whiteSpace: "nowrap" }}>{cor}</span> : <span style={{ color: lineDark }}>—</span>}</td>); })}
                   </tr>
-                ); })}</tbody>
+                ); })}
+
+                {/* Pantone / Compra / Pedido — linhas DESTA tabela. Antes eram
+                    divs de flex logo abaixo dela, presumindo 55px por variante;
+                    como a tabela dimensiona as colunas por conta própria, os
+                    valores não caíam sob a cor correspondente. */}
+                {pantones && (pantones.var01 || pantones.var02 || pantones.var03 || pantones.var04) && (
+                  <tr style={{ background: bg }}>
+                    <td colSpan={4} style={{ ...td, fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.08em" }}>Pantone</td>
+                    {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => (
+                      <td key={k} style={{ ...td, textAlign: "center", fontFamily: "monospace", fontSize: "7px", fontWeight: 700, color: navy, padding: "3px 2px" }}>{(pantones as any)[k] || "—"}</td>
+                    ))}
+                  </tr>
+                )}
+                {fichaType === 'producao' && (["qtd", "pedido"] as const).map(campo => (
+                  <tr key={campo} style={{ background: "#E8F0FE" }}>
+                    <td colSpan={4} style={{ ...td, fontSize: "6.5px", fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      {campo === "qtd" ? "Qtd. Compra 1" : "Nº Pedido 1"}
+                    </td>
+                    {Array.from({ length: numVars }, (_, i) => {
+                      const cor = tec[0]?.cores?.[i];
+                      const vc = cor && vcCompras ? vcCompras[`${row.id}:${cor}`] : null;
+                      const v = campo === "qtd"
+                        ? (vc?.qtd_compra1 != null && vc?.qtd_compra1 !== "" ? String(Math.round(Number(vc.qtd_compra1))) : "—")
+                        : (vc?.pedido1 || "—");
+                      return <td key={i} style={{ ...td, textAlign: "center", fontSize: campo === "qtd" ? "8px" : "7px", fontWeight: campo === "qtd" ? 800 : 700, color: navy, fontVariantNumeric: "tabular-nums", padding: "3px 2px" }}>{v}</td>;
+                    })}
+                  </tr>
+                ))}
+                </tbody>
               </table>
-              {pantones && (pantones.var01 || pantones.var02 || pantones.var03 || pantones.var04) && (
-                <div style={{ display: "flex", background: bg, borderTop: `0.5px solid ${line}`, padding: "3px 0" }}>
-                  <div style={{ flex: `0 0 calc(100% - ${numVars * 55}px)`, padding: "0 8px", fontSize: "6.5px", fontWeight: 700, color: light, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "18px" }}>Pantone</div>
-                  {(["var01", "var02", "var03", "var04", "var05", "var06"] as const).slice(0, numVars).map(k => <div key={k} style={{ width: "55px", textAlign: "center", fontFamily: "monospace", fontSize: "7.5px", fontWeight: 700, color: navy, lineHeight: "18px" }}>{(pantones as any)[k] || "—"}</div>)}
-                </div>
-              )}
-              {fichaType === 'producao' && (
-                <>
-                  <div style={{ display: "flex", background: "#E8F0FE", borderTop: `0.5px solid ${line}`, padding: "3px 0" }}>
-                    <div style={{ flex: `0 0 calc(100% - ${numVars * 55}px)`, padding: "0 8px", fontSize: "6.5px", fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "18px" }}>Qtd. Compra 1</div>
-                    {Array.from({length: numVars}, (_, i) => {
-                      const cor = tec[0]?.cores?.[i];
-                      const vc = cor && vcCompras ? vcCompras[`${row.id}:${cor}`] : null;
-                      const q = vc?.qtd_compra1;
-                      return <div key={i} style={{ width: "55px", textAlign: "center", fontVariantNumeric: "tabular-nums", fontSize: "8px", fontWeight: 800, color: navy, lineHeight: "18px" }}>{q != null && q !== "" ? Math.round(Number(q)) : "—"}</div>;
-                    })}
-                  </div>
-                  <div style={{ display: "flex", background: "#E8F0FE", borderTop: `0.5px solid ${line}`, padding: "3px 0" }}>
-                    <div style={{ flex: `0 0 calc(100% - ${numVars * 55}px)`, padding: "0 8px", fontSize: "6.5px", fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "18px" }}>Nº Pedido 1</div>
-                    {Array.from({length: numVars}, (_, i) => {
-                      const cor = tec[0]?.cores?.[i];
-                      const vc = cor && vcCompras ? vcCompras[`${row.id}:${cor}`] : null;
-                      const p = vc?.pedido1;
-                      return <div key={i} style={{ width: "55px", textAlign: "center", fontSize: "7.5px", fontWeight: 700, color: navy, lineHeight: "18px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p || ""}>{p || "—"}</div>;
-                    })}
-                  </div>
-                </>
-              )}
             </div>
           )}
 
