@@ -235,7 +235,18 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                 <th style={{ ...thAvi, textAlign: "center", width: "18px" }}>#</th>
                 <th style={{ ...thAvi, width: "58px" }}>Código</th><th style={thAvi}>Matéria prima</th><th style={{ ...thAvi, width: "62px" }}>Fornecedor</th><th style={{ ...thAvi, width: "52px" }}>Cód. forn.</th><th style={{ ...thAvi, textAlign: "center", width: "22px" }}>Qtd</th>
                 <th style={{ ...thAvi, textAlign: "right", width: "38px" }}>Valor</th><th style={{ ...thAvi, width: "120px" }}>Localização</th>
-                {Array.from({length: numVars}, (_, i) => <th key={i} style={{ ...thAvi, textAlign: "center", width: `${wVar}px` }}>Var {String(i + 1).padStart(2, "0")}</th>)}
+                {/* Mesmo cabeçalho de "Tecidos & Variantes": o nº da variante
+                    com o chip da cor correspondente logo abaixo. */}
+                {Array.from({length: numVars}, (_, i) => {
+                  const cor = tec[0]?.cores?.[i];
+                  const pal = cor ? COR_PALETTE[cor] : null;
+                  return (
+                    <th key={i} style={{ ...thAvi, textAlign: "center", width: `${wVar}px` }}>
+                      <div>Var {String(i + 1).padStart(2, "0")}</div>
+                      {cor && <div style={{ marginTop: "2px", display: "inline-block", padding: "1px 3px", borderRadius: "3px", fontSize: "6px", fontWeight: 700, lineHeight: 1.2, background: pal?.bg || "#eee", color: pal?.text || "#333" }}>{cor}</div>}
+                    </th>
+                  );
+                })}
               </tr></thead>
               <tbody>
                 {avi.map((a, i) => (
