@@ -30,8 +30,18 @@ const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_
 
 // ── Parse do arquivo ──────────────────────────────────────────────────────
 const wb = XLSX.readFile(XLSX_PATH);
-const rowsLista = XLSX.utils.sheet_to_json(wb.Sheets["LISTA BASES"], { header: 1, defval: "" });
-const rowsGrad = XLSX.utils.sheet_to_json(wb.Sheets["TABELA - GRADUAÇÃO"], { header: 1, defval: "" });
+// Acha as abas por padrão, não por nome exato: o arquivo já veio uma vez como
+// "TABELA - GRADUAÇÃO" e outra como "TABELAS - GRADUAÇÃO".
+function aba(regex, rotulo) {
+  const nome = wb.SheetNames.find(n => regex.test(n));
+  if (!nome) {
+    console.error(`ERRO: não achei a aba de ${rotulo}. Abas no arquivo: ${wb.SheetNames.join(", ")}`);
+    process.exit(1);
+  }
+  return XLSX.utils.sheet_to_json(wb.Sheets[nome], { header: 1, defval: "" });
+}
+const rowsLista = aba(/LISTA\s+BASES/i, "nomes (LISTA BASES)");
+const rowsGrad = aba(/GRADUA/i, "graduação");
 
 // Nomes como devem aparecer na tela (com o prefixo "NN - "), pulando o título
 const nomes = rowsLista.slice(1).map(r => String(r[0]).trim()).filter(Boolean);
@@ -53,6 +63,7 @@ const txt = v => {
 // Blocos: coluna A preenchida, coluna B vazia, e a linha seguinte começa com "CÓD."
 const blocos = {};
 const renomeados = [];
+const semMarcador = [];
 for (let i = 0; i < rowsGrad.length; i++) {
   const r = rowsGrad[i];
   if (!r[0] || r[1] || !rowsGrad[i + 1] || String(rowsGrad[i + 1][0]).trim() !== "CÓD.") continue;
@@ -67,12 +78,11 @@ for (let i = 0; i < rowsGrad.length; i++) {
   }
   // Ampliação: mesmas posições, deslocadas para as colunas J.. (9..14).
   // O rótulo da base vem como "42(BASE)"/"M (BASE)" — identifica a base.
-  let base = "";
   const colsAmpl = colsTam.map((_, k) => 9 + k);
+  let base = "";
   colsAmpl.forEach((c, k) => {
     if (/\(?\s*BASE\s*\)?/i.test(String(linhaTam[c] || ""))) base = tamanhos[k];
   });
-  if (!base) base = tamanhos[Math.floor(tamanhos.length / 2)]; // fallback: o do meio
 
   const pontos = [];
   for (let j = i + 3; j < rowsGrad.length; j++) {
@@ -88,6 +98,20 @@ for (let i = 0; i < rowsGrad.length; i++) {
       ampliacoes[t] = txt(lr[colsAmpl[k]]);
     });
     pontos.push({ cod, desc, valores, ampliacoes, tol: txt(lr[16]) || "1,0 + OU -" });
+  }
+
+  // Sem o marcador "(BASE)" no cabeçalho de ampliação (algumas tabelas do
+  // arquivo não o trazem), a base é o tamanho cuja ampliação é 0 — ela é a
+  // referência, então não se desloca. Só se nem isso resolver, usa o do meio.
+  if (!base) {
+    const zero = tamanhos.filter(t =>
+      pontos.length && pontos.every(p => {
+        const v = String(p.ampliacoes[t] ?? "").replace(",", ".").trim();
+        return v !== "" && parseFloat(v) === 0;
+      })
+    );
+    base = zero.length === 1 ? zero[0] : tamanhos[Math.floor(tamanhos.length / 2)];
+    semMarcador.push(`${String(r[0]).trim()} -> base "${base}" (${zero.length === 1 ? "ampliação 0" : "tamanho do meio"})`);
   }
 
   // O código do ponto identifica a medida na prova da ficha (as medições são
@@ -151,6 +175,11 @@ tabelas.forEach(t => {
 console.log("\nEsquemas encontrados:");
 Object.entries(porEsquema).forEach(([k, v]) => console.log(`  ${v}x  ${k}`));
 console.log(`\nTotal de pontos de medida: ${tabelas.reduce((s, t) => s + t.pontos.length, 0)}`);
+
+if (semMarcador.length) {
+  console.log(`\nAVISO — ${semMarcador.length} tabela(s) sem o marcador "(BASE)" no cabeçalho de ampliação; base deduzida:`);
+  semMarcador.forEach(x => console.log("  - " + x));
+}
 
 if (renomeados.length) {
   console.log(`\nATENÇÃO — ${renomeados.length} código(s) de ponto repetido(s) no arquivo foram renomeados`);
