@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { fetchCadastros, addCadastro, removeCadastro, addCadastrosBulk, fetchTecidos, addTecido, removeTecido, fetchAviamentos, addAviamento, addAviamentosBulk, removeAviamento, updateAviamento } from "@/lib/db";
+import { fetchCadastros, addCadastro, removeCadastro, addCadastrosBulk, fetchTecidos, addTecido, removeTecido, updateTecido, fetchAviamentos, addAviamento, addAviamentosBulk, removeAviamento, updateAviamento } from "@/lib/db";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { subscribeRealtime } from "@/lib/realtime";
 
@@ -15,6 +15,9 @@ export default function CadView(){
   const [cad,setCad]=useState<Record<string,any>>({});const [tecidos,setTecidos]=useState<any[]>([]);const [aviamentos,setAviamentos]=useState<any[]>([]);
   const [m,setM]=useState("grupo");const [val,setVal]=useState("");const [loading,setLoading]=useState(true);
   const [tn,setTn]=useState("");const [tf,setTf]=useState("");const [tc,setTc]=useState("");const [tp,setTp]=useState("");
+  // Dados técnicos do tecido + busca (a lista passa de mil itens)
+  const [tg,setTg]=useState("");const [tl,setTl]=useState("");const [tel,setTel]=useState("");const [tea,setTea]=useState("");const [tr,setTr]=useState("");
+  const [st,setSt]=useState("");
   const [cc,setCc]=useState("");const [cn,setCn]=useState("");
   const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [al,setAl]=useState("");const [af,setAf]=useState("");const [acf,setAcf]=useState("");const [sr,setSr]=useState("");
   const [avImgUploading,setAvImgUploading]=useState<string|null>(null);
@@ -117,8 +120,20 @@ export default function CadView(){
   const addS=async()=>{const v=val.trim().toUpperCase();if(!v||items.includes(v))return;await addCadastro(m,v);setCad(p=>({...p,[m]:[...(p[m]||[]),v]}));setVal("");};
   const remS=async(x:string)=>{await removeCadastro(m,x);setCad(p=>({...p,[m]:(p[m]||[]).filter((v:string)=>v!==x)}));};
 
-  const addT=async()=>{if(!tn.trim())return;const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp};await addTecido(t);setTecidos(p=>[...p,t]);setTn("");setTf("");setTc("");setTp("");};
+  const addT=async()=>{
+    if(!tn.trim())return;
+    const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp,
+      gramatura:tg,largura:tl,enc_largura:tel,enc_altura:tea,rendimento:tr};
+    await addTecido(t);
+    setTecidos(p=>[...p,t].sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt-BR")));
+    setTn("");setTf("");setTc("");setTp("");setTg("");setTl("");setTel("");setTea("");setTr("");
+  };
   const remT=async(n:string)=>{await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
+  // Salva um campo do tecido ao sair do input (mesmo padrão dos aviamentos)
+  const saveTec=async(nome:string,patch:Record<string,any>)=>{
+    setTecidos(p=>p.map(t=>t.nome===nome?{...t,...patch}:t));
+    await updateTecido(nome,patch);
+  };
 
   const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:newAvImg};const err=await addAviamento(a);if(err){setImportMsg({tipo:"erro",texto:err});return;}setAviamentos(p=>[...p,{...a,cores_disponiveis:[]}]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");setNewAvImg("");};
   const handleNewAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file)return;const cod=ac.trim().toUpperCase();if(!cod){alert("Digite o código do aviamento antes de adicionar a foto.");if(newAvImgRef.current)newAvImgRef.current.value="";return;}setNewAvImgUp(true);const url=await uploadImage(file,`aviamentos/${cod}`);if(url)setNewAvImg(url);setNewAvImgUp(false);if(newAvImgRef.current)newAvImgRef.current.value="";};
@@ -133,6 +148,7 @@ export default function CadView(){
 
   const gc=(k:string)=>{if(k==="tecido")return tecidos.length;if(k==="aviamento")return aviamentos.length;if(k==="cor")return(cad.cor||[]).length;return(cad[k]||[]).length;};
   const fa=sr?aviamentos.filter((a:any)=>(a.cod+a.nome).toLowerCase().includes(sr.toLowerCase())):aviamentos;
+  const ft=st?tecidos.filter((t:any)=>`${t.nome} ${t.forn} ${t.comp}`.toLowerCase().includes(st.toLowerCase())):tecidos;
   const inp="apple-input";const btn="apple-btn-primary";
 
   if(loading) return <div className="text-center py-20 text-[var(--label-tertiary)]">Carregando cadastros...</div>;
@@ -346,25 +362,60 @@ export default function CadView(){
 
             {/* Tecidos */}
             {m==="tecido"&&(<>
-              <div className="flex gap-2 mb-5 flex-wrap">
+              <div className="flex gap-2 mb-2 flex-wrap">
                 <input className={`${inp} flex-[2] min-w-[150px]`} value={tn} onChange={e=>setTn(e.target.value)} placeholder="Nome do tecido"/>
                 <input className={`${inp} flex-1 min-w-[100px]`} value={tf} onChange={e=>setTf(e.target.value)} placeholder="Fornecedor"/>
                 <input className={`${inp} flex-1 min-w-[100px]`} value={tc} onChange={e=>setTc(e.target.value)} placeholder="Composição"/>
                 <input className={`${inp} w-20`} value={tp} onChange={e=>setTp(e.target.value)} placeholder="Preço"/>
+              </div>
+              <div className="flex gap-2 mb-5 flex-wrap items-center">
+                <input className={`${inp} w-28`} value={tg}  onChange={e=>setTg(e.target.value)}  placeholder="Gramatura"   title="Gramatura (g/m²)"/>
+                <input className={`${inp} w-28`} value={tl}  onChange={e=>setTl(e.target.value)}  placeholder="Largura"     title="Largura (metros)"/>
+                <input className={`${inp} w-32`} value={tel} onChange={e=>setTel(e.target.value)} placeholder="Enc. largura" title="Encolhimento largura (%)"/>
+                <input className={`${inp} w-32`} value={tea} onChange={e=>setTea(e.target.value)} placeholder="Enc. altura"  title="Encolhimento altura (%)"/>
+                <input className={`${inp} w-28`} value={tr}  onChange={e=>setTr(e.target.value)}  placeholder="Rendimento"  title="Rendimento (m/kg)"/>
                 <button onClick={addT} className={btn}>Adicionar</button>
               </div>
-              <div className="border border-[var(--separator)] rounded-xl overflow-hidden">
-                <table className="plm-table"><thead><tr><th className="px-4">Nome</th><th>Fornecedor</th><th>Composição</th><th className="text-right">Preço</th><th className="w-10"></th></tr></thead>
-                <tbody>{tecidos.map((t:any,i:number)=>(
-                  <tr key={i}>
+
+              <div className="mb-3">
+                <input type="text" aria-label="Buscar tecido por nome, fornecedor ou composição" value={st} onChange={e=>setSt(e.target.value)} placeholder="Buscar tecido..." className={`${inp} w-full`}/>
+              </div>
+
+              <div className="border border-[var(--separator)] rounded-xl overflow-hidden overflow-x-auto">
+                <table className="plm-table"><thead><tr>
+                  <th className="px-4">Nome</th><th>Fornecedor</th><th>Composição</th>
+                  <th className="text-right">Preço</th>
+                  <th className="text-center w-24" title="Gramatura em gramas por metro quadrado">Gram. (g/m²)</th>
+                  <th className="text-center w-24" title="Largura útil em metros">Largura (m)</th>
+                  <th className="text-center w-24" title="Encolhimento na largura, em %">Enc. larg. (%)</th>
+                  <th className="text-center w-24" title="Encolhimento na altura, em %">Enc. alt. (%)</th>
+                  <th className="text-center w-24" title="Rendimento em metros por quilo">Rend. (m/kg)</th>
+                  <th className="w-10"></th>
+                </tr></thead>
+                <tbody>{ft.map((t:any,i:number)=>{
+                  const campoNum=(campo:string,titulo:string)=>(
+                    <td className="px-1 py-1">
+                      <input type="number" step="0.01" title={titulo} defaultValue={t[campo]??""} placeholder="—"
+                        className="w-full text-[12px] text-center tabnum border border-transparent rounded-lg px-1.5 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all"
+                        onBlur={e=>{const v=e.target.value.trim();if(v!==String(t[campo]??""))saveTec(t.nome,{[campo]:v});}}/>
+                    </td>
+                  );
+                  return (
+                  <tr key={t.nome||i}>
                     <td className="font-medium px-4">{t.nome}</td>
                     <td className="px-3">{t.forn}</td>
                     <td className="text-[12px] text-[var(--label-secondary)] px-3">{t.comp}</td>
                     <td className="text-right tabnum px-3">{t.preco?`R$ ${Number(t.preco).toFixed(2)}`:"—"}</td>
+                    {campoNum("gramatura","Gramatura (g/m²)")}
+                    {campoNum("largura","Largura (metros)")}
+                    {campoNum("enc_largura","Encolhimento largura (%)")}
+                    {campoNum("enc_altura","Encolhimento altura (%)")}
+                    {campoNum("rendimento","Rendimento (m/kg)")}
                     <td className="text-center"><button onClick={()=>remT(t.nome)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] transition-colors">×</button></td>
                   </tr>
-                ))}</tbody></table>
+                );})}</tbody></table>
               </div>
+              <p className="text-[11px] text-[var(--label-tertiary)] mt-2">{ft.length} de {tecidos.length} · clique num campo técnico para preencher — salva ao sair</p>
             </>)}
           </div>
         </div>

@@ -70,13 +70,56 @@ export async function fetchTecidos() {
   const cached = fromCache<any[]>("tecidos");
   if (cached) return cached;
   const data = await selectAll((de, ate) => sb().from("tecidos").select("*").order("nome").range(de, ate), "fetchTecidos");
-  const result = data.map((t: any) => ({ nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "" }));
+  const result = data.map((t: any) => ({
+    nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "",
+    // Dados técnicos (podem estar vazios até alguém preencher no cadastro)
+    gramatura: t.gramatura ?? "", largura: t.largura ?? "",
+    enc_largura: t.encolhimento_largura ?? "", enc_altura: t.encolhimento_altura ?? "",
+    rendimento: t.rendimento ?? "",
+  }));
   toCache("tecidos", result);
   return result;
 }
-export async function addTecido(t: { nome: string; forn: string; comp: string; preco: string }) {
-  const { error } = await sb().from("tecidos").insert({ nome: t.nome, fornecedor: t.forn, composicao: t.comp, preco: t.preco ? parseFloat(t.preco) : null });
+
+// Aceita "1,60" (vírgula) e devolve null quando vazio — os campos técnicos
+// são opcionais e NUMERIC no banco.
+const numOuNull = (v: any) => {
+  const n = parseFloat(String(v ?? "").replace(",", "."));
+  return isNaN(n) ? null : n;
+};
+
+export type TecidoTecnico = {
+  gramatura?: any; largura?: any; enc_largura?: any; enc_altura?: any; rendimento?: any;
+};
+
+export async function addTecido(t: { nome: string; forn: string; comp: string; preco: string } & TecidoTecnico) {
+  const { error } = await sb().from("tecidos").insert({
+    nome: t.nome, fornecedor: t.forn, composicao: t.comp, preco: numOuNull(t.preco),
+    gramatura: numOuNull(t.gramatura), largura: numOuNull(t.largura),
+    encolhimento_largura: numOuNull(t.enc_largura), encolhimento_altura: numOuNull(t.enc_altura),
+    rendimento: numOuNull(t.rendimento),
+  });
   if (error) console.error("addTecido:", error);
+  invalidateCache("tecidos");
+}
+
+// Atualiza campos do tecido pelo nome (chave única). Só envia o que veio.
+export async function updateTecido(nome: string, patch: { forn?: string; comp?: string; preco?: any } & TecidoTecnico) {
+  const mapa: Record<string, string> = {
+    forn: "fornecedor", comp: "composicao", preco: "preco",
+    gramatura: "gramatura", largura: "largura",
+    enc_largura: "encolhimento_largura", enc_altura: "encolhimento_altura",
+    rendimento: "rendimento",
+  };
+  const numericos = new Set(["preco", "gramatura", "largura", "enc_largura", "enc_altura", "rendimento"]);
+  const upd: Record<string, any> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (!mapa[k]) continue;
+    upd[mapa[k]] = numericos.has(k) ? numOuNull(v) : v;
+  }
+  if (!Object.keys(upd).length) return;
+  const { error } = await sb().from("tecidos").update(upd).eq("nome", nome);
+  if (error) console.error("updateTecido:", error);
   invalidateCache("tecidos");
 }
 export async function removeTecido(nome: string) {
