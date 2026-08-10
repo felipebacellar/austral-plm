@@ -6,6 +6,7 @@ import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, fetchFichasColecoes, reorderFichaColecoes, deleteFichaColecao, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { calcularPesoPeca, type ResultadoPeso } from "@/lib/peso";
+import { fotosParaExibir } from "@/lib/aviamento-fotos";
 import { aviamentosAutomaticos } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import { useAuth } from "@/lib/auth-context";
@@ -182,7 +183,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         const autoColor = cores.length === 1 ? cores[0] : "";
         const varPatch: Record<string, string> = {};
         if (autoColor) (["var01","var02","var03","var04","var05","var06"] as const).forEach(k => { if (!a[k]) varPatch[k] = autoColor; });
-        return { ...a, ...varPatch, imagem: cat?.imagem || "", cores_disponiveis: cores, fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" };
+        return { ...a, ...varPatch, imagem: cat?.imagem || "", imagens_cores: cat?.imagens_cores || {}, cores_disponiveis: cores, fornecedor: cat?.fornecedor || "", codigo_fornecedor: cat?.codigo_fornecedor || "" };
       });
       setAvi(aviComputed);
       let tecComputed: any[] = [];
@@ -457,7 +458,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     const activeCount = tec[0]?.cores?.filter(Boolean).length || numVars;
     const vf: Record<string,string> = {};
     if (autoColor) (["var01","var02","var03","var04","var05","var06"] as const).slice(0, activeCount).forEach(k => vf[k] = autoColor);
-    setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: cores, fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", var01: vf.var01||"", var02: vf.var02||"", var03: vf.var03||"", var04: vf.var04||"", var05: vf.var05||"", var06: vf.var06||"" }]);
+    setAvi(p => [...p, { item: a.nome, cod: a.cod, qtd: 1, valor: a.preco, local: a.localizacao_padrao || "", imagem: a.imagem || "", imagens_cores: a.imagens_cores || {}, cores_disponiveis: cores, fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", var01: vf.var01||"", var02: vf.var02||"", var03: vf.var03||"", var04: vf.var04||"", var05: vf.var05||"", var06: vf.var06||"" }]);
     setSap(false); setAsq("");
   };
   const fa = asq ? avCad.filter((a: any) => (a.cod + a.nome).toLowerCase().includes(asq.toLowerCase())) : avCad;
@@ -950,21 +951,24 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
               </tr>
             ))}{avi.length > 0 && <tr className="border-t border-[var(--separator-opaque)]"><td /><td colSpan={4} className="px-4 py-2.5 font-bold">Total</td><td className="text-right tabnum font-bold py-2.5">R$ {avT.toFixed(2)}</td><td colSpan={numVars + 1} /></tr>}</tbody></table></div>
 
-            {/* ── Galeria de imagens dos aviamentos ── */}
-            {avi.some((a: any) => a.imagem) && (
+            {/* ── Galeria de imagens dos aviamentos ──
+                 Itens com foto por cor (cores_disponiveis > 1) mostram só as
+                 cores realmente escolhidas nas variantes desta ficha — não
+                 todas as cores disponíveis no cadastro. */}
+            {avi.some((a: any) => fotosParaExibir(a, numVars).length > 0) && (
               <div className="apple-card p-4 mb-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--label-tertiary)] mb-3">Referência Visual</div>
                 <div className="flex flex-wrap gap-4">
-                  {avi.map((a: any, i: number) => !a.imagem ? null : (
-                    <div key={i} className="flex flex-col items-center gap-1.5" style={{ width: "280px" }}>
+                  {avi.flatMap((a: any, i: number) => fotosParaExibir(a, numVars).map(f => (
+                    <div key={`${i}-${f.key}`} className="flex flex-col items-center gap-1.5" style={{ width: "280px" }}>
                       <div className="relative w-full">
                         <span className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm" style={{ background: fichaColor }}>{String(i+1).padStart(2,"0")}</span>
-                        <img src={a.imagem} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-1"/>
+                        <img src={f.url} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-1"/>
                       </div>
                       <p className="text-[13px] font-mono font-bold text-center leading-tight w-full">{a.cod}</p>
-                      <p className="text-[9px] text-[var(--label-tertiary)] text-center leading-tight line-clamp-2 w-full">{a.item}</p>
+                      <p className="text-[9px] text-[var(--label-tertiary)] text-center leading-tight line-clamp-2 w-full">{a.item}{f.cor ? ` — ${f.cor}` : ""}</p>
                     </div>
-                  ))}
+                  )))}
                 </div>
               </div>
             )}

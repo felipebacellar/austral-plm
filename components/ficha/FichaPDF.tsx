@@ -2,6 +2,7 @@
 import { COR_PALETTE } from "@/lib/cor-palette";
 import { valorNoTamanho, calcularDaBase, num as tamNum } from "@/lib/tamanhos";
 import type { ResultadoPeso } from "@/lib/peso";
+import { fotosParaExibir } from "@/lib/aviamento-fotos";
 
 type Props = {
   row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[];
@@ -279,8 +280,11 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                  galeria nunca empurra a si mesma (nem o Total) para a página
                  seguinte, por mais aviamentos que a ficha tenha. */}
             {(() => {
-              const comFoto = avi.filter(a => a.imagem);
-              if (!comFoto.length) return null;
+              // Itens com foto por cor (cores_disponiveis > 1) entram uma vez
+              // por cor realmente escolhida nas variantes — não uma vez por
+              // item — para não exibir cores do cadastro que a peça não usa.
+              const fotos = avi.flatMap((a, i) => fotosParaExibir(a, numVars).map(f => ({ ...f, i, item: a.item, cod: a.cod })));
+              if (!fotos.length) return null;
               // Sobra da folha (≈1030px úteis) depois do cabeçalho, da tabela
               // (~31px por linha, medido) e do título da galeria.
               // 20% de folga sobre a altura estimada da tabela: textos longos
@@ -291,9 +295,9 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               const LEGENDA = 26; // código + nome sob cada foto
               // Escolhe o arranjo (quantas por linha) que permite a maior foto
               // cabendo na sobra: com pouco espaço, espalha mais por linha.
-              let lado = 0, porLinha = comFoto.length;
-              for (let pl = 1; pl <= comFoto.length; pl++) {
-                const linhas = Math.ceil(comFoto.length / pl);
+              let lado = 0, porLinha = fotos.length;
+              for (let pl = 1; pl <= fotos.length; pl++) {
+                const linhas = Math.ceil(fotos.length / pl);
                 const cand = Math.min(150, Math.floor(700 / pl) - 8, Math.floor(sobra / linhas) - LEGENDA);
                 if (cand > lado) { lado = cand; porLinha = pl; }
               }
@@ -302,14 +306,14 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               <div style={{ marginTop: "12px", pageBreakInside: "avoid" }}>
                 <div style={{ background: headerBg, color: "white", fontSize: "8px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 8px", borderRadius: "4px", marginBottom: "8px" }}>Referência Visual</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                  {avi.map((a, i) => !a.imagem ? null : (
-                    <div key={i} style={{ width: `${lado}px`, textAlign: "center", position: "relative" }}>
+                  {fotos.map(f => (
+                    <div key={`${f.i}-${f.key}`} style={{ width: `${lado}px`, textAlign: "center", position: "relative" }}>
                       <div style={{ position: "relative" }}>
-                        <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "16px", height: "16px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "7px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(i+1).padStart(2,"0")}</span>
-                        <img src={a.imagem} alt={a.item} style={{ width: `${lado}px`, height: `${lado}px`, objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "3px" }}/>
+                        <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "16px", height: "16px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "7px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(f.i+1).padStart(2,"0")}</span>
+                        <img src={f.url} alt={f.item} style={{ width: `${lado}px`, height: `${lado}px`, objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "3px" }}/>
                       </div>
-                      <p style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "2px", lineHeight: "1.25" }}>{a.cod}</p>
-                      <p style={{ fontSize: "6px", color: muted, marginTop: "1px", lineHeight: "1.25", wordBreak: "break-word" }}>{a.item}</p>
+                      <p style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "2px", lineHeight: "1.25" }}>{f.cod}</p>
+                      <p style={{ fontSize: "6px", color: muted, marginTop: "1px", lineHeight: "1.25", wordBreak: "break-word" }}>{f.item}{f.cor ? ` — ${f.cor}` : ""}</p>
                     </div>
                   ))}
                 </div>

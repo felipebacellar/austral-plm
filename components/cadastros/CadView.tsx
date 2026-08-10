@@ -24,6 +24,10 @@ export default function CadView(){
   const [avImgUploading,setAvImgUploading]=useState<string|null>(null);
   const avImgRef=useRef<HTMLInputElement>(null);
   const [avImgTarget,setAvImgTarget]=useState<string|null>(null);
+  // Foto por cor (aviamentos com várias cores, ex. botão bege/marrom/preto)
+  const [avColorImgUploading,setAvColorImgUploading]=useState<string|null>(null);
+  const avColorImgRef=useRef<HTMLInputElement>(null);
+  const [avColorImgTarget,setAvColorImgTarget]=useState<{cod:string;cor:string}|null>(null);
   const [avCoresOpen,setAvCoresOpen]=useState<string|null>(null);
   const [importing,setImporting]=useState(false);
   const [importMsg,setImportMsg]=useState<{tipo:"ok"|"erro";texto:string}|null>(null);
@@ -145,6 +149,27 @@ export default function CadView(){
   const triggerAvImg=(cod:string)=>{setAvImgTarget(cod);avImgRef.current?.click();};
   const handleAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file||!avImgTarget)return;setAvImgUploading(avImgTarget);const url=await uploadImage(file,`aviamentos/${avImgTarget}`);if(url)await saveAv(avImgTarget,{imagem:url});setAvImgUploading(null);setAvImgTarget(null);if(avImgRef.current)avImgRef.current.value="";};
   const remAvImg=async(cod:string,url:string)=>{await deleteImage(url);await saveAv(cod,{imagem:""});};
+  const triggerAvColorImg=(cod:string,cor:string)=>{setAvColorImgTarget({cod,cor});avColorImgRef.current?.click();};
+  const handleAvColorImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const file=e.target.files?.[0];
+    if(!file||!avColorImgTarget)return;
+    const {cod,cor}=avColorImgTarget;
+    setAvColorImgUploading(`${cod}:${cor}`);
+    const url=await uploadImage(file,`aviamentos/${cod}/cores/${cor}`);
+    if(url){
+      const av=aviamentos.find((a:any)=>a.cod===cod);
+      await saveAv(cod,{imagens_cores:{...(av?.imagens_cores||{}),[cor]:url}});
+    }
+    setAvColorImgUploading(null);setAvColorImgTarget(null);
+    if(avColorImgRef.current)avColorImgRef.current.value="";
+  };
+  const remAvColorImg=async(cod:string,cor:string,url:string)=>{
+    await deleteImage(url);
+    const av=aviamentos.find((a:any)=>a.cod===cod);
+    const next={...(av?.imagens_cores||{})};
+    delete next[cor];
+    await saveAv(cod,{imagens_cores:next});
+  };
 
   const addCor=async()=>{if(!cc.trim()||!cn.trim())return;const nome=`${cc.trim().toUpperCase()} - ${cn.trim().toUpperCase()}`;await addCadastro("cor",nome);setCad(p=>({...p,cor:[...(p.cor||[]),nome]}));setCc("");setCn("");};
   const remCor=async(nome:string)=>{await removeCadastro("cor",nome);setCad(p=>({...p,cor:(p.cor||[]).filter((c:string)=>c!==nome)}));};
@@ -242,6 +267,7 @@ export default function CadView(){
             {/* Aviamentos */}
             {m==="aviamento"&&(<>
               <input type="file" accept="image/*" ref={avImgRef} className="hidden" onChange={handleAvImg}/>
+              <input type="file" accept="image/*" ref={avColorImgRef} className="hidden" onChange={handleAvColorImg}/>
               <input type="file" accept="image/*" ref={newAvImgRef} className="hidden" onChange={handleNewAvImg}/>
               <div className="flex flex-wrap items-start gap-2 mb-3">
                 {/* Foto do novo aviamento */}
@@ -317,8 +343,20 @@ export default function CadView(){
                         <div className="flex flex-wrap gap-1 items-center">
                           {(a.cores_disponiveis||[]).map((c:string)=>{
                             const refCor=(a.cores_fabricante||[]).find((x:any)=>String(x.cor).toUpperCase()===String(c).toUpperCase())?.ref;
+                            const fotoCor=a.imagens_cores?.[c];
+                            const uploadingCor=avColorImgUploading===`${a.cod}:${c}`;
                             return (
-                            <span key={c} title={refCor?`Ref. cor fabricante: ${refCor}`:undefined} className="inline-flex items-center gap-1 text-[10px] font-medium bg-[var(--bg-tertiary)] border border-[var(--separator)] rounded-md px-1.5 py-0.5 leading-none">
+                            <span key={c} title={refCor?`Ref. cor fabricante: ${refCor}`:undefined} className="inline-flex items-center gap-1 text-[10px] font-medium bg-[var(--bg-tertiary)] border border-[var(--separator)] rounded-md pl-0.5 pr-1.5 py-0.5 leading-none">
+                              <span className="relative inline-block group/foto">
+                                {uploadingCor
+                                  ? <span className="w-4 h-4 rounded-full border border-[var(--separator)] flex items-center justify-center text-[6px]">…</span>
+                                  : fotoCor
+                                    ? <img src={fotoCor} alt={c} onClick={()=>triggerAvColorImg(a.cod,c)} className="w-4 h-4 rounded-full object-cover cursor-pointer border border-[var(--separator)]" title="Clique para trocar a foto desta cor"/>
+                                    : <button onClick={()=>triggerAvColorImg(a.cod,c)} className="w-4 h-4 rounded-full border border-dashed border-[var(--label-quaternary)] flex items-center justify-center text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors" title="Adicionar foto desta cor">
+                                        <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                                      </button>}
+                                {fotoCor && <button onClick={e=>{e.stopPropagation();remAvColorImg(a.cod,c,fotoCor);}} className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 text-white text-[6px] leading-none flex items-center justify-center opacity-0 group-hover/foto:opacity-100 transition-opacity" title="Remover foto desta cor">×</button>}
+                              </span>
                               {c}{refCor&&<span className="text-[9px] font-mono text-[var(--system-blue)]">· {refCor}</span>}
                               <button onClick={()=>{const next=(a.cores_disponiveis||[]).filter((x:string)=>x!==c);saveAv(a.cod,{cores_disponiveis:next});}} className="text-[var(--label-quaternary)] hover:text-red-500 leading-none">×</button>
                             </span>

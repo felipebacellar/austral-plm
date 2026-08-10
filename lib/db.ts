@@ -133,7 +133,7 @@ export async function fetchAviamentos() {
   const cached = fromCache<any[]>("aviamentos");
   if (cached) return cached;
   const data = await selectAll((de, ate) => sb().from("aviamentos").select("*").order("nome").range(de, ate), "fetchAviamentos");
-  const result = data.map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "", cores_fabricante: a.cores_fabricante || [] }));
+  const result = data.map((a: any) => ({ cod: a.codigo, nome: a.nome, preco: Number(a.preco) || 0, localizacao_padrao: a.localizacao_padrao || "", imagem: a.imagem || "", imagens_cores: a.imagens_cores || {}, cores_disponiveis: a.cores_disponiveis || [], fornecedor: a.fornecedor || "", codigo_fornecedor: a.codigo_fornecedor || "", unidade: a.unidade || "", cores_fabricante: a.cores_fabricante || [] }));
   toCache("aviamentos", result);
   return result;
 }
@@ -149,7 +149,7 @@ export async function addAviamento(a: { cod: string; nome: string; preco: number
   invalidateCache("aviamentos");
   return null;
 }
-export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string; unidade?: string; cores_fabricante?: { cor: string; ref: string }[] }) {
+export async function updateAviamento(cod: string, data: { localizacao_padrao?: string; imagem?: string; imagens_cores?: Record<string, string>; nome?: string; preco?: number; cores_disponiveis?: string[]; fornecedor?: string; codigo_fornecedor?: string; unidade?: string; cores_fabricante?: { cor: string; ref: string }[] }) {
   const { error } = await sb().from("aviamentos").update(data).eq("codigo", cod);
   if (error) console.error("updateAviamento:", error);
   invalidateCache("aviamentos");
