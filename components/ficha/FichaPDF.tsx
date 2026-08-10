@@ -106,37 +106,37 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
         <div className="print-page" style={pb()}>
 
           {/* Cabeçalho colorido — igual à modal */}
-          <div style={{ background: headerBg, color: white, borderRadius: "6px", padding: "8px 14px", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em" }}>FICHA TÉCNICA</span>
-            <span style={{ fontSize: "8px", fontWeight: 700, background: "rgba(255,255,255,0.18)", padding: "2px 10px", borderRadius: "20px" }}>{headerLabel}</span>
-            <span style={{ fontSize: "8px", opacity: 0.8 }}>Coleção <strong style={{ opacity: 1 }}>{row.colecao}</strong></span>
+          <div style={{ background: headerBg, color: white, borderRadius: "5px", padding: "5px 12px", marginBottom: "5px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.04em" }}>FICHA TÉCNICA</span>
+            <span style={{ fontSize: "7.5px", fontWeight: 700, background: "rgba(255,255,255,0.18)", padding: "2px 9px", borderRadius: "20px" }}>{headerLabel}</span>
+            <span style={{ fontSize: "7.5px", opacity: 0.8 }}>Coleção <strong style={{ opacity: 1 }}>{row.colecao}</strong></span>
           </div>
 
           {/* Campos — grid 2 colunas com borda, igual à modal */}
-          <div style={{ border: `1px solid ${line}`, borderRadius: "6px", overflow: "hidden", marginBottom: "7px" }}>
+          <div style={{ border: `1px solid ${line}`, borderRadius: "5px", overflow: "hidden", marginBottom: "5px" }}>
             {/* Referência + Descrição em destaque */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: `1px solid ${line}` }}>
-              <div style={{ padding: "7px 10px", borderRight: `0.5px solid ${line}`, background: `${headerBg}80` }}>
-                <div style={{ fontSize: "6px", fontWeight: 600, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px", opacity: 0.6 }}>Referência</div>
-                <div style={{ fontSize: "16px", fontWeight: 800, color: navy, fontFamily: "monospace", letterSpacing: "0.02em" }}>{row.ref || "—"}</div>
+              <div style={{ padding: "4px 10px", borderRight: `0.5px solid ${line}`, background: `${headerBg}80` }}>
+                <div style={{ fontSize: "5.5px", fontWeight: 700, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1px", opacity: 0.65 }}>Referência</div>
+                <div style={{ fontSize: "13px", fontWeight: 800, color: navy, fontFamily: "monospace", letterSpacing: "0.02em" }}>{row.ref || "—"}</div>
               </div>
-              <div style={{ padding: "7px 10px", background: `${headerBg}40` }}>
-                <div style={{ fontSize: "6px", fontWeight: 600, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px", opacity: 0.6 }}>Descrição</div>
-                <div style={{ fontSize: "11px", fontWeight: 500, color: navy }}>{row.desc || "—"}</div>
+              <div style={{ padding: "4px 10px", background: `${headerBg}40` }}>
+                <div style={{ fontSize: "5.5px", fontWeight: 700, color: navy, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1px", opacity: 0.65 }}>Descrição</div>
+                <div style={{ fontSize: "9.5px", fontWeight: 600, color: navy }}>{row.desc || "—"}</div>
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
               {([["Tecido", row.tecido, false], ["Forn. Tecido", row.forn_tecido, false], ["Composição", row.composicao || compOf(row.tecido), false], ["Operação", row.operacao, false], ["Fornecedor", row.fornecedor, false], ["Estilista", row.estilista, false], ["Tab. Medidas", row.tab_medidas, false], ["NCM", ncm || "", true], ["Peso Estimado", peso?.pesoG != null ? `${peso.pesoG.toLocaleString("pt-BR")} g` : "", false]] as [string, string, boolean][]).map(([l, v, mono], i) => (
-                <div key={l} style={{ padding: "4px 10px", borderBottom: `0.5px solid ${line}`, borderRight: i % 2 === 0 ? `0.5px solid ${line}` : "none" }}>
-                  <div style={{ fontSize: "6px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em" }}>{l}</div>
-                  <div style={{ fontSize: "8.5px", fontWeight: 700, color: navy, ...(mono ? { fontFamily: "monospace" } : {}) }}>{v || "—"}</div>
+                <div key={l} style={{ padding: "2px 10px", borderBottom: `0.5px solid ${line}`, borderRight: i % 2 === 0 ? `0.5px solid ${line}` : "none" }}>
+                  <div style={{ fontSize: "5.5px", fontWeight: 700, color: muted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{l}</div>
+                  <div style={{ fontSize: "8px", fontWeight: 700, color: navy, ...(mono ? { fontFamily: "monospace" } : {}) }}>{v || "—"}</div>
                 </div>
               ))}
             </div>
-            <div style={{ padding: "4px 10px", display: "flex", gap: "5px", flexWrap: "wrap", background: bg, borderTop: `0.5px solid ${line}` }}>
+            <div style={{ padding: "3px 10px", display: "flex", gap: "4px", flexWrap: "wrap", background: bg, borderTop: `0.5px solid ${line}` }}>
               {([["Drop", row.drop], ["Grade", row.grade], ["Tipo", row.tipo], ["Linha", row.linha], ["Grupo", row.grupo], ["Subgrupo", row.subgrupo], ["Categoria", row.categoria]] as [string, string][]).map(([l, v]) => v ? (
-                <span key={l} style={{ fontSize: "7px", fontWeight: 600, background: white, border: `0.5px solid ${lineDark}`, borderRadius: "3px", padding: "1px 6px", color: muted }}>
-                  <span style={{ color: light, marginRight: "2px" }}>{l}</span>{v}
+                <span key={l} style={{ fontSize: "7px", fontWeight: 700, background: white, border: `0.5px solid ${lineDark}`, borderRadius: "3px", padding: "1px 6px", color: navy }}>
+                  <span style={{ color: muted, fontWeight: 600, marginRight: "2px" }}>{l}</span>{v}
                 </span>
               ) : null)}
             </div>
@@ -147,7 +147,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
             <div style={{ border: `1px solid ${line}`, borderRadius: "6px", overflow: "hidden", marginBottom: "7px", background: white, textAlign: "center" }}>
               <div style={{ background: headerBg, color: white, padding: "4px 10px", fontSize: "6.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", textAlign: "left" }}>Desenho Técnico</div>
               <div style={{ padding: "6px 10px" }}>
-                <img src={img} alt="Desenho técnico" style={{ maxHeight: "480px", width: "100%", objectFit: "contain" }} />
+                <img src={img} alt="Desenho técnico" style={{ maxHeight: "515px", width: "100%", objectFit: "contain" }} />
               </div>
             </div>
           )}
