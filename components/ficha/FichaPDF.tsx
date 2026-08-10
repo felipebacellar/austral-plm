@@ -35,7 +35,8 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
   const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s, a) => s + (a.valor * a.qtd), 0);
   const tm = row.tab_medidas || "";
-  const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
+  // tamNum trata a vírgula decimal ("2,5"); parseFloat pararia nela.
+  const gd = (t: string, m: string) => { if (!m) return ""; const a = tamNum(t), b = tamNum(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
   const artes = estamparia?.artes || [];
   const tecnicas = estamparia?.tecnicas || [];
   const sims = estamparia?.simulacoes || {};

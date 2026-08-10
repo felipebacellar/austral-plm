@@ -44,7 +44,9 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
   };
   // Campo numérico limpo/invalido mantém o valor anterior em vez de zerar.
   const parseNumOrKeep = (v: string | number) => {
-    const n = parseFloat(String(v));
+    // Aceita vírgula como separador decimal: parseFloat("12,50") pararia no
+    // "," e devolveria 12, perdendo os centavos.
+    const n = parseFloat(String(v).replace(",", "."));
     return Number.isNaN(n) ? value : n;
   };
 
@@ -107,8 +109,12 @@ export default function InlineCell({ value, type, options, isStatus, onChange, d
           }} />
       );
     }
+    // Campo numérico usa type="text" com teclado decimal: com type="number" o
+    // navegador rejeita a vírgula e devolve "", então quem digita "12,50"
+    // (a forma natural no Brasil) perdia o que digitou. A conversão é feita
+    // por parseNumOrKeep, que aceita vírgula e ponto.
     return (
-      <input ref={ref as any} type={type === "number" ? "number" : "text"} className={cls}
+      <input ref={ref as any} type="text" inputMode={type === "number" ? "decimal" : undefined} className={cls}
         value={tmp} onChange={e => setTmp(e.target.value)}
         onBlur={() => commit(type === "number" ? parseNumOrKeep(tmp) : tmp)}
         onKeyDown={e => {

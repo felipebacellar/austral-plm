@@ -445,8 +445,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     setSap(false); setAsq("");
   };
   const fa = asq ? avCad.filter((a: any) => (a.cod + a.nome).toLowerCase().includes(asq.toLowerCase())) : avCad;
-  const gd = (t: string, m: string) => { if (!m) return ""; const a = parseFloat(t), b = parseFloat(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
-  const gc = (t: string, m: string) => { if (!m) return ""; const d = parseFloat(m) - parseFloat(t); if (isNaN(d)) return ""; return d === 0 ? "text-[var(--system-green)]" : "font-bold text-red-600 bg-yellow-100"; };
+  // tamNum (e não parseFloat) porque medida e tabela vêm com vírgula decimal
+  // ("2,5"): parseFloat pararia na vírgula e compararia contra 2.
+  const gd = (t: string, m: string) => { if (!m) return ""; const a = tamNum(t), b = tamNum(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
+  const gc = (t: string, m: string) => { if (!m) return ""; const d = tamNum(m) - tamNum(t); if (isNaN(d)) return ""; return d === 0 ? "text-[var(--system-green)]" : "font-bold text-red-600 bg-yellow-100"; };
   const tm = row.tab_medidas || "";
   const hasEstamparia = (estamparia?.tecnicas || []).length > 0 || (estamparia?.artes || []).some((a: any) => a.imagem || a.largura || a.localizacao);
 

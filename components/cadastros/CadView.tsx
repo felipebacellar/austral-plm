@@ -135,7 +135,7 @@ export default function CadView(){
     await updateTecido(nome,patch);
   };
 
-  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap)||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:newAvImg};const err=await addAviamento(a);if(err){setImportMsg({tipo:"erro",texto:err});return;}setAviamentos(p=>[...p,{...a,cores_disponiveis:[]}]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");setNewAvImg("");};
+  const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap.replace(",","."))||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:newAvImg};const err=await addAviamento(a);if(err){setImportMsg({tipo:"erro",texto:err});return;}setAviamentos(p=>[...p,{...a,cores_disponiveis:[]}]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");setNewAvImg("");};
   const handleNewAvImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file)return;const cod=ac.trim().toUpperCase();if(!cod){alert("Digite o código do aviamento antes de adicionar a foto.");if(newAvImgRef.current)newAvImgRef.current.value="";return;}setNewAvImgUp(true);const url=await uploadImage(file,`aviamentos/${cod}`);if(url)setNewAvImg(url);setNewAvImgUp(false);if(newAvImgRef.current)newAvImgRef.current.value="";};
   const remAv=async(cod:string)=>{const av=aviamentos.find((a:any)=>a.cod===cod);if(av?.imagem)await deleteImage(av.imagem);await removeAviamento(cod);setAviamentos(p=>p.filter(a=>a.cod!==cod));};
   const saveAv=async(cod:string,data:Record<string,any>)=>{await updateAviamento(cod,data);setAviamentos(p=>p.map((a:any)=>a.cod===cod?{...a,...data}:a));};
@@ -346,7 +346,10 @@ export default function CadView(){
                     </td>
                     {/* ── Preço (editável) ── */}
                     <td className="px-2 py-1">
-                      <input type="number" step="0.01" className="w-full text-[13px] text-right tabnum border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.preco||""} placeholder="0,00" onBlur={e=>{const v=parseFloat(e.target.value)||0;if(v!==a.preco)saveAv(a.cod,{preco:v});}}/>
+                      {/* text + decimal: com type="number" a vírgula era rejeitada
+                          e "12,50" virava 0. O replace cobre o parseFloat, que
+                          pararia na vírgula. */}
+                      <input type="text" inputMode="decimal" className="w-full text-[13px] text-right tabnum border border-transparent rounded-lg px-2 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all" defaultValue={a.preco||""} placeholder="0,00" onBlur={e=>{const v=parseFloat(e.target.value.replace(",","."))||0;if(v!==a.preco)saveAv(a.cod,{preco:v});}}/>
                     </td>
                     {/* ── Excluir ── */}
                     <td className="text-center px-2">
