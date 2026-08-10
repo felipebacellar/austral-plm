@@ -332,7 +332,7 @@ export async function fetchFicha(ref: string, colecao?: string | null) {
       var05: data.qtd_most_var05 ?? null, var06: data.qtd_most_var06 ?? null,
     },
     tecidos: (tec.data || []).map((t: any) => ({ artigo: t.artigo, forn: t.fornecedor, preco: Number(t.preco) || 0, cores: t.cores || [] })),
-    aviamentos: (avi.data || []).map((a: any) => ({ item: a.item, cod: a.codigo, qtd: a.qtd, valor: Number(a.valor) || 0, local: a.localizacao || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })),
+    aviamentos: (avi.data || []).map((a: any) => ({ item: a.item, cod: a.codigo, qtd: a.qtd, valor: Number(a.valor) || 0, local: a.localizacao || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "", var05: a.var05 || "", var06: a.var06 || "" })),
     pilotagem: (pil.data || []).map((p: any) => ({ num: p.num, lacre: p.lacre || "", envio: p.data_envio || "", receb: p.data_recebimento || "", prova: p.data_prova || "", status: p.status || "" })),
     provas: Object.fromEntries((prv.data || []).map((p: any) => [p.ponto_cod, { p1: p.prova1, p2: p.prova2, p3: p.prova3 }])),
     anotacoes: Object.fromEntries((ant.data || []).map((a: any) => [`p${a.prova_num}`, { texto: a.anotacao || "", video: a.video_link || "" }])),
@@ -419,7 +419,7 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
       : Promise.resolve(),
     // Aviamentos
     f.aviamentos?.length
-      ? sb().from("ficha_aviamentos").insert(f.aviamentos.map((a: any) => ({ ficha_id: fid, item: a.item, codigo: a.cod, qtd: a.qtd || 1, valor: a.valor || 0, localizacao: a.local || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "" })))
+      ? sb().from("ficha_aviamentos").insert(f.aviamentos.map((a: any) => ({ ficha_id: fid, item: a.item, codigo: a.cod, qtd: a.qtd || 1, valor: a.valor || 0, localizacao: a.local || "", var01: a.var01 || "", var02: a.var02 || "", var03: a.var03 || "", var04: a.var04 || "", var05: a.var05 || "", var06: a.var06 || "" })))
       : Promise.resolve(),
     // Pilotagem
     f.pilotagem?.length
@@ -472,9 +472,7 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
 export async function fetchExplosaoData() {
   const [fichas, avFichas, avLib, comprasVar, tecFichas] = await Promise.all([
     selectAll((de, ate) => sb().from("fichas_tecnicas").select("id, produto_ref, qtd_most_var01, qtd_most_var02, qtd_most_var03, qtd_most_var04, qtd_most_var05, qtd_most_var06").range(de, ate), "fetchExplosaoData/fichas"),
-    // ficha_aviamentos só tem var01..var04 (a ficha admite até 6 variantes,
-    // mas a cor do aviamento por variante nunca foi estendida além da 4ª).
-    selectAll((de, ate) => sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao, var01, var02, var03, var04").range(de, ate), "fetchExplosaoData/avFichas"),
+    selectAll((de, ate) => sb().from("ficha_aviamentos").select("ficha_id, codigo, qtd, valor, localizacao, var01, var02, var03, var04, var05, var06").range(de, ate), "fetchExplosaoData/avFichas"),
     selectAll((de, ate) => sb().from("aviamentos").select("codigo, nome, fornecedor, preco, imagem, codigo_fornecedor").range(de, ate), "fetchExplosaoData/avLib"),
     selectAll((de, ate) => sb().from("produto_variante_compras").select("produto_id, cor, qtd_compra1, qtd_compra2").range(de, ate), "fetchExplosaoData/comprasVar"),
     // Cores do tecido por ficha (1º tecido, "Tec.01") — é o que define qual
@@ -484,7 +482,7 @@ export async function fetchExplosaoData() {
   ]);
   return {
     fichas: fichas as { id: number; produto_ref: string; qtd_most_var01: number|null; qtd_most_var02: number|null; qtd_most_var03: number|null; qtd_most_var04: number|null; qtd_most_var05: number|null; qtd_most_var06: number|null }[],
-    avFichas: avFichas as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string; var01: string; var02: string; var03: string; var04: string }[],
+    avFichas: avFichas as { ficha_id: number; codigo: string; qtd: number; valor: number; localizacao: string; var01: string; var02: string; var03: string; var04: string; var05: string; var06: string }[],
     avLib: avLib as { codigo: string; nome: string; fornecedor: string; preco: number; imagem: string; codigo_fornecedor: string }[],
     comprasVar: comprasVar as { produto_id: number; cor: string; qtd_compra1: number|null; qtd_compra2: number|null }[],
     tecFichas: tecFichas as { ficha_id: number; cores: string[] }[],

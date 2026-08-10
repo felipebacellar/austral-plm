@@ -9,8 +9,7 @@ import ScrollTable from "@/components/ui/ScrollTable";
 type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 
 const QTD_MOST_KEYS = ["qtd_most_var01","qtd_most_var02","qtd_most_var03","qtd_most_var04","qtd_most_var05","qtd_most_var06"] as const;
-// ficha_aviamentos só grava cor por variante até a 4ª (ver fetchExplosaoData)
-const VAR_KEYS = ["var01","var02","var03","var04"] as const;
+const VAR_KEYS = ["var01","var02","var03","var04","var05","var06"] as const;
 
 export default function ExplosaoView({ comprasRows, variantes }: Props) {
   const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[]; tecFichas: any[] } | null>(null);
