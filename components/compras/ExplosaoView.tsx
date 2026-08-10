@@ -11,6 +11,19 @@ type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 const QTD_MOST_KEYS = ["qtd_most_var01","qtd_most_var02","qtd_most_var03","qtd_most_var04","qtd_most_var05","qtd_most_var06"] as const;
 const VAR_KEYS = ["var01","var02","var03","var04","var05","var06"] as const;
 
+// "1089312842 - C11(2584)|C05(17-1012)|C02(19-0303)" + cor "C05 - BEGE" ->
+// "17-1012": o código do fornecedor às vezes junta a referência de cada cor
+// num texto só, "CÓDIGO(ref)" separado por "|". Sem essa cor no texto (item
+// de cor única, sem essa notação), devolve o texto original sem alterar.
+function codigoFornecedorPorCor(codigoFornecedor: string, cor: string): string {
+  if (!codigoFornecedor || !cor) return codigoFornecedor;
+  const codCor = cor.split(" - ")[0]?.trim();
+  if (!codCor) return codigoFornecedor;
+  const re = new RegExp(`${codCor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\(([^)]+)\\)`);
+  const m = codigoFornecedor.match(re);
+  return m ? m[1] : codigoFornecedor;
+}
+
 export default function ExplosaoView({ comprasRows, variantes }: Props) {
   const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[]; tecFichas: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,10 +40,10 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
   }, []);
 
   const avLibMap = useMemo(() => {
-    if (!data) return {} as Record<string, { nome: string; fornecedor: string; codForn: string; preco: number; imagem: string }>;
-    const m: Record<string, { nome: string; fornecedor: string; codForn: string; preco: number; imagem: string }> = {};
+    if (!data) return {} as Record<string, { nome: string; fornecedor: string; codForn: string; preco: number; imagem: string; imagensCor: Record<string, string> }>;
+    const m: Record<string, { nome: string; fornecedor: string; codForn: string; preco: number; imagem: string; imagensCor: Record<string, string> }> = {};
     data.avLib.forEach((a: any) => {
-      m[a.codigo] = { nome: a.nome, fornecedor: a.fornecedor || "", codForn: a.codigo_fornecedor || "", preco: Number(a.preco) || 0, imagem: a.imagem || "" };
+      m[a.codigo] = { nome: a.nome, fornecedor: a.fornecedor || "", codForn: a.codigo_fornecedor || "", preco: Number(a.preco) || 0, imagem: a.imagem || "", imagensCor: a.imagens_cores || {} };
     });
     return m;
   }, [data]);
@@ -138,12 +151,16 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
 
     const addQty = (av: any, cor: string, ref: string, qty: number) => {
       const key = `${av.codigo}||${cor}`;
-      const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", codForn: "", preco: 0, imagem: "" };
+      const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", codForn: "", preco: 0, imagem: "", imagensCor: {} };
       if (!byKey[key]) {
         byKey[key] = {
           codigo: av.codigo, cor,
-          nome: lib.nome, fornAvi: lib.fornecedor, codForn: lib.codForn,
-          preco: lib.preco, imagem: lib.imagem,
+          nome: lib.nome, fornAvi: lib.fornecedor,
+          // Foto e código do fornecedor específicos da cor, quando existem —
+          // sem eles, cai na foto/código genéricos (mesmo comportamento de
+          // sempre para itens sem essa distinção por cor).
+          codForn: codigoFornecedorPorCor(lib.codForn, cor),
+          preco: lib.preco, imagem: lib.imagensCor?.[cor] || lib.imagem,
           qtd: 0, valorUnit: lib.preco || Number(av.valor) || 0,
           refs: new Set(), fornsProd: new Set(),
         };
