@@ -22,8 +22,19 @@ export type FotoAviamento = { key: string; cor: string | null; url: string };
 
 export function fotosParaExibir(avi: any, numVars: number): FotoAviamento[] {
   const porCor: Record<string, string> = avi?.imagens_cores || {};
-  const escolhidas = coresEscolhidas(avi, numVars).filter(c => porCor[c]);
-  if (escolhidas.length) return escolhidas.map(cor => ({ key: cor, cor, url: porCor[cor] }));
-  if (avi?.imagem) return [{ key: "generico", cor: null, url: avi.imagem }];
-  return [];
+  const cores = coresEscolhidas(avi, numVars);
+  // Nenhuma cor escolhida (item sem cores_disponiveis, ou variantes vazias):
+  // sempre foi assim, cai direto na foto genérica.
+  if (!cores.length) return avi?.imagem ? [{ key: "generico", cor: null, url: avi.imagem }] : [];
+  // Cor por cor: usa a foto específica quando existe. As que ainda não têm
+  // foto própria (cadastro incompleto) dividem uma única foto genérica —
+  // assim dá pra fotografar as cores aos poucos sem nenhuma ficar sem foto.
+  const fotos: FotoAviamento[] = [];
+  let faltaAlguma = false;
+  for (const cor of cores) {
+    if (porCor[cor]) fotos.push({ key: cor, cor, url: porCor[cor] });
+    else faltaAlguma = true;
+  }
+  if (faltaAlguma && avi?.imagem) fotos.push({ key: "generico", cor: null, url: avi.imagem });
+  return fotos;
 }
