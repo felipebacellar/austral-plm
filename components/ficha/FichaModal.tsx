@@ -963,7 +963,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                     <div key={`${i}-${f.key}`} className="flex flex-col items-center gap-1.5" style={{ width: "280px" }}>
                       <div className="relative w-full">
                         <span className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm" style={{ background: fichaColor }}>{String(i+1).padStart(2,"0")}</span>
-                        <img src={f.url} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-1"/>
+                        <img src={f.url} alt={a.item} className="w-full aspect-square object-contain rounded-xl border border-[var(--separator)] bg-white p-2.5"/>
                       </div>
                       <p className="text-[13px] font-mono font-bold text-center leading-tight w-full">{a.cod}</p>
                       <p className="text-[9px] text-[var(--label-tertiary)] text-center leading-tight line-clamp-2 w-full">{a.item}{f.cor ? ` — ${f.cor}` : ""}</p>

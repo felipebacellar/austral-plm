@@ -310,7 +310,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
                     <div key={`${f.i}-${f.key}`} style={{ width: `${lado}px`, textAlign: "center", position: "relative" }}>
                       <div style={{ position: "relative" }}>
                         <span style={{ position: "absolute", top: "-5px", left: "-5px", width: "16px", height: "16px", borderRadius: "50%", background: headerBg, color: "white", fontSize: "7px", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>{String(f.i+1).padStart(2,"0")}</span>
-                        <img src={f.url} alt={f.item} style={{ width: `${lado}px`, height: `${lado}px`, objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "3px" }}/>
+                        <img src={f.url} alt={f.item} style={{ width: `${lado}px`, height: `${lado}px`, objectFit: "contain", borderRadius: "6px", border: `1px solid ${headerBg}44`, background: "white", display: "block", padding: "10px", boxSizing: "border-box" }}/>
                       </div>
                       <p style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 800, color: navy, marginTop: "2px", lineHeight: "1.25" }}>{f.cod}</p>
                       <p style={{ fontSize: "6px", color: muted, marginTop: "1px", lineHeight: "1.25", wordBreak: "break-word" }}>{f.item}{f.cor ? ` — ${f.cor}` : ""}</p>
