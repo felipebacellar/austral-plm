@@ -3,6 +3,7 @@ import { COR_PALETTE } from "@/lib/cor-palette";
 import { valorNoTamanho, calcularDaBase, num as tamNum } from "@/lib/tamanhos";
 import type { ResultadoPeso } from "@/lib/peso";
 import { fotosParaExibir } from "@/lib/aviamento-fotos";
+import { custoAviamentosPorPeca } from "@/lib/etiquetas-tamanho";
 
 type Props = {
   row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[];
@@ -36,7 +37,7 @@ const white = "#FFFFFF";
 export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, imgFrente, imgCostas, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, peso, vcCompras, provaInfo, gradTamanhos = [], gradBase = "", tabTamanhos = [] }: Props) {
   const sec = sections || { ficha: true, estamparia: true, liberacao: true, graduacao: true };
   const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
-  const avT = avi.reduce((s, a) => s + (a.valor * a.qtd), 0);
+  const avT = custoAviamentosPorPeca(avi, row.grade, row.linha);
   const tm = row.tab_medidas || "";
   // tamNum trata a vírgula decimal ("2,5"); parseFloat pararia nela.
   const gd = (t: string, m: string) => { if (!m) return ""; const a = tamNum(t), b = tamNum(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };

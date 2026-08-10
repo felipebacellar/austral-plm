@@ -55,3 +55,22 @@ export function aviamentosAutomaticos(grade?: string, linha?: string): string[] 
   const tag = tagParaLinha(linha);
   return [...(tag ? [tag] : []), ...etiquetasParaGradeLinha(grade, linha)];
 }
+
+// Custo de aviamentos por peça produzida. A ficha lista uma etiqueta de
+// tamanho por tamanho da grade (ET0057..ET0061, uma por tamanho) porque é
+// preciso comprar todas elas — mas cada peça, sendo de um tamanho só, leva
+// exatamente 1 etiqueta de tamanho, não uma de cada. Somar todas inflava o
+// custo por peça pelo número de tamanhos da grade.
+export function custoAviamentosPorPeca(avi: { cod?: string; valor?: any; qtd?: any }[], grade?: string, linha?: string): number {
+  const etiquetasGrupo = new Set(etiquetasParaGradeLinha(grade, linha));
+  let total = 0;
+  let etiquetaJaContada = false;
+  for (const a of avi) {
+    if (a.cod && etiquetasGrupo.has(a.cod)) {
+      if (etiquetaJaContada) continue;
+      etiquetaJaContada = true;
+    }
+    total += (Number(a.valor) || 0) * (Number(a.qtd) || 0);
+  }
+  return total;
+}

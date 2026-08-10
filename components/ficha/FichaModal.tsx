@@ -7,7 +7,7 @@ import { fetchFicha, fetchFichasColecoes, reorderFichaColecoes, deleteFichaColec
 import { classificarNCM } from "@/lib/ncm";
 import { calcularPesoPeca, type ResultadoPeso } from "@/lib/peso";
 import { fotosParaExibir } from "@/lib/aviamento-fotos";
-import { aviamentosAutomaticos } from "@/lib/etiquetas-tamanho";
+import { aviamentosAutomaticos, custoAviamentosPorPeca } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import { useAuth } from "@/lib/auth-context";
 import { nomeUsuario } from "@/lib/utils";
@@ -448,7 +448,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     setNcmLoading(false);
   };
 
-  const avT = avi.reduce((s: number, a: any) => s + (a.valor * a.qtd), 0);
+  const avT = custoAviamentosPorPeca(avi, row.grade, row.linha);
   const utc = (ti: number, ci: number, v: string) => setTec(p => p.map((t: any, i: number) => { if (i !== ti) return t; const c = [...(t.cores || [])]; while (c.length < 6) c.push(""); c[ci] = v; return { ...t, cores: c }; }));
   const ua = (i: number, k: string, v: any) => setAvi(p => p.map((a, j) => j === i ? { ...a, [k]: v } : a));
   const ra = (i: number) => setAvi(p => p.filter((_, j) => j !== i));
