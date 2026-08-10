@@ -9,9 +9,11 @@ import ScrollTable from "@/components/ui/ScrollTable";
 type Props = { comprasRows: any[]; variantes: Record<string, string[]> };
 
 const QTD_MOST_KEYS = ["qtd_most_var01","qtd_most_var02","qtd_most_var03","qtd_most_var04","qtd_most_var05","qtd_most_var06"] as const;
+// ficha_aviamentos só grava cor por variante até a 4ª (ver fetchExplosaoData)
+const VAR_KEYS = ["var01","var02","var03","var04"] as const;
 
 export default function ExplosaoView({ comprasRows, variantes }: Props) {
-  const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[] } | null>(null);
+  const [data, setData] = useState<{ fichas: any[]; avFichas: any[]; avLib: any[]; comprasVar: any[]; tecFichas: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [flFornProd, setFlFornProd] = useState("");
@@ -84,7 +86,9 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
     return m;
   }, [data]);
 
-  // produto_id → total qtd_compra (sum across all colors)
+  // produto_id → total qtd_compra (soma de todas as cores) — usado só para
+  // aviamentos sem distinção de cor (ex. adesivo, tag), que valem pra peça
+  // inteira independente da cor dela.
   const productTotalComprasMap = useMemo(() => {
     if (!data) return {} as Record<number, number>;
     const m: Record<number, number> = {};
@@ -94,7 +98,34 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
     return m;
   }, [data]);
 
-  // aggregate: group by codigo + cor (var01), multiply qty × purchase/sample qty for that color
+  // produto_id + cor da peça → qtd_compra daquela cor especificamente — é o
+  // que liga "quantas peças pretas foram compradas" à cor do botão que vai
+  // na variante preta (não à compra total do produto, que misturaria cores).
+  const comprasPorCorMap = useMemo(() => {
+    if (!data) return new Map<string, number>();
+    const m = new Map<string, number>();
+    data.comprasVar.forEach((vc: any) => {
+      const key = `${vc.produto_id}:${vc.cor}`;
+      m.set(key, (m.get(key) || 0) + (Number(vc.qtd_compra1) || 0) + (Number(vc.qtd_compra2) || 0));
+    });
+    return m;
+  }, [data]);
+
+  // ficha_id → cores da peça por variante (do 1º tecido da ficha), na mesma
+  // ordem de VAR 01..06 usada em ficha_aviamentos — é o que corresponde a
+  // qual variante (cor da peça) usa qual cor de aviamento.
+  const fichaCoresMap = useMemo(() => {
+    if (!data) return {} as Record<number, string[]>;
+    const m: Record<number, string[]> = {};
+    data.tecFichas.forEach((t: any) => {
+      if (m[t.ficha_id] === undefined) m[t.ficha_id] = t.cores || [];
+    });
+    return m;
+  }, [data]);
+
+  // aggregate: para aviamentos com cor por variante, explode por cor (uma
+  // linha por cor de aviamento realmente usada), multiplicando pela compra
+  // da variante da peça que usa aquela cor — não a compra total do produto.
   const aggregated = useMemo(() => {
     if (!data) return [];
 
@@ -106,31 +137,9 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
     };
     const byKey: Record<string, Entry> = {};
 
-    data.avFichas.forEach((av: any) => {
-      const ref = fichaRefMap.get(av.ficha_id);
-      if (!ref) return;
-
-      const cor = av.var01 || "";
+    const addQty = (av: any, cor: string, ref: string, qty: number) => {
       const key = `${av.codigo}||${cor}`;
       const lib = avLibMap[av.codigo] || { nome: av.codigo, fornecedor: "", codForn: "", preco: 0, imagem: "" };
-
-      const status = refStatusMap[ref] || "";
-      const isMost = status.includes("MOSTRUÁRIO") || status.includes("MOSTRUARIO");
-      const prodId = refIdMap[ref];
-      const qtdCompra = productTotalComprasMap[prodId] || 0;
-      let multiplier = 0;
-      if (qtdCompra > 0) {
-        // compra preenchida: sempre usa qtd_compra independente do status
-        multiplier = qtdCompra;
-      } else if (isMost) {
-        // sem compra e mostruário: usa qtd_most
-        const qtdMosts = fichaQtdMostMap[av.ficha_id] || [];
-        multiplier = qtdMosts.reduce((s: number, v) => s + (Number(v) || 0), 0);
-      } else {
-        // desenvolvimento sem compra: usa contagem de variantes
-        multiplier = Math.max(variantes[ref]?.length ?? 0, 1);
-      }
-
       if (!byKey[key]) {
         byKey[key] = {
           codigo: av.codigo, cor,
@@ -140,10 +149,49 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
           refs: new Set(), fornsProd: new Set(),
         };
       }
-      byKey[key].qtd += (Number(av.qtd) || 0) * multiplier;
+      byKey[key].qtd += qty;
       byKey[key].refs.add(ref);
       const forn = refFornMap[ref];
       if (forn) byKey[key].fornsProd.add(forn);
+    };
+
+    data.avFichas.forEach((av: any) => {
+      const ref = fichaRefMap.get(av.ficha_id);
+      if (!ref) return;
+
+      const status = refStatusMap[ref] || "";
+      const isMost = status.includes("MOSTRUÁRIO") || status.includes("MOSTRUARIO");
+      const prodId = refIdMap[ref];
+      const qtdItem = Number(av.qtd) || 0;
+      const qtdMosts = fichaQtdMostMap[av.ficha_id] || [];
+      const coresAviamento = VAR_KEYS.map(k => av[k] || "");
+
+      if (!coresAviamento.some(Boolean)) {
+        // Sem cor por variante (ex. adesivo, tag genérico): vale pra peça
+        // inteira, então soma a compra de todas as cores do produto.
+        const qtdCompra = productTotalComprasMap[prodId] || 0;
+        let multiplier = 0;
+        if (qtdCompra > 0) multiplier = qtdCompra;
+        else if (isMost) multiplier = qtdMosts.reduce((s: number, v) => s + (Number(v) || 0), 0);
+        else multiplier = Math.max(variantes[ref]?.length ?? 0, 1);
+        addQty(av, "", ref, qtdItem * multiplier);
+        return;
+      }
+
+      // Com cor por variante: cada variante (slot) casa a cor do aviamento
+      // ali escolhida com a quantidade comprada da cor DA PEÇA nesse mesmo
+      // slot — é por isso que precisa das cores do tecido, não só do total.
+      const coresProduto = fichaCoresMap[av.ficha_id] || [];
+      coresAviamento.forEach((corAv, i) => {
+        if (!corAv) return;
+        const corProd = coresProduto[i] || "";
+        const qtdCompraCor = comprasPorCorMap.get(`${prodId}:${corProd}`) || 0;
+        let multiplier = 0;
+        if (qtdCompraCor > 0) multiplier = qtdCompraCor;
+        else if (isMost) multiplier = Number(qtdMosts[i]) || 0;
+        else multiplier = 1; // 1 peça-amostra dessa variante, em desenvolvimento
+        addQty(av, corAv, ref, qtdItem * multiplier);
+      });
     });
 
     let rows = Object.values(byKey).map(r => {
@@ -160,7 +208,7 @@ export default function ExplosaoView({ comprasRows, variantes }: Props) {
 
     if (flFornAvi) rows = rows.filter(r => r.fornecedor === flFornAvi);
     return rows;
-  }, [data, fichaRefMap, avLibMap, refFornMap, refStatusMap, refIdMap, fichaQtdMostMap, productTotalComprasMap, variantes, flFornAvi]);
+  }, [data, fichaRefMap, avLibMap, refFornMap, refStatusMap, refIdMap, fichaQtdMostMap, fichaCoresMap, comprasPorCorMap, productTotalComprasMap, variantes, flFornAvi]);
 
   const sorted = useMemo(() => {
     if (!sort) return aggregated;
