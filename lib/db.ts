@@ -324,6 +324,7 @@ export async function fetchFicha(ref: string, colecao?: string | null) {
     provaInfo: data.prova_info || null,
     custoDet: data.custo_det || null,
     obsCusto: data.obs_custo || "",
+    pesoCalculo: data.peso_calculo || null,
     tingimento: data.tingimento || null,
     qtdMost: {
       var01: data.qtd_most_var01 ?? null, var02: data.qtd_most_var02 ?? null,
@@ -373,6 +374,7 @@ export async function upsertFicha(ref: string, f: any, colecao?: string | null) 
     prova_info: f.provaInfo || null,
     custo_det: f.custoDet || null,
     obs_custo: f.obsCusto || "",
+    peso_calculo: f.pesoCalculo || null,
     tingimento: f.tingimento || null,
     imagem_frente: f.imagem_frente || "",
     imagem_costas: f.imagem_costas || "",

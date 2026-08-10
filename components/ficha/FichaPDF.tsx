@@ -1,6 +1,7 @@
 "use client";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import { valorNoTamanho, calcularDaBase, num as tamNum } from "@/lib/tamanhos";
+import type { ResultadoPeso } from "@/lib/peso";
 
 type Props = {
   row: any; tec: any[]; avi: any[]; pil: any[]; pts: any[]; grad: any[];
@@ -12,6 +13,7 @@ type Props = {
   obs?: string; statusLib?: string; tecCad?: any[]; tabelaEspecial?: boolean;
   sections?: { ficha: boolean; estamparia: boolean; liberacao: boolean; graduacao: boolean };
   ncm?: string;
+  peso?: ResultadoPeso | null;
   vcCompras?: Record<string, any>;
   provaInfo?: Record<string, { data: string; status: string; link: string; fotoFrente: string; fotoLado: string; fotoCostas: string; tipo: string }>;
   gradTamanhos?: string[]; gradBase?: string; tabTamanhos?: string[];
@@ -30,7 +32,7 @@ const warn = "#D97706";
 const danger = "#DC2626";
 const white = "#FFFFFF";
 
-export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, imgFrente, imgCostas, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, vcCompras, provaInfo, gradTamanhos = [], gradBase = "", tabTamanhos = [] }: Props) {
+export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, imgModelo, imgModoMedir, imgFrente, imgCostas, hasEstamparia, estamparia, pantones, obs, statusLib, tecCad, sections, ncm, peso, vcCompras, provaInfo, gradTamanhos = [], gradBase = "", tabTamanhos = [] }: Props) {
   const sec = sections || { ficha: true, estamparia: true, liberacao: true, graduacao: true };
   const compOf = (nome: string) => (tecCad || []).find((t: any) => t.nome === nome)?.comp || "";
   const avT = avi.reduce((s, a) => s + (a.valor * a.qtd), 0);
@@ -124,7 +126,7 @@ export default function FichaPDF({ row, tec, avi, pil, pts, grad, pv, an, img, i
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-              {([["Tecido", row.tecido, false], ["Forn. Tecido", row.forn_tecido, false], ["Composição", row.composicao || compOf(row.tecido), false], ["Operação", row.operacao, false], ["Fornecedor", row.fornecedor, false], ["Estilista", row.estilista, false], ["Tab. Medidas", row.tab_medidas, false], ["NCM", ncm || "", true]] as [string, string, boolean][]).map(([l, v, mono], i) => (
+              {([["Tecido", row.tecido, false], ["Forn. Tecido", row.forn_tecido, false], ["Composição", row.composicao || compOf(row.tecido), false], ["Operação", row.operacao, false], ["Fornecedor", row.fornecedor, false], ["Estilista", row.estilista, false], ["Tab. Medidas", row.tab_medidas, false], ["NCM", ncm || "", true], ["Peso Estimado", peso?.pesoG != null ? `${peso.pesoG.toLocaleString("pt-BR")} g` : "", false]] as [string, string, boolean][]).map(([l, v, mono], i) => (
                 <div key={l} style={{ padding: "4px 10px", borderBottom: `0.5px solid ${line}`, borderRight: i % 2 === 0 ? `0.5px solid ${line}` : "none" }}>
                   <div style={{ fontSize: "6px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em" }}>{l}</div>
                   <div style={{ fontSize: "8.5px", fontWeight: 700, color: navy, ...(mono ? { fontFamily: "monospace" } : {}) }}>{v || "—"}</div>
