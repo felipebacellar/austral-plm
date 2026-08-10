@@ -5,6 +5,7 @@ import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { fetchFicha, fetchFichasColecoes, reorderFichaColecoes, deleteFichaColecao, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
+import { calcularPesoPeca, type ResultadoPeso } from "@/lib/peso";
 import { aviamentosAutomaticos } from "@/lib/etiquetas-tamanho";
 import { COR_PALETTE } from "@/lib/cor-palette";
 import { useAuth } from "@/lib/auth-context";
@@ -85,6 +86,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const fotoProvaRef = useRef<HTMLInputElement>(null);
   const [fotoProvaTarget, setFotoProvaTarget] = useState<{ prova: "p1"|"p2"|"p3"; side: "frente"|"lado"|"costas" } | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+
+  /* Peso médio da peça — calculado a partir do tecido + área da modelagem */
+  const [areaMedia, setAreaMedia] = useState<number | null>(null);
+  const [peso, setPeso] = useState<ResultadoPeso | null>(null);
 
   /* NCM */
   const [ncm, setNcm] = useState("");
@@ -181,9 +186,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
       });
       setAvi(aviComputed);
       let tecComputed: any[] = [];
-      // Carrega imagem do modo de medir da tabela de medidas
+      // Carrega imagem do modo de medir e a área média da tabela de medidas
       if (row.tab_medidas && tabs) {
         const t = tabs.find((t: any) => t.nome === row.tab_medidas);
+        setAreaMedia((t as any)?.area_media ?? null);
         if (t && (t as any).imagem_modo_medir) setImgModoMedir((t as any).imagem_modo_medir);
       }
       if (ficha) {
@@ -411,6 +417,15 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   };
 
   const compOf = (nome: string) => tecCad.find((t: any) => t.nome === nome)?.comp || "";
+
+  // Peso = área da modelagem × gramatura do tecido × encolhimento × margem.
+  // Usa o 1º tecido da ficha (o principal); se a ficha não tem tecido, cai no
+  // tecido do produto.
+  const nomeTecidoPeso = tec[0]?.artigo || row.tecido || "";
+  const calcularPeso = () => {
+    const t = (tecCad || []).find((x: any) => x.nome === nomeTecidoPeso);
+    setPeso(calcularPesoPeca(areaMedia, t));
+  };
 
   const gerarNcm = () => {
     setNcmLoading(true);
@@ -716,6 +731,32 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 {ncmLoading ? <span className="animate-pulse">Gerando...</span> : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>Gerar NCM</>}
               </button>
               {ncmJust && <span className="text-[11px] text-[var(--label-tertiary)] truncate w-full sm:w-auto sm:flex-1" title={ncmJust}>{ncmJust}</span>}
+            </div>
+            <div className="border-t border-[var(--separator)]" />
+            <div className="px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
+              <span className="text-[11px] text-[var(--label-secondary)] font-medium whitespace-nowrap">Peso médio:</span>
+              <div className="text-[15px] font-bold tabnum min-w-[92px]">
+                {peso?.pesoG != null ? <>{peso.pesoG.toLocaleString("pt-BR")} <span className="text-[12px] font-semibold text-[var(--label-tertiary)]">g</span></> : <span className="text-[13px] font-normal text-[var(--label-quaternary)]">—</span>}
+              </div>
+              <button onClick={calcularPeso} className="apple-btn-secondary text-[12px] !py-1.5 !px-3 flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3M5 6h14l-2.5 5h-9L5 6z"/><path d="M3 21h18M7 21v-5a5 5 0 0110 0v5"/></svg>
+                Calcular peso
+              </button>
+              {peso && (
+                peso.pesoG == null ? (
+                  <span className="text-[11px] text-[var(--system-orange)] w-full sm:w-auto sm:flex-1">
+                    Faltou preencher: {peso.faltando.join(" e ")}.
+                    {peso.faltando.some(f => f.includes("gramatura")) && nomeTecidoPeso ? ` (tecido ${nomeTecidoPeso}, em Cadastros › Tecidos)` : ""}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-[var(--label-tertiary)] w-full sm:w-auto sm:flex-1">
+                    {peso.area?.toLocaleString("pt-BR")} m² × {peso.gramatura?.toLocaleString("pt-BR")} g/m²
+                    {peso.origemGramatura === "rendimento" ? " (do rendimento × largura)" : ""}
+                    {peso.encolhimentoIgnorado ? " · sem encolhimento informado" : ` × ${peso.fatorEncolhimento.toLocaleString("pt-BR")} de encolhimento`}
+                    {" "}× 1,10 de margem
+                  </span>
+                )
+              )}
             </div>
           </div>
           <div className={`apple-card bg-[var(--bg-secondary)] cursor-pointer hover:border-[var(--system-blue)] relative transition-colors ${dragOver === "img" ? "border-[var(--system-blue)] bg-blue-50/40" : ""}`}
