@@ -13,18 +13,32 @@
 
 export type DadosTecido = {
   gramatura?: any;      // g/m²
+  oz?: any;             // oz/yd²
   largura?: any;        // metros
-  enc_largura?: any;    // %
-  enc_altura?: any;     // %
+  enc_largura?: any;    // % na trama
+  enc_altura?: any;     // % no urdume
   rendimento?: any;     // m/kg
 };
+
+// 1 oz/yd² = 28,349523125 g / 0,9144² m² = 33,9057 g/m².
+// É a unidade usada em jeans e planos (12 oz ≈ 407 g/m²).
+export const G_POR_OZ = 28.349523125 / (0.9144 * 0.9144);
+
+export function ozParaGramatura(oz: any): number | null {
+  const n = num(oz);
+  return isNaN(n) || n <= 0 ? null : Math.round(n * G_POR_OZ * 10) / 10;
+}
+export function gramaturaParaOz(g: any): number | null {
+  const n = num(g);
+  return isNaN(n) || n <= 0 ? null : Math.round((n / G_POR_OZ) * 100) / 100;
+}
 
 export type ResultadoPeso = {
   pesoG: number | null;
   faltando: string[];              // o que impede o cálculo
   area: number | null;
   gramatura: number | null;
-  origemGramatura: "cadastro" | "rendimento" | null;
+  origemGramatura: "cadastro" | "oz" | "rendimento" | null;
   fatorEncolhimento: number;       // 1 quando não há encolhimento informado
   encolhimentoIgnorado: boolean;   // true quando os campos vieram vazios
   margem: number;                  // 1.10
@@ -46,18 +60,22 @@ export function calcularPesoPeca(areaMedia: any, t: DadosTecido | null | undefin
   const g = num(t?.gramatura);
   const rend = num(t?.rendimento);
   const larg = num(t?.largura);
+  const doOz = ozParaGramatura(t?.oz);
 
-  // Gramatura direta; senão, deduzida de rendimento × largura
+  // Gramatura direta; senão pelo oz; senão deduzida de rendimento × largura
   let gramatura: number | null = null;
   let origemGramatura: ResultadoPeso["origemGramatura"] = null;
   if (!isNaN(g) && g > 0) {
     gramatura = g;
     origemGramatura = "cadastro";
+  } else if (doOz !== null) {
+    gramatura = doOz;
+    origemGramatura = "oz";
   } else if (!isNaN(rend) && rend > 0 && !isNaN(larg) && larg > 0) {
     gramatura = 1000 / (rend * larg);
     origemGramatura = "rendimento";
   } else {
-    faltando.push("gramatura do tecido (ou rendimento + largura)");
+    faltando.push("gramatura ou oz do tecido (ou rendimento + largura)");
   }
 
   // Encolhimento: opcional. Sem ele, considera tecido estável.

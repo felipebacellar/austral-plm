@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { fetchCadastros, addCadastro, removeCadastro, addCadastrosBulk, fetchTecidos, addTecido, removeTecido, updateTecido, fetchAviamentos, addAviamento, addAviamentosBulk, removeAviamento, updateAviamento } from "@/lib/db";
+import { ozParaGramatura } from "@/lib/peso";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { subscribeRealtime } from "@/lib/realtime";
 
@@ -16,7 +17,7 @@ export default function CadView(){
   const [m,setM]=useState("grupo");const [val,setVal]=useState("");const [loading,setLoading]=useState(true);
   const [tn,setTn]=useState("");const [tf,setTf]=useState("");const [tc,setTc]=useState("");const [tp,setTp]=useState("");
   // Dados técnicos do tecido + busca (a lista passa de mil itens)
-  const [tg,setTg]=useState("");const [tl,setTl]=useState("");const [tel,setTel]=useState("");const [tea,setTea]=useState("");const [tr,setTr]=useState("");
+  const [to,setTo]=useState("");const [tg,setTg]=useState("");const [tl,setTl]=useState("");const [tel,setTel]=useState("");const [tea,setTea]=useState("");const [tr,setTr]=useState("");
   const [st,setSt]=useState("");
   const [cc,setCc]=useState("");const [cn,setCn]=useState("");
   const [ac,setAc]=useState("");const [an,setAn]=useState("");const [ap,setAp]=useState("");const [al,setAl]=useState("");const [af,setAf]=useState("");const [acf,setAcf]=useState("");const [sr,setSr]=useState("");
@@ -122,11 +123,13 @@ export default function CadView(){
 
   const addT=async()=>{
     if(!tn.trim())return;
+    // Sem gramatura digitada, mas com oz: deduz a gramatura do oz (não deixa o registro sem os dois)
+    const gramaturaFinal=tg.trim()?tg:(ozParaGramatura(to)?.toString()??tg);
     const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp,
-      gramatura:tg,largura:tl,enc_largura:tel,enc_altura:tea,rendimento:tr};
+      oz:to,gramatura:gramaturaFinal,largura:tl,enc_largura:tel,enc_altura:tea,rendimento:tr};
     await addTecido(t);
     setTecidos(p=>[...p,t].sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt-BR")));
-    setTn("");setTf("");setTc("");setTp("");setTg("");setTl("");setTel("");setTea("");setTr("");
+    setTn("");setTf("");setTc("");setTp("");setTo("");setTg("");setTl("");setTel("");setTea("");setTr("");
   };
   const remT=async(n:string)=>{await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
   // Salva um campo do tecido ao sair do input (mesmo padrão dos aviamentos)
@@ -372,10 +375,11 @@ export default function CadView(){
                 <input className={`${inp} w-20`} value={tp} onChange={e=>setTp(e.target.value)} placeholder="Preço"/>
               </div>
               <div className="flex gap-2 mb-5 flex-wrap items-center">
+                <input className={`${inp} w-20`} value={to}  onChange={e=>{const v=e.target.value;setTo(v);const g=ozParaGramatura(v);if(g!==null)setTg(String(g));}}  placeholder="OZ"          title="Peso em onças por jarda quadrada — preenche a gramatura automaticamente"/>
                 <input className={`${inp} w-28`} value={tg}  onChange={e=>setTg(e.target.value)}  placeholder="Gramatura"   title="Gramatura (g/m²)"/>
                 <input className={`${inp} w-28`} value={tl}  onChange={e=>setTl(e.target.value)}  placeholder="Largura"     title="Largura (metros)"/>
-                <input className={`${inp} w-32`} value={tel} onChange={e=>setTel(e.target.value)} placeholder="Enc. largura" title="Encolhimento largura (%)"/>
-                <input className={`${inp} w-32`} value={tea} onChange={e=>setTea(e.target.value)} placeholder="Enc. altura"  title="Encolhimento altura (%)"/>
+                <input className={`${inp} w-32`} value={tel} onChange={e=>setTel(e.target.value)} placeholder="Enc. larg./trama" title="Encolhimento na largura (sentido da trama), em %"/>
+                <input className={`${inp} w-32`} value={tea} onChange={e=>setTea(e.target.value)} placeholder="Enc. alt./urdume"  title="Encolhimento na altura (sentido do urdume), em %"/>
                 <input className={`${inp} w-28`} value={tr}  onChange={e=>setTr(e.target.value)}  placeholder="Rendimento"  title="Rendimento (m/kg)"/>
                 <button onClick={addT} className={btn}>Adicionar</button>
               </div>
@@ -388,10 +392,11 @@ export default function CadView(){
                 <table className="plm-table"><thead><tr>
                   <th className="px-4">Nome</th><th>Fornecedor</th><th>Composição</th>
                   <th className="text-right">Preço</th>
-                  <th className="text-center w-24" title="Gramatura em gramas por metro quadrado">Gram. (g/m²)</th>
+                  <th className="text-center w-20" title="Peso em onças por jarda quadrada — preenche a gramatura automaticamente">OZ</th>
+                  <th className="text-center w-24" title="Gramatura em gramas por metro quadrado — preenchida pelo OZ, ou digitada direto">Gram. (g/m²)</th>
                   <th className="text-center w-24" title="Largura útil em metros">Largura (m)</th>
-                  <th className="text-center w-24" title="Encolhimento na largura, em %">Enc. larg. (%)</th>
-                  <th className="text-center w-24" title="Encolhimento na altura, em %">Enc. alt. (%)</th>
+                  <th className="text-center w-28" title="Encolhimento na largura (sentido da trama), em %">Enc. larg./trama (%)</th>
+                  <th className="text-center w-28" title="Encolhimento na altura (sentido do urdume), em %">Enc. alt./urdume (%)</th>
                   <th className="text-center w-24" title="Rendimento em metros por quilo">Rend. (m/kg)</th>
                   <th className="w-10"></th>
                 </tr></thead>
@@ -401,7 +406,8 @@ export default function CadView(){
                       {/* text + inputMode decimal: com type="number" o navegador
                           rejeita a vírgula e devolve "", apagando o que a pessoa
                           digitou como "1,60". A conversão fica no salvamento. */}
-                      <input type="text" inputMode="decimal" title={titulo} defaultValue={t[campo]??""} placeholder="—"
+                      <input type="text" inputMode="decimal" title={titulo}
+                        key={`${campo}-${t.nome}-${t[campo]??""}`} defaultValue={t[campo]??""} placeholder="—"
                         className="w-full text-[12px] text-center tabnum border border-transparent rounded-lg px-1.5 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all"
                         onBlur={e=>{const v=e.target.value.trim();if(v!==String(t[campo]??""))saveTec(t.nome,{[campo]:v});}}/>
                     </td>
@@ -412,10 +418,23 @@ export default function CadView(){
                     <td className="px-3">{t.forn}</td>
                     <td className="text-[12px] text-[var(--label-secondary)] px-3">{t.comp}</td>
                     <td className="text-right tabnum px-3">{t.preco?`R$ ${Number(t.preco).toFixed(2)}`:"—"}</td>
-                    {campoNum("gramatura","Gramatura (g/m²)")}
+                    <td className="px-1 py-1">
+                      {/* OZ preenche a gramatura sozinho (1 oz/yd² ≈ 33,91 g/m²) — os dois
+                          são salvos juntos para não perder o número redondo que a pessoa digitou */}
+                      <input type="text" inputMode="decimal" title="Peso em onças por jarda quadrada — preenche a gramatura automaticamente"
+                        key={`oz-${t.nome}-${t.oz??""}`} defaultValue={t.oz??""} placeholder="—"
+                        className="w-full text-[12px] text-center tabnum border border-transparent rounded-lg px-1.5 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all"
+                        onBlur={e=>{
+                          const v=e.target.value.trim();
+                          if(v===String(t.oz??""))return;
+                          const g=ozParaGramatura(v);
+                          saveTec(t.nome,g!==null?{oz:v,gramatura:g}:{oz:v});
+                        }}/>
+                    </td>
+                    {campoNum("gramatura","Gramatura (g/m²) — preenchida pelo OZ, ou digitada direto")}
                     {campoNum("largura","Largura (metros)")}
-                    {campoNum("enc_largura","Encolhimento largura (%)")}
-                    {campoNum("enc_altura","Encolhimento altura (%)")}
+                    {campoNum("enc_largura","Encolhimento na largura (sentido da trama), em %")}
+                    {campoNum("enc_altura","Encolhimento na altura (sentido do urdume), em %")}
                     {campoNum("rendimento","Rendimento (m/kg)")}
                     <td className="text-center"><button onClick={()=>remT(t.nome)} className="text-[var(--label-quaternary)] hover:text-[var(--system-red)] transition-colors">×</button></td>
                   </tr>

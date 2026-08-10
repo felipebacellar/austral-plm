@@ -752,6 +752,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                   <span className="text-[11px] text-[var(--label-tertiary)] w-full sm:w-auto sm:flex-1">
                     {peso.area?.toLocaleString("pt-BR")} m² × {peso.gramatura?.toLocaleString("pt-BR")} g/m²
                     {peso.origemGramatura === "rendimento" ? " (do rendimento × largura)" : ""}
+                    {peso.origemGramatura === "oz" ? " (do oz do tecido)" : ""}
                     {peso.encolhimentoIgnorado ? " · sem encolhimento informado" : ` × ${peso.fatorEncolhimento.toLocaleString("pt-BR")} de encolhimento`}
                     {" "}× 1,10 de margem
                   </span>

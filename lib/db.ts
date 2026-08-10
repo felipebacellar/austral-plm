@@ -73,7 +73,7 @@ export async function fetchTecidos() {
   const result = data.map((t: any) => ({
     nome: t.nome, forn: t.fornecedor, comp: t.composicao, preco: t.preco || "",
     // Dados técnicos (podem estar vazios até alguém preencher no cadastro)
-    gramatura: t.gramatura ?? "", largura: t.largura ?? "",
+    gramatura: t.gramatura ?? "", oz: t.oz ?? "", largura: t.largura ?? "",
     enc_largura: t.encolhimento_largura ?? "", enc_altura: t.encolhimento_altura ?? "",
     rendimento: t.rendimento ?? "",
   }));
@@ -89,13 +89,13 @@ const numOuNull = (v: any) => {
 };
 
 export type TecidoTecnico = {
-  gramatura?: any; largura?: any; enc_largura?: any; enc_altura?: any; rendimento?: any;
+  gramatura?: any; oz?: any; largura?: any; enc_largura?: any; enc_altura?: any; rendimento?: any;
 };
 
 export async function addTecido(t: { nome: string; forn: string; comp: string; preco: string } & TecidoTecnico) {
   const { error } = await sb().from("tecidos").insert({
     nome: t.nome, fornecedor: t.forn, composicao: t.comp, preco: numOuNull(t.preco),
-    gramatura: numOuNull(t.gramatura), largura: numOuNull(t.largura),
+    gramatura: numOuNull(t.gramatura), oz: numOuNull(t.oz), largura: numOuNull(t.largura),
     encolhimento_largura: numOuNull(t.enc_largura), encolhimento_altura: numOuNull(t.enc_altura),
     rendimento: numOuNull(t.rendimento),
   });
@@ -107,11 +107,11 @@ export async function addTecido(t: { nome: string; forn: string; comp: string; p
 export async function updateTecido(nome: string, patch: { forn?: string; comp?: string; preco?: any } & TecidoTecnico) {
   const mapa: Record<string, string> = {
     forn: "fornecedor", comp: "composicao", preco: "preco",
-    gramatura: "gramatura", largura: "largura",
+    gramatura: "gramatura", oz: "oz", largura: "largura",
     enc_largura: "encolhimento_largura", enc_altura: "encolhimento_altura",
     rendimento: "rendimento",
   };
-  const numericos = new Set(["preco", "gramatura", "largura", "enc_largura", "enc_altura", "rendimento"]);
+  const numericos = new Set(["preco", "gramatura", "oz", "largura", "enc_largura", "enc_altura", "rendimento"]);
   const upd: Record<string, any> = {};
   for (const [k, v] of Object.entries(patch)) {
     if (!mapa[k]) continue;
