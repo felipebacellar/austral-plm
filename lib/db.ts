@@ -485,7 +485,7 @@ export async function fetchExplosaoData() {
 // ══ TABELAS DE MEDIDAS ══
 export async function fetchTabelasMedidas() {
   // Tenta buscar com imagem_modo_medir; se a coluna não existir, busca só id e nome
-  const { data, error } = await sb().from("tabelas_medidas").select("id, nome, imagem_modo_medir, tamanhos, tamanho_base").order("nome");
+  const { data, error } = await sb().from("tabelas_medidas").select("id, nome, imagem_modo_medir, tamanhos, tamanho_base, area_media").order("nome");
   if (error) {
     const { data: fallback } = await sb().from("tabelas_medidas").select("id, nome").order("nome");
     return fallback || [];
@@ -495,6 +495,12 @@ export async function fetchTabelasMedidas() {
 export async function saveTabelaImagemModoMedir(id: number, url: string) {
   const { error } = await sb().from("tabelas_medidas").update({ imagem_modo_medir: url }).eq("id", id);
   if (error) console.error("saveTabelaImagemModoMedir (coluna pode não existir ainda):", error);
+}
+// Área média da modelagem, em m² por peça (vazio = null)
+export async function saveTabelaAreaMedia(id: number, area: string) {
+  const n = parseFloat(String(area ?? "").replace(",", "."));
+  const { error } = await sb().from("tabelas_medidas").update({ area_media: isNaN(n) ? null : n }).eq("id", id);
+  if (error) console.error("saveTabelaAreaMedia:", error);
 }
 export async function fetchTabelaPontos(tabelaId: number) {
   const { data, error } = await sb().from("tabela_medida_pontos").select("*").eq("tabela_id", tabelaId).order("ordem");

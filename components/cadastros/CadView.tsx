@@ -395,7 +395,10 @@ export default function CadView(){
                 <tbody>{ft.map((t:any,i:number)=>{
                   const campoNum=(campo:string,titulo:string)=>(
                     <td className="px-1 py-1">
-                      <input type="number" step="0.01" title={titulo} defaultValue={t[campo]??""} placeholder="—"
+                      {/* text + inputMode decimal: com type="number" o navegador
+                          rejeita a vírgula e devolve "", apagando o que a pessoa
+                          digitou como "1,60". A conversão fica no salvamento. */}
+                      <input type="text" inputMode="decimal" title={titulo} defaultValue={t[campo]??""} placeholder="—"
                         className="w-full text-[12px] text-center tabnum border border-transparent rounded-lg px-1.5 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all"
                         onBlur={e=>{const v=e.target.value.trim();if(v!==String(t[campo]??""))saveTec(t.nome,{[campo]:v});}}/>
                     </td>

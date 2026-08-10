@@ -4,12 +4,12 @@ import { uploadImage } from "@/lib/storage";
 import {
   fetchTabelasMedidas, fetchTabelaPontos, fetchGraduacoes,
   createTabelaMedidas, deleteTabelaMedidas,
-  upsertPontos, upsertGraduacoes, saveTabelaImagemModoMedir,
+  upsertPontos, upsertGraduacoes, saveTabelaImagemModoMedir, saveTabelaAreaMedia,
 } from "@/lib/db";
 import { subscribeRealtime } from "@/lib/realtime";
 import { calcularDaBase } from "@/lib/tamanhos";
 
-type Tabela = { id: number; nome: string; tamanhos?: string[]; tamanho_base?: string };
+type Tabela = { id: number; nome: string; tamanhos?: string[]; tamanho_base?: string; area_media?: number | null };
 type Ponto = { cod: string; desc: string; tabela: string; tol: string };
 type Grad = { desc: string; valores: Record<string, string>; ampliacoes: Record<string, string>; tol: string };
 
@@ -87,6 +87,17 @@ export default function MedidasView() {
   // Tamanhos da tabela selecionada (a base ganha destaque nas colunas)
   const tamanhos = sel?.tamanhos?.length ? sel.tamanhos : [];
   const base = sel?.tamanho_base || "";
+
+  // Área média da modelagem (m² por peça). Atualiza a lista e a seleção para o
+  // valor persistir na tela ao trocar de tabela e voltar.
+  const salvarArea = async (valor: string) => {
+    if (!sel) return;
+    const n = parseFloat(valor.replace(",", "."));
+    const area = isNaN(n) ? null : n;
+    setSel(s => (s ? { ...s, area_media: area } : s));
+    setTabelas(p => p.map(t => (t.id === sel.id ? { ...t, area_media: area } : t)));
+    await saveTabelaAreaMedia(sel.id, valor);
+  };
 
   const scheduleSave = useCallback((type: "pontos" | "grad", data: any[]) => {
     if (!sel) return;
@@ -259,7 +270,19 @@ export default function MedidasView() {
                   <h3 className="text-[20px] font-bold tracking-[-0.02em]">{sel.nome}</h3>
                   <p className="text-[13px] text-[var(--label-tertiary)] mt-0.5">{tamanhos.length ? `${tamanhos[0]} a ${tamanhos[tamanhos.length - 1]} · base ${base}` : "Sem tamanhos"} · {pontos.length} pontos{grad.length > 0 ? " · Graduação disponível" : ""}</p>
                 </div>
-                <button onClick={handleDelete} className="text-[12px] text-[var(--system-red)] hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium">Excluir tabela</button>
+                <div className="flex items-center gap-3">
+                  {/* Área média da modelagem — m² de tecido por peça */}
+                  <label className="flex items-center gap-1.5" title="Área média de tecido por peça, em m²">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-tertiary)] whitespace-nowrap">Área média (m²)</span>
+                    {/* text + inputMode decimal: com type="number" o navegador
+                        rejeita a vírgula e devolve "", apagando o valor de quem
+                        digita "1,2345". A conversão fica no salvamento. */}
+                    <input type="text" inputMode="decimal" defaultValue={sel.area_media ?? ""} placeholder="—" key={`area-${sel.id}`}
+                      className="w-24 text-[13px] text-center tabnum border border-[var(--separator-opaque)] rounded-lg px-2 py-1 outline-none focus:border-[var(--system-blue)] bg-[var(--bg-primary)]"
+                      onBlur={e => { const v = e.target.value.trim(); if (v !== String(sel.area_media ?? "")) salvarArea(v); }} />
+                  </label>
+                  <button onClick={handleDelete} className="text-[12px] text-[var(--system-red)] hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium">Excluir tabela</button>
+                </div>
               </div>
               <div className="seg-control">
                 <button onClick={() => setSec("base")} className={`seg-btn ${sec === "base" ? "active" : ""}`}>Tabela base{base ? ` (${base})` : ""}</button>
