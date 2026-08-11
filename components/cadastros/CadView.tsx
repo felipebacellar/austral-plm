@@ -455,7 +455,12 @@ export default function CadView(){
                     <td className="font-medium px-4">{t.nome}</td>
                     <td className="px-3">{t.forn}</td>
                     <td className="text-[12px] text-[var(--label-secondary)] px-3">{t.comp}</td>
-                    <td className="text-right tabnum px-3">{t.preco?`R$ ${Number(t.preco).toFixed(2)}`:"—"}</td>
+                    <td className="px-1 py-1">
+                      <input type="text" inputMode="decimal" title="Preço do tecido (R$)"
+                        className="w-full text-[12px] text-right tabnum border border-transparent rounded-lg px-1.5 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all"
+                        key={`preco-${t.nome}-${t.preco??""}`} defaultValue={t.preco||""} placeholder="0,00"
+                        onBlur={e=>{const v=parseFloat(e.target.value.replace(",","."))||0;if(v!==(t.preco||0))saveTec(t.nome,{preco:v});}}/>
+                    </td>
                     <td className="px-1 py-1">
                       {/* OZ preenche a gramatura sozinho (1 oz/yd² ≈ 33,91 g/m²) — os dois
                           são salvos juntos para não perder o número redondo que a pessoa digitou */}
