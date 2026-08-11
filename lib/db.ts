@@ -570,6 +570,25 @@ export async function fetchTabelasComPontos() {
   return (data || []).map((t: any) => t.nome);
 }
 
+// ══ LAUDO DE PRÉ-PRODUÇÃO ══
+// Medida aferida por ponto e por tamanho da grade (diferente de ficha_provas,
+// que guarda só 1 valor por ponto — aqui é preciso medir cada tamanho).
+export async function fetchLaudoPP(fichaId: number): Promise<Record<string, Record<string, string>>> {
+  const { data, error } = await sb().from("ficha_laudo_pp").select("ponto_cod, valores").eq("ficha_id", fichaId);
+  if (error) { console.error("fetchLaudoPP:", error); return {}; }
+  return Object.fromEntries((data || []).map((r: any) => [r.ponto_cod, r.valores || {}]));
+}
+
+export async function upsertLaudoPPMedidas(fichaId: number, medidas: Record<string, Record<string, string>>) {
+  await sb().from("ficha_laudo_pp").delete().eq("ficha_id", fichaId);
+  const rows = Object.entries(medidas)
+    .filter(([, valores]) => Object.values(valores || {}).some(v => String(v ?? "").trim() !== ""))
+    .map(([ponto_cod, valores]) => ({ ficha_id: fichaId, ponto_cod, valores }));
+  if (!rows.length) return;
+  const { error } = await sb().from("ficha_laudo_pp").insert(rows);
+  if (error) console.error("upsertLaudoPPMedidas:", error);
+}
+
 // Fetch all product variants (ref -> cores[]) from ficha_tecidos
 export async function fetchAllVariantes(): Promise<Record<string, string[]>> {
   const tecidos = await selectAll((de, ate) => sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id").range(de, ate), "fetchAllVariantes");
@@ -601,6 +620,12 @@ export async function fetchVariantesPorColecao(): Promise<Record<string, Record<
 // ══ CONTROLE DE FLUXO ══
 export async function fetchControleFluxo() {
   return await selectAll<Record<string, any>>((de, ate) => sb().from("controle_fluxo").select("*").range(de, ate), "fetchControleFluxo");
+}
+
+export async function fetchControleFluxoByRef(produto_ref: string) {
+  const { data, error } = await sb().from("controle_fluxo").select("*").eq("produto_ref", produto_ref).maybeSingle();
+  if (error) { console.error("fetchControleFluxoByRef:", error); return null; }
+  return data;
 }
 
 export async function upsertControleFluxo(produto_ref: string, field: string, value: string | null): Promise<string | null> {

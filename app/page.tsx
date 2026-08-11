@@ -5,6 +5,8 @@ import VariantesTable from "@/components/dev/VariantesTable";
 import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
+import PreProducaoView from "@/components/preproducao/PreProducaoView";
+import LaudoPPModal from "@/components/preproducao/LaudoPPModal";
 import DashboardView from "@/components/dashboard/DashboardView";
 import LoginModal from "@/components/auth/LoginModal";
 import SetNewPasswordModal from "@/components/auth/SetNewPasswordModal";
@@ -30,6 +32,7 @@ const TABS = [
   { id: "dev_mapa",      label: "Mapa de Coleção",   icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" },
   { id: "dev_etiquetas", label: "Etiquetas Line",    icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" },
   { id: "variantes",  label: "Variantes",       icon: "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" },
+  { id: "preprod",    label: "Pré-Produção",    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 13l2 2 4-4" },
   { id: "cad",        label: "Cadastros",       icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
   { id: "medidas",    label: "Tab. medidas",    icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
 ] as const;
@@ -54,6 +57,7 @@ export default function Home() {
   const [variantesPorColecao, setVariantesPorColecao] = useState<Record<string, Record<string, string[]>>>({});
   const comprasRows = rows.filter(r => COMPRAS_STATUS_ALLOW.includes(r.status));
   const [fichaRow, setFichaRow] = useState<any>(null);
+  const [laudoRow, setLaudoRow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -228,6 +232,7 @@ export default function Home() {
           {TABS.filter(t => t.id !== "dashboard" && t.id !== "calendario").filter(t => {
             if (t.id === "cad")     return canSection("can_cadastros");
             if (t.id === "medidas") return canSection("can_medidas");
+            if (t.id === "preprod") return canSection("can_preproducao");
             return true;
           }).map(t => (
             <button key={t.id} onClick={() => { setTab(t.id); setMobileOpen(false); }} className={`plm-nav-item ${tab === t.id ? "active" : ""}`}>
@@ -322,6 +327,7 @@ export default function Home() {
           {!loading && tab === "dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} />}
           {!loading && tab === "dev_fluxo" && <ControleFluxoView rows={rows} />}
           {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} variantesPorColecao={variantesPorColecao} onOpenFicha={setFichaRow} />}
+          {!loading && tab === "preprod" && canSection("can_preproducao") && <PreProducaoView rows={rows} onOpenLaudo={setLaudoRow} />}
           {!loading && tab === "cad" && canSection("can_cadastros") && <CadView />}
           {!loading && tab === "medidas" && canSection("can_medidas") && <MedidasView />}
           {!loading && tab === "compras_dev" && <DevTable rows={comprasRows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
@@ -334,6 +340,7 @@ export default function Home() {
       </main>
 
       {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} onSave={handleFichaSave} />}
+      {laudoRow && <LaudoPPModal row={laudoRow} onClose={() => setLaudoRow(null)} />}
       {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
       {alertaAtual && <AlertaFichaModal alerta={alertaAtual} total={alertaFila.length} onCiente={handleAlertaCiente} />}
     </div>

@@ -106,6 +106,15 @@ export function valorNoTamanho(linha: LinhaGrad, tamanho: string, tamanhosTabela
   return "";
 }
 
+// Tolerância é texto livre por ponto (ex. "1,0 + OU -", "0,5") — extrai o
+// primeiro número e devolve o módulo, aplicado simetricamente pra mais e
+// pra menos. Sem número reconhecível, devolve 0 (qualquer diferença conta
+// como fora da tolerância).
+export function parseTolerancia(tol: any): number {
+  const m = String(tol ?? "").replace(",", ".").match(/\d+(\.\d+)?/);
+  return m ? Math.abs(parseFloat(m[0])) : 0;
+}
+
 // Recalcula todos os tamanhos a partir de um valor medido no tamanho base,
 // acumulando os passos de ampliação para fora da base. Usado na Graduação de
 // Produção, onde a base é a medida real da prova aprovada.

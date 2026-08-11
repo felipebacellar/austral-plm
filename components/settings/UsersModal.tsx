@@ -18,7 +18,7 @@ const BASE_GROUPS: PermGroup[] = [
   { label: "Produção",      fields: [{ key: "operacao", label: "Operação" }, { key: "fornecedor", label: "Fornecedor" }, { key: "grade", label: "Grade" }, { key: "tab_medidas", label: "Tab. medidas" }, { key: "tecido", label: "Tecido" }] },
   { label: "Equipe",        fields: [{ key: "estilista", label: "Estilista" }] },
   { label: "Ações",         fields: [{ key: "can_add", label: "Criar SKU" }, { key: "can_delete", label: "Excluir SKU" }] },
-  { label: "Seções",        fields: [{ key: "can_cadastros", label: "Cadastros" }, { key: "can_medidas", label: "Tab. medidas" }] },
+  { label: "Seções",        fields: [{ key: "can_cadastros", label: "Cadastros" }, { key: "can_medidas", label: "Tab. medidas" }, { key: "can_preproducao", label: "Pré-Produção" }] },
 ];
 
 // Permissões ESTILO usam chaves diretas; COMPRAS usam prefixo "compras_"

@@ -1,0 +1,147 @@
+"use client";
+import { Fragment } from "react";
+import { cellStatus } from "./LaudoPPModal";
+
+type Ponto = { cod: string; desc: string; tabela: string; tol: string };
+
+type Props = {
+  row: any;
+  pts: Ponto[];
+  gradTamanhos: string[];
+  gradBase: string;
+  esperados: Record<string, string>[];
+  medidas: Record<string, Record<string, string>>;
+  statusPP: string;
+};
+
+/* ── Design tokens — mesma paleta do FichaPDF ── */
+const navy = "#0C1D2E";
+const muted = "#64748B";
+const light = "#94A3B8";
+const line = "#E2E8F0";
+const lineDark = "#CBD5E1";
+const bg = "#F8FAFC";
+const success = "#059669";
+const warn = "#D97706";
+const danger = "#DC2626";
+const white = "#FFFFFF";
+
+const th: React.CSSProperties = { padding: "5px 6px", textAlign: "left", fontSize: "7px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: light, borderBottom: `1px solid ${lineDark}` };
+const td: React.CSSProperties = { padding: "4.5px 6px", borderBottom: `0.5px solid ${line}`, fontSize: "9px", verticalAlign: "middle", color: navy };
+const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" };
+
+const STATUS_PP_COLOR: Record<string, string> = {
+  "LIBERADA": success,
+  "LIBERADA COM RESTRIÇÃO": warn,
+  "REPROVADA - CORRIGIR": danger,
+  "REPROVADA - NEGOCIAR": danger,
+};
+
+export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados, medidas, statusPP }: Props) {
+  const headerBg = STATUS_PP_COLOR[statusPP] || "#4464AF";
+  const wTam = gradTamanhos.length > 5 ? "42px" : "52px";
+
+  const Field = ({ label, value }: { label: string; value: string }) => (
+    <div style={{ padding: "6px 0", borderBottom: `0.5px solid ${line}` }}>
+      <div style={{ fontSize: "6.5px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1px" }}>{label}</div>
+      <div style={{ fontSize: "9.5px", fontWeight: 600, color: navy }}>{value || "—"}</div>
+    </div>
+  );
+
+  return (
+    <div className="print-ficha" style={{ fontFamily: "'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif", fontSize: "9px", color: navy, lineHeight: 1.5 }}>
+      <div className="print-page">
+        <div style={{ background: headerBg, color: white, borderRadius: "4px", padding: "8px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: "6.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6, marginBottom: "1px" }}>Austral®</div>
+            <div style={{ fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>LAUDO DE PRÉ-PRODUÇÃO</div>
+            {statusPP && <div style={{ fontSize: "7.5px", opacity: 0.85, marginTop: "2px", fontWeight: 700 }}>{statusPP}</div>}
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "8px", opacity: 0.7, lineHeight: 1.6 }}>Coleção <strong style={{ opacity: 1 }}>{row.colecao}</strong></div>
+            <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "-0.01em" }}>{row.ref}</div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0 16px", marginBottom: "12px" }}>
+          <Field label="Referência" value={row.ref} />
+          <Field label="Descrição" value={row.desc} />
+          <Field label="Fornecedor" value={row.fornecedor} />
+          <Field label="Grade" value={row.grade} />
+          <Field label="Tabela de medidas" value={row.tab_medidas} />
+          <Field label="Tamanho base" value={gradBase} />
+          <Field label="Grupo" value={row.grupo} />
+          <Field label="Estilista" value={row.estilista} />
+        </div>
+
+        {pts.length === 0 ? (
+          <p style={{ fontSize: "9px", color: muted }}>Nenhum ponto de medida cadastrado para esta referência.</p>
+        ) : (
+          <table style={tbl}>
+            <thead>
+              <tr>
+                <th style={th} rowSpan={2}>Ponto</th>
+                {gradTamanhos.map(t => (
+                  <th key={t} style={{ ...th, textAlign: "center", width: wTam, background: t === gradBase ? "#FEFCE8" : "#eef4fb", color: t === gradBase ? warn : muted }} colSpan={2}>{t}{t === gradBase ? " (base)" : ""}</th>
+                ))}
+                <th style={{ ...th, textAlign: "center", width: "38px" }} rowSpan={2}>Tol.</th>
+              </tr>
+              <tr>
+                {gradTamanhos.map(t => (
+                  <Fragment key={t}>
+                    <th style={{ ...th, textAlign: "center", fontSize: "6px" }}>Aprov.</th>
+                    <th style={{ ...th, textAlign: "center", fontSize: "6px" }}>Medido</th>
+                  </Fragment>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pts.map((pt, i) => (
+                <tr key={pt.cod} style={i % 2 ? { background: bg } : {}}>
+                  <td style={{ ...td, fontWeight: 600 }}>
+                    {pt.cod} <span style={{ color: light, fontWeight: 400 }}>— {pt.desc}</span>
+                  </td>
+                  {gradTamanhos.map(t => {
+                    const esperado = esperados[i]?.[t] || "";
+                    const medido = medidas[pt.cod]?.[t] || "";
+                    const st = cellStatus(esperado, medido, pt.tol);
+                    const medidoStyle: React.CSSProperties =
+                      st === "acima" ? { color: danger, fontWeight: 800, background: "#FEF2F2" } :
+                      st === "abaixo" ? { color: warn, fontWeight: 800, background: "#FFF7ED" } :
+                      st === "ok" ? { color: success, fontWeight: 700 } : { color: light };
+                    return (
+                      <Fragment key={t}>
+                        <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{esperado || "—"}</td>
+                        <td style={{ ...td, textAlign: "center", fontVariantNumeric: "tabular-nums", ...medidoStyle }}>{medido || "—"}</td>
+                      </Fragment>
+                    );
+                  })}
+                  <td style={{ ...td, textAlign: "center", fontSize: "8px", color: light }}>{pt.tol || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div style={{ marginTop: "10px", display: "flex", gap: "14px", fontSize: "7.5px", color: muted }}>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: danger, marginRight: 4 }} />Acima da tolerância</span>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: warn, marginRight: 4 }} />Abaixo da tolerância</span>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: success, marginRight: 4 }} />Dentro da tolerância</span>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          .print-page { position: relative; padding-bottom: 24px; }
+          .print-page::after {
+            content: "Austral® · Confidencial";
+            position: absolute; bottom: 4px; left: 0; right: 0;
+            text-align: center;
+            font-size: 6.5px; color: ${lineDark}; letter-spacing: 0.08em;
+            font-family: -apple-system, Helvetica, sans-serif;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
