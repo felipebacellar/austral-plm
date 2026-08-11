@@ -589,6 +589,18 @@ export async function upsertLaudoPPMedidas(fichaId: number, medidas: Record<stri
   if (error) console.error("upsertLaudoPPMedidas:", error);
 }
 
+export async function fetchLaudoPPInfo(fichaId: number): Promise<{ comentarios: string; fotos: string[] }> {
+  const { data, error } = await sb().from("ficha_laudo_pp_info").select("comentarios, fotos").eq("ficha_id", fichaId).maybeSingle();
+  if (error) { console.error("fetchLaudoPPInfo:", error); return { comentarios: "", fotos: [] }; }
+  return { comentarios: data?.comentarios || "", fotos: data?.fotos || [] };
+}
+
+export async function upsertLaudoPPInfo(fichaId: number, info: { comentarios?: string; fotos?: string[] }) {
+  const { error } = await sb().from("ficha_laudo_pp_info")
+    .upsert({ ficha_id: fichaId, ...info, updated_at: new Date().toISOString() }, { onConflict: "ficha_id" });
+  if (error) console.error("upsertLaudoPPInfo:", error);
+}
+
 // Fetch all product variants (ref -> cores[]) from ficha_tecidos
 export async function fetchAllVariantes(): Promise<Record<string, string[]>> {
   const tecidos = await selectAll((de, ate) => sb().from("ficha_tecidos").select("ficha_id, cores, fichas_tecnicas!inner(produto_ref, colecao)").order("id").range(de, ate), "fetchAllVariantes");

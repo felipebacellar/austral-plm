@@ -1,10 +1,12 @@
 "use client";
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import {
-  fetchFicha, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome,
-  fetchLaudoPP, upsertLaudoPPMedidas, fetchControleFluxoByRef, upsertControleFluxo,
+  fetchFicha, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchTabelasMedidas,
+  fetchLaudoPP, upsertLaudoPPMedidas, fetchLaudoPPInfo, upsertLaudoPPInfo,
+  fetchControleFluxoByRef, upsertControleFluxo,
 } from "@/lib/db";
 import { tamanhosParaExibir, valorNoTamanho, calcularDaBase, num, parseTolerancia } from "@/lib/tamanhos";
+import { uploadImage, deleteImage } from "@/lib/storage";
 import { useToast } from "@/components/ui/Toast";
 import LaudoPPPDF from "./LaudoPPPDF";
 
@@ -51,20 +53,28 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   const [tabBase, setTabBase] = useState("");
   const [medidas, setMedidas] = useState<Record<string, Record<string, string>>>({});
   const [statusPP, setStatusPP] = useState("");
+  const [imgModoMedir, setImgModoMedir] = useState<string | null>(null);
+  const [comentarios, setComentarios] = useState("");
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [fotoUploading, setFotoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
   const { success, error, Container: ToastContainer } = useToast();
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [ficha, fluxo] = await Promise.all([
+      const [ficha, fluxo, tabs] = await Promise.all([
         fetchFicha(row.ref),
         fetchControleFluxoByRef(row.ref),
+        fetchTabelasMedidas(),
       ]);
       const fid = ficha?.id ?? null;
       setFichaId(fid);
       setStatusPP(fluxo?.status_pre_producao || "");
+      const tabInfo = tabs.find((t: any) => t.nome === row.tab_medidas);
+      setImgModoMedir((tabInfo as any)?.imagem_modo_medir || null);
 
       if (row.tab_medidas) {
         const [p, g] = await Promise.all([
@@ -76,7 +86,12 @@ export default function LaudoPPModal({ row, onClose }: Props) {
         setTabTamanhos(g.tamanhos);
         setTabBase(g.base);
       }
-      if (fid) setMedidas(await fetchLaudoPP(fid));
+      if (fid) {
+        const [medidasSalvas, info] = await Promise.all([fetchLaudoPP(fid), fetchLaudoPPInfo(fid)]);
+        setMedidas(medidasSalvas);
+        setComentarios(info.comentarios);
+        setFotos(info.fotos);
+      }
       setLoading(false);
     })();
   }, [row.ref, row.tab_medidas]);
@@ -119,19 +134,54 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   const handleSave = async () => {
     if (!fichaId) { error("Esta referência ainda não tem ficha técnica cadastrada — não é possível salvar o laudo."); return; }
     setSaving(true);
-    await upsertLaudoPPMedidas(fichaId, medidas);
+    await Promise.all([
+      upsertLaudoPPMedidas(fichaId, medidas),
+      upsertLaudoPPInfo(fichaId, { comentarios }),
+    ]);
     const sugerido = statusSugerido();
     if (sugerido !== statusPP) {
       setStatusPP(sugerido);
       await upsertControleFluxo(row.ref, "status_pre_producao", sugerido || null);
     }
     setSaving(false);
-    success("Medições salvas.");
+    success("Laudo salvo.");
   };
 
   const handleStatusChange = async (v: string) => {
     setStatusPP(v);
     await upsertControleFluxo(row.ref, "status_pre_producao", v || null);
+  };
+
+  const bullets: string[] = comentarios ? comentarios.split("\n") : [""];
+  const setBullet = (i: number, v: string) => {
+    const nb = [...bullets]; nb[i] = v;
+    setComentarios(nb.join("\n"));
+  };
+  const removeBullet = (i: number) => {
+    setComentarios(bullets.filter((_, j) => j !== i).join("\n"));
+  };
+  const addBullet = () => setComentarios(comentarios ? comentarios + "\n" : "\n");
+
+  // Fotos anexadas ao laudo — a lista persiste na hora (upload já é uma
+  // ação de rede concluída; não faz sentido depender do botão "Salvar" pra
+  // não perder o anexo se a pessoa fechar o modal antes de clicar salvar).
+  const handleAddFotos = async (files: FileList | null) => {
+    if (!files || !files.length || !fichaId) return;
+    setFotoUploading(true);
+    const urls = await Promise.all(
+      Array.from(files).map((f, i) => uploadImage(f, `${row.ref}/laudo_pp_${Date.now()}_${i}`)),
+    );
+    const novasFotos = [...fotos, ...urls.filter((u): u is string => !!u)];
+    setFotos(novasFotos);
+    await upsertLaudoPPInfo(fichaId, { fotos: novasFotos });
+    setFotoUploading(false);
+    if (fotoInputRef.current) fotoInputRef.current.value = "";
+  };
+  const handleRemoveFoto = async (url: string) => {
+    const novasFotos = fotos.filter(f => f !== url);
+    setFotos(novasFotos);
+    if (fichaId) await upsertLaudoPPInfo(fichaId, { fotos: novasFotos });
+    await deleteImage(url);
   };
 
   const doExport = () => {
@@ -159,7 +209,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <LaudoPPPDF row={row} pts={pts} gradTamanhos={gradTamanhos} gradBase={gradBase} esperados={esperados} medidas={medidas} statusPP={statusPP} />
+        <LaudoPPPDF row={row} pts={pts} gradTamanhos={gradTamanhos} gradBase={gradBase} esperados={esperados} medidas={medidas} statusPP={statusPP} imgModoMedir={imgModoMedir} comentarios={comentarios} fotos={fotos} />
       </div>
     );
   }
@@ -205,6 +255,19 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                 </div>
               </div>
             </div>
+
+            {row.tab_medidas && (
+              <div className="apple-card p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-1.5">
+                  Modo de medir<span className="ml-1.5 font-normal normal-case text-[var(--label-tertiary)]">— {row.tab_medidas}</span>
+                </div>
+                <div className="bg-[var(--bg-secondary)] rounded-xl flex items-center justify-center overflow-hidden min-h-[100px] max-h-[280px]">
+                  {imgModoMedir
+                    ? <img src={imgModoMedir} alt="Modo de medir" className="max-h-[280px] object-contain p-2" />
+                    : <p className="text-[12px] text-[var(--label-tertiary)] py-6">Sem imagem cadastrada — adicione na aba Tab. medidas.</p>}
+                </div>
+              </div>
+            )}
 
             {!row.tab_medidas || pts.length === 0 ? (
               <div className="apple-card p-16 text-center"><p className="text-[15px] font-medium text-[var(--label-secondary)]">Esta referência não tem tabela de medidas com pontos cadastrados.</p></div>
@@ -263,12 +326,60 @@ export default function LaudoPPModal({ row, onClose }: Props) {
               </div>
             )}
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Comentários em tópicos */}
+              <div className="apple-card p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Comentários</div>
+                <div className="space-y-1.5">
+                  {bullets.map((line, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-[var(--label-tertiary)] text-[13px] select-none shrink-0">•</span>
+                      <input type="text" value={line} onChange={e => setBullet(i, e.target.value)} placeholder="Comentário..." className="apple-input flex-1 text-[12px]" />
+                      {bullets.length > 1 && (
+                        <button onClick={() => removeBullet(i)} className="text-[var(--label-tertiary)] hover:text-[var(--system-red)] text-[16px] leading-none shrink-0">×</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={addBullet} className="text-[11px] text-[var(--system-blue)] font-medium ml-5 mt-0.5">+ Adicionar tópico</button>
+                </div>
+              </div>
+
+              {/* Fotos */}
+              <div className="apple-card p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Fotos</div>
+                <div className="flex flex-wrap gap-2">
+                  {fotos.map(url => (
+                    <div key={url} className="relative w-[72px] h-[72px] group">
+                      <img src={url} alt="Foto do laudo" className="w-full h-full object-cover rounded-lg border border-[var(--separator)]" />
+                      <button onClick={() => handleRemoveFoto(url)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Remover foto">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => fotoInputRef.current?.click()}
+                    disabled={fotoUploading || !fichaId}
+                    title={!fichaId ? "Esta referência ainda não tem ficha técnica" : "Adicionar foto"}
+                    className="w-[72px] h-[72px] border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors disabled:opacity-50"
+                  >
+                    {fotoUploading ? <span className="text-[10px]">...</span> : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                        <span className="text-[9px] font-medium leading-none">foto</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <input ref={fotoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleAddFotos(e.target.files)} />
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <p className="text-[11px] text-[var(--label-tertiary)]">
                 <span className="inline-flex items-center gap-1 mr-3"><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(234,47,70,0.6)", display: "inline-block" }} /> acima da tolerância</span>
                 <span className="inline-flex items-center gap-1"><span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(255,149,0,0.7)", display: "inline-block" }} /> abaixo da tolerância</span>
               </p>
-              <button onClick={handleSave} disabled={saving} className="apple-btn-primary text-[13px] px-4 py-2">{saving ? "Salvando..." : "Salvar medições"}</button>
+              <button onClick={handleSave} disabled={saving} className="apple-btn-primary text-[13px] px-4 py-2">{saving ? "Salvando..." : "Salvar laudo"}</button>
             </div>
           </div>
         )}

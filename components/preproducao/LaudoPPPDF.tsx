@@ -12,6 +12,9 @@ type Props = {
   esperados: Record<string, string>[];
   medidas: Record<string, Record<string, string>>;
   statusPP: string;
+  imgModoMedir?: string | null;
+  comentarios?: string;
+  fotos?: string[];
 };
 
 /* ── Design tokens — mesma paleta do FichaPDF ── */
@@ -37,9 +40,11 @@ const STATUS_PP_COLOR: Record<string, string> = {
   "REPROVADA - NEGOCIAR": danger,
 };
 
-export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados, medidas, statusPP }: Props) {
+export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados, medidas, statusPP, imgModoMedir, comentarios, fotos = [] }: Props) {
   const headerBg = STATUS_PP_COLOR[statusPP] || "#4464AF";
   const wTam = gradTamanhos.length > 5 ? "42px" : "52px";
+  const bulletsList = (comentarios || "").split("\n").map(s => s.trim()).filter(Boolean);
+  const temNotas = bulletsList.length > 0 || fotos.length > 0;
 
   const Field = ({ label, value }: { label: string; value: string }) => (
     <div style={{ padding: "6px 0", borderBottom: `0.5px solid ${line}` }}>
@@ -73,6 +78,13 @@ export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados
           <Field label="Grupo" value={row.grupo} />
           <Field label="Estilista" value={row.estilista} />
         </div>
+
+        {imgModoMedir && (
+          <div style={{ marginBottom: "12px" }}>
+            <div style={{ fontSize: "6.5px", fontWeight: 600, color: light, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>Modo de Medir</div>
+            <img src={imgModoMedir} alt="Modo de Medir" style={{ maxWidth: "100%", maxHeight: "220px", objectFit: "contain", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
+          </div>
+        )}
 
         {pts.length === 0 ? (
           <p style={{ fontSize: "9px", color: muted }}>Nenhum ponto de medida cadastrado para esta referência.</p>
@@ -129,6 +141,30 @@ export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados
           <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: success, marginRight: 4 }} />Dentro da tolerância</span>
         </div>
       </div>
+
+      {temNotas && (
+        <div className="print-page" style={{ pageBreakBefore: "always" }}>
+          <div style={{ fontSize: "10px", fontWeight: 800, color: navy, letterSpacing: "-0.01em", marginBottom: "8px", paddingBottom: "4px", borderBottom: `1.5px solid ${navy}` }}>Comentários e fotos — {row.ref}</div>
+
+          {bulletsList.length > 0 && (
+            <ul style={{ margin: "0 0 14px", padding: 0, listStyle: "none" }}>
+              {bulletsList.map((b, i) => (
+                <li key={i} style={{ display: "flex", gap: "6px", fontSize: "9px", color: navy, marginBottom: "4px" }}>
+                  <span style={{ color: light }}>•</span>{b}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {fotos.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {fotos.map((url, i) => (
+                <img key={i} src={url} alt={`Foto ${i + 1} do laudo`} style={{ width: "140px", height: "140px", objectFit: "cover", border: `0.5px solid ${line}`, borderRadius: "4px" }} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <style>{`
         @media print {
