@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import {
-  fetchFicha, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchTabelasMedidas,
+  fetchFichaResolvida, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchTabelasMedidas,
   fetchLaudoPPMedidas, upsertLaudoPPMedidas, fetchLaudoPPPedido, upsertLaudoPPPedido,
   fetchControleFluxoByRef, upsertControleFluxo,
 } from "@/lib/db";
@@ -80,7 +80,7 @@ export default function LaudoPPModal({ row, fichaId, laudoPedidoId, onClose }: P
     (async () => {
       setLoading(true);
       const [ficha, fluxoData, tabs, pedido] = await Promise.all([
-        fetchFicha(row.ref),
+        fetchFichaResolvida(row.ref),
         fetchControleFluxoByRef(row.ref),
         fetchTabelasMedidas(),
         fetchLaudoPPPedido(laudoPedidoId),

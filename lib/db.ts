@@ -297,6 +297,17 @@ export async function deleteFichaColecao(ref: string, colecao: string): Promise<
   return null;
 }
 
+// Referências "clássicos" (ver isClassic em FichaModal.tsx) têm 1 ficha por
+// temporada — não existe linha com colecao=null pra elas. Quem não tem UI de
+// seletor de temporada (ex. o laudo de pré-produção) precisa desse fallback
+// pra achar a ficha mesmo assim, senão trata a referência como "sem ficha".
+export async function fetchFichaResolvida(ref: string) {
+  const direta = await fetchFicha(ref);
+  if (direta) return direta;
+  const colecoes = await fetchFichasColecoes(ref);
+  return colecoes.length ? fetchFicha(ref, colecoes[0]) : null;
+}
+
 export async function fetchFicha(ref: string, colecao?: string | null) {
   let q = sb().from("fichas_tecnicas").select("*").eq("produto_ref", ref);
   if (colecao) q = q.eq("colecao", colecao);

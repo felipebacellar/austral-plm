@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { fetchFicha, fetchLaudoPPPedidos, criarLaudoPPPedido, type LaudoPPPedido } from "@/lib/db";
+import { fetchFichaResolvida, fetchLaudoPPPedidos, criarLaudoPPPedido, type LaudoPPPedido } from "@/lib/db";
 import { STATUS_PRE_PRODUCAO_COLORS } from "@/lib/constants";
 import LaudoPPModal from "./LaudoPPModal";
 
@@ -25,7 +25,7 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const ficha = await fetchFicha(row.ref);
+    const ficha = await fetchFichaResolvida(row.ref);
     const fid = ficha?.id ?? null;
     setFichaId(fid);
     setPedidos(fid ? await fetchLaudoPPPedidos(fid) : []);
