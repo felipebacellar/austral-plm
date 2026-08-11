@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { fetchFichaResolvida, fetchLaudoPPPedidos, criarLaudoPPPedido, type LaudoPPPedido } from "@/lib/db";
+import { fetchFichaResolvida, fetchLaudoPPPedidos, criarLaudoPPPedido, deleteLaudoPPPedido, type LaudoPPPedido } from "@/lib/db";
 import { STATUS_PRE_PRODUCAO_COLORS } from "@/lib/constants";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import LaudoPPModal from "./LaudoPPModal";
 
 function StatusPill({ status }: { status: string }) {
@@ -22,6 +23,8 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
   const [pedidos, setPedidos] = useState<LaudoPPPedido[]>([]);
   const [editingPedidoId, setEditingPedidoId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -40,6 +43,20 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
     const id = await criarLaudoPPPedido(fichaId);
     setCreating(false);
     if (id) setEditingPedidoId(id);
+  };
+
+  const handleExcluir = async (p: LaudoPPPedido) => {
+    const ok = await confirm({
+      title: "Excluir laudo",
+      message: `Isso apaga o laudo${p.numero_pedido ? ` do pedido ${p.numero_pedido}` : ""} — medidas, comentários e fotos. Não pode ser desfeito.`,
+      confirmLabel: "Excluir",
+      variant: "danger",
+    });
+    if (!ok) return;
+    setDeletingId(p.id);
+    await deleteLaudoPPPedido(p.id);
+    setDeletingId(null);
+    load();
   };
 
   if (editingPedidoId) {
@@ -96,6 +113,13 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
                         >
                           Duplicar
                         </button>
+                        <button
+                          onClick={() => handleExcluir(p)} disabled={deletingId === p.id}
+                          title="Excluir este laudo"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--label-quaternary)] hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -105,6 +129,7 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
           )}
         </div>
       </div>
+      <ConfirmDialog />
     </div>
   );
 }

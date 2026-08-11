@@ -615,6 +615,13 @@ export async function upsertLaudoPPPedido(id: number, patch: { numero_pedido?: s
   if (error) console.error("upsertLaudoPPPedido:", error);
 }
 
+// As medidas em ficha_laudo_pp caem junto via ON DELETE CASCADE (laudo_pedido_id).
+export async function deleteLaudoPPPedido(id: number): Promise<string | null> {
+  const { error } = await sb().from("ficha_laudo_pp_pedidos").delete().eq("id", id);
+  if (error) { console.error("deleteLaudoPPPedido:", error); return error.message || "Erro ao excluir laudo"; }
+  return null;
+}
+
 // Medida aferida por ponto e por tamanho da grade (diferente de ficha_provas,
 // que guarda só 1 valor por ponto — aqui é preciso medir cada tamanho).
 export async function fetchLaudoPPMedidas(laudoPedidoId: number): Promise<Record<string, Record<string, string>>> {
