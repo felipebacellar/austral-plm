@@ -2,19 +2,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchControleFluxo } from "@/lib/db";
 import { subscribeRealtime } from "@/lib/realtime";
-import { STATUS_ESTILO } from "@/lib/constants";
+import { STATUS_ESTILO, STATUS_PRE_PRODUCAO_COLORS } from "@/lib/constants";
 import ScrollTable from "@/components/ui/ScrollTable";
-
-const STATUS_PP_COLORS: Record<string, { bg: string; color: string }> = {
-  "LIBERADA":                  { bg: "rgba(52,199,89,0.15)",  color: "#1a7a35" },
-  "LIBERADA COM RESTRIÇÃO":    { bg: "rgba(255,149,0,0.15)",  color: "#b86a00" },
-  "REPROVADA - CORRIGIR":      { bg: "rgba(234,47,70,0.12)",  color: "#c41e3a" },
-  "REPROVADA - NEGOCIAR":      { bg: "rgba(234,47,70,0.12)",  color: "#c41e3a" },
-};
 
 function StatusPPPill({ status }: { status: string }) {
   if (!status) return <span className="text-[var(--label-quaternary)] text-[13px]">— sem laudo —</span>;
-  const st = STATUS_PP_COLORS[status];
+  const st = STATUS_PRE_PRODUCAO_COLORS[status];
   return (
     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={st ? { background: st.bg, color: st.color } : { background: "rgba(142,142,147,0.12)", color: "var(--label-tertiary)" }}>
       {status}

@@ -44,3 +44,15 @@ export const COMPRAS_STATUS_ALLOW = [
   STATUS_ESTILO.PRODUCAO_LIBERADA,
   STATUS_ESTILO.REPILOTANDO_PRODUCAO,
 ];
+
+// Status do laudo de pré-produção — mesmas opções do campo status_pre_producao
+// do Controle de Fluxo (components/dev/ControleFluxoView.tsx), reaproveitadas
+// dentro de cada laudo/pedido (components/preproducao).
+export const STATUS_PRE_PRODUCAO_OPTS = ["", "LIBERADA", "LIBERADA COM RESTRIÇÃO", "REPROVADA - CORRIGIR", "REPROVADA - NEGOCIAR"];
+
+export const STATUS_PRE_PRODUCAO_COLORS: Record<string, { bg: string; color: string }> = {
+  "LIBERADA":               { bg: "rgba(52,199,89,0.15)",  color: "#1a7a35" },
+  "LIBERADA COM RESTRIÇÃO": { bg: "rgba(255,149,0,0.15)",  color: "#b86a00" },
+  "REPROVADA - CORRIGIR":   { bg: "rgba(234,47,70,0.12)",  color: "#c41e3a" },
+  "REPROVADA - NEGOCIAR":   { bg: "rgba(234,47,70,0.12)",  color: "#c41e3a" },
+};

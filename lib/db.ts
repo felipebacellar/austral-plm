@@ -571,34 +571,55 @@ export async function fetchTabelasComPontos() {
 }
 
 // ══ LAUDO DE PRÉ-PRODUÇÃO ══
+// Uma referência pode ter vários pedidos de produção, cada um medido em
+// cores diferentes e aprovado/reprovado separadamente — por isso o laudo é
+// por PEDIDO (ficha_laudo_pp_pedidos), não por ficha. As medidas em si
+// (ficha_laudo_pp) apontam pro pedido.
+export type LaudoPPPedido = { id: number; numero_pedido: string; status: string; updated_at: string };
+
+export async function fetchLaudoPPPedidos(fichaId: number): Promise<LaudoPPPedido[]> {
+  const { data, error } = await sb().from("ficha_laudo_pp_pedidos").select("id, numero_pedido, status, updated_at").eq("ficha_id", fichaId).order("updated_at", { ascending: false });
+  if (error) { console.error("fetchLaudoPPPedidos:", error); return []; }
+  return data || [];
+}
+
+export async function criarLaudoPPPedido(fichaId: number): Promise<number | null> {
+  const { data, error } = await sb().from("ficha_laudo_pp_pedidos").insert({ ficha_id: fichaId }).select("id").single();
+  if (error) { console.error("criarLaudoPPPedido:", error); return null; }
+  return data.id;
+}
+
+export async function fetchLaudoPPPedido(id: number): Promise<{ numero_pedido: string; status: string; comentarios: string; fotos: string[]; cores_tamanho: Record<string, string> } | null> {
+  const { data, error } = await sb().from("ficha_laudo_pp_pedidos").select("numero_pedido, status, comentarios, fotos, cores_tamanho").eq("id", id).maybeSingle();
+  if (error) { console.error("fetchLaudoPPPedido:", error); return null; }
+  if (!data) return null;
+  return {
+    numero_pedido: data.numero_pedido || "", status: data.status || "",
+    comentarios: data.comentarios || "", fotos: data.fotos || [], cores_tamanho: data.cores_tamanho || {},
+  };
+}
+
+export async function upsertLaudoPPPedido(id: number, patch: { numero_pedido?: string; status?: string; comentarios?: string; fotos?: string[]; cores_tamanho?: Record<string, string> }) {
+  const { error } = await sb().from("ficha_laudo_pp_pedidos").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) console.error("upsertLaudoPPPedido:", error);
+}
+
 // Medida aferida por ponto e por tamanho da grade (diferente de ficha_provas,
 // que guarda só 1 valor por ponto — aqui é preciso medir cada tamanho).
-export async function fetchLaudoPP(fichaId: number): Promise<Record<string, Record<string, string>>> {
-  const { data, error } = await sb().from("ficha_laudo_pp").select("ponto_cod, valores").eq("ficha_id", fichaId);
-  if (error) { console.error("fetchLaudoPP:", error); return {}; }
+export async function fetchLaudoPPMedidas(laudoPedidoId: number): Promise<Record<string, Record<string, string>>> {
+  const { data, error } = await sb().from("ficha_laudo_pp").select("ponto_cod, valores").eq("laudo_pedido_id", laudoPedidoId);
+  if (error) { console.error("fetchLaudoPPMedidas:", error); return {}; }
   return Object.fromEntries((data || []).map((r: any) => [r.ponto_cod, r.valores || {}]));
 }
 
-export async function upsertLaudoPPMedidas(fichaId: number, medidas: Record<string, Record<string, string>>) {
-  await sb().from("ficha_laudo_pp").delete().eq("ficha_id", fichaId);
+export async function upsertLaudoPPMedidas(laudoPedidoId: number, medidas: Record<string, Record<string, string>>) {
+  await sb().from("ficha_laudo_pp").delete().eq("laudo_pedido_id", laudoPedidoId);
   const rows = Object.entries(medidas)
     .filter(([, valores]) => Object.values(valores || {}).some(v => String(v ?? "").trim() !== ""))
-    .map(([ponto_cod, valores]) => ({ ficha_id: fichaId, ponto_cod, valores }));
+    .map(([ponto_cod, valores]) => ({ laudo_pedido_id: laudoPedidoId, ponto_cod, valores }));
   if (!rows.length) return;
   const { error } = await sb().from("ficha_laudo_pp").insert(rows);
   if (error) console.error("upsertLaudoPPMedidas:", error);
-}
-
-export async function fetchLaudoPPInfo(fichaId: number): Promise<{ comentarios: string; fotos: string[] }> {
-  const { data, error } = await sb().from("ficha_laudo_pp_info").select("comentarios, fotos").eq("ficha_id", fichaId).maybeSingle();
-  if (error) { console.error("fetchLaudoPPInfo:", error); return { comentarios: "", fotos: [] }; }
-  return { comentarios: data?.comentarios || "", fotos: data?.fotos || [] };
-}
-
-export async function upsertLaudoPPInfo(fichaId: number, info: { comentarios?: string; fotos?: string[] }) {
-  const { error } = await sb().from("ficha_laudo_pp_info")
-    .upsert({ ficha_id: fichaId, ...info, updated_at: new Date().toISOString() }, { onConflict: "ficha_id" });
-  if (error) console.error("upsertLaudoPPInfo:", error);
 }
 
 // Fetch all product variants (ref -> cores[]) from ficha_tecidos

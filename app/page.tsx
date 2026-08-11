@@ -6,7 +6,7 @@ import CadView from "@/components/cadastros/CadView";
 import MedidasView from "@/components/medidas/MedidasView";
 import FichaModal from "@/components/ficha/FichaModal";
 import PreProducaoView from "@/components/preproducao/PreProducaoView";
-import LaudoPPModal from "@/components/preproducao/LaudoPPModal";
+import LaudoPPPedidosModal from "@/components/preproducao/LaudoPPPedidosModal";
 import DashboardView from "@/components/dashboard/DashboardView";
 import LoginModal from "@/components/auth/LoginModal";
 import SetNewPasswordModal from "@/components/auth/SetNewPasswordModal";
@@ -340,7 +340,7 @@ export default function Home() {
       </main>
 
       {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} onSave={handleFichaSave} />}
-      {laudoRow && <LaudoPPModal row={laudoRow} onClose={() => setLaudoRow(null)} />}
+      {laudoRow && <LaudoPPPedidosModal row={laudoRow} onClose={() => setLaudoRow(null)} />}
       {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
       {alertaAtual && <AlertaFichaModal alerta={alertaAtual} total={alertaFila.length} onCiente={handleAlertaCiente} />}
     </div>

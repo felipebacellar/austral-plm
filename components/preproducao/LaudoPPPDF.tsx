@@ -15,7 +15,13 @@ type Props = {
   imgModoMedir?: string | null;
   comentarios?: string;
   fotos?: string[];
+  numeroPedido?: string;
+  coresTamanho?: Record<string, string>;
+  dataRecebimentoPre?: string;
+  dataLiberacao?: string;
 };
+
+const fmtDataBR = (v?: string) => (v ? v.split("-").reverse().join("/") : "—");
 
 /* ── Design tokens — mesma paleta do FichaPDF ── */
 const navy = "#0C1D2E";
@@ -40,11 +46,12 @@ const STATUS_PP_COLOR: Record<string, string> = {
   "REPROVADA - NEGOCIAR": danger,
 };
 
-export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados, medidas, statusPP, imgModoMedir, comentarios, fotos = [] }: Props) {
+export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados, medidas, statusPP, imgModoMedir, comentarios, fotos = [], numeroPedido, coresTamanho = {}, dataRecebimentoPre, dataLiberacao }: Props) {
   const headerBg = STATUS_PP_COLOR[statusPP] || "#4464AF";
   const wTam = gradTamanhos.length > 5 ? "42px" : "52px";
   const bulletsList = (comentarios || "").split("\n").map(s => s.trim()).filter(Boolean);
   const temNotas = bulletsList.length > 0 || fotos.length > 0;
+  const temCores = Object.keys(coresTamanho).length > 0;
 
   const Field = ({ label, value }: { label: string; value: string }) => (
     <div style={{ padding: "6px 0", borderBottom: `0.5px solid ${line}` }}>
@@ -56,15 +63,19 @@ export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados
   return (
     <div className="print-ficha" style={{ fontFamily: "'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif", fontSize: "9px", color: navy, lineHeight: 1.5 }}>
       <div className="print-page">
-        <div style={{ background: headerBg, color: white, borderRadius: "4px", padding: "8px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: headerBg, color: white, borderRadius: "4px", padding: "10px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
           <div>
             <div style={{ fontSize: "6.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6, marginBottom: "1px" }}>Austral®</div>
             <div style={{ fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>LAUDO DE PRÉ-PRODUÇÃO</div>
-            {statusPP && <div style={{ fontSize: "7.5px", opacity: 0.85, marginTop: "2px", fontWeight: 700 }}>{statusPP}</div>}
           </div>
+          {statusPP && (
+            <div style={{ fontSize: "15px", fontWeight: 800, letterSpacing: "-0.01em", background: "rgba(255,255,255,0.2)", padding: "5px 14px", borderRadius: "5px" }}>
+              {statusPP}
+            </div>
+          )}
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "8px", opacity: 0.7, lineHeight: 1.6 }}>Coleção <strong style={{ opacity: 1 }}>{row.colecao}</strong></div>
-            <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "-0.01em" }}>{row.ref}</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "-0.01em" }}>{row.ref}{numeroPedido ? ` · Pedido ${numeroPedido}` : ""}</div>
           </div>
         </div>
 
@@ -77,6 +88,9 @@ export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados
           <Field label="Tamanho base" value={gradBase} />
           <Field label="Grupo" value={row.grupo} />
           <Field label="Estilista" value={row.estilista} />
+          <Field label="Número do pedido" value={numeroPedido || ""} />
+          <Field label="Data receb. da pré" value={fmtDataBR(dataRecebimentoPre)} />
+          <Field label="Data de liberação" value={fmtDataBR(dataLiberacao)} />
         </div>
 
         {imgModoMedir && (
@@ -92,11 +106,11 @@ export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados
           <table style={tbl}>
             <thead>
               <tr>
-                <th style={th} rowSpan={2}>Ponto</th>
+                <th style={th} rowSpan={temCores ? 3 : 2}>Ponto</th>
                 {gradTamanhos.map(t => (
                   <th key={t} style={{ ...th, textAlign: "center", width: wTam, background: t === gradBase ? "#FEFCE8" : "#eef4fb", color: t === gradBase ? warn : muted }} colSpan={2}>{t}{t === gradBase ? " (base)" : ""}</th>
                 ))}
-                <th style={{ ...th, textAlign: "center", width: "38px" }} rowSpan={2}>Tol.</th>
+                <th style={{ ...th, textAlign: "center", width: "38px" }} rowSpan={temCores ? 3 : 2}>Tol.</th>
               </tr>
               <tr>
                 {gradTamanhos.map(t => (
@@ -106,6 +120,15 @@ export default function LaudoPPPDF({ row, pts, gradTamanhos, gradBase, esperados
                   </Fragment>
                 ))}
               </tr>
+              {temCores && (
+                <tr>
+                  {gradTamanhos.map(t => (
+                    <th key={t} colSpan={2} style={{ ...th, textAlign: "center", fontSize: "6px", fontWeight: 600, color: navy, background: "#F8FAFC" }}>
+                      {coresTamanho[t] ? `Cor: ${coresTamanho[t]}` : "—"}
+                    </th>
+                  ))}
+                </tr>
+              )}
             </thead>
             <tbody>
               {pts.map((pt, i) => (

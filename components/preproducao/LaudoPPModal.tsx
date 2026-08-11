@@ -2,15 +2,14 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import {
   fetchFicha, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchTabelasMedidas,
-  fetchLaudoPP, upsertLaudoPPMedidas, fetchLaudoPPInfo, upsertLaudoPPInfo,
+  fetchLaudoPPMedidas, upsertLaudoPPMedidas, fetchLaudoPPPedido, upsertLaudoPPPedido,
   fetchControleFluxoByRef, upsertControleFluxo,
 } from "@/lib/db";
 import { tamanhosParaExibir, valorNoTamanho, calcularDaBase, num, parseTolerancia } from "@/lib/tamanhos";
 import { uploadImage, deleteImage } from "@/lib/storage";
+import { STATUS_PRE_PRODUCAO_OPTS, STATUS_PRE_PRODUCAO_COLORS } from "@/lib/constants";
 import { useToast } from "@/components/ui/Toast";
 import LaudoPPPDF from "./LaudoPPPDF";
-
-const STATUS_PP_OPTS = ["", "LIBERADA", "LIBERADA COM RESTRIÇÃO", "REPROVADA - CORRIGIR", "REPROVADA - NEGOCIAR"];
 
 type Ponto = { cod: string; desc: string; tabela: string; tol: string };
 type Grad = { desc: string; valores: Record<string, string>; ampliacoes: Record<string, string>; tol: string };
@@ -20,6 +19,15 @@ function Field({ l, v }: { l: string; v: any }) {
     <div className="flex items-baseline gap-2.5 px-4 py-2 border-b border-r border-[var(--separator)]">
       <span className="text-[11px] text-[var(--label-secondary)] whitespace-nowrap font-medium">{l}:</span>
       <span className="text-[13px] font-semibold">{v || "—"}</span>
+    </div>
+  );
+}
+
+function EditableField({ l, children }: { l: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-2.5 px-4 py-2 border-b border-r border-[var(--separator)]">
+      <span className="text-[11px] text-[var(--label-secondary)] whitespace-nowrap font-medium shrink-0">{l}:</span>
+      {children}
     </div>
   );
 }
@@ -42,17 +50,22 @@ const CELL_STYLE: Record<string, React.CSSProperties> = {
   vazio:  {},
 };
 
-type Props = { row: any; onClose: () => void };
+const fmtDateInput = (v: any) => (v ? String(v).slice(0, 10) : "");
 
-export default function LaudoPPModal({ row, onClose }: Props) {
+type Props = { row: any; fichaId: number; laudoPedidoId: number; onClose: () => void };
+
+export default function LaudoPPModal({ row, fichaId, laudoPedidoId, onClose }: Props) {
   const [loading, setLoading] = useState(true);
-  const [fichaId, setFichaId] = useState<number | null>(null);
   const [pts, setPts] = useState<Ponto[]>([]);
   const [grad, setGrad] = useState<Grad[]>([]);
   const [tabTamanhos, setTabTamanhos] = useState<string[]>([]);
   const [tabBase, setTabBase] = useState("");
   const [medidas, setMedidas] = useState<Record<string, Record<string, string>>>({});
-  const [statusPP, setStatusPP] = useState("");
+  const [status, setStatus] = useState("");
+  const [numeroPedido, setNumeroPedido] = useState("");
+  const [coresTamanho, setCoresTamanho] = useState<Record<string, string>>({});
+  const [coresDisponiveis, setCoresDisponiveis] = useState<string[]>([]);
+  const [fluxo, setFluxo] = useState<any>(null);
   const [imgModoMedir, setImgModoMedir] = useState<string | null>(null);
   const [comentarios, setComentarios] = useState("");
   const [fotos, setFotos] = useState<string[]>([]);
@@ -61,21 +74,22 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const fotoInputRef = useRef<HTMLInputElement>(null);
-  const { success, error, Container: ToastContainer } = useToast();
+  const { success, Container: ToastContainer } = useToast();
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [ficha, fluxo, tabs] = await Promise.all([
+      const [ficha, fluxoData, tabs, pedido] = await Promise.all([
         fetchFicha(row.ref),
         fetchControleFluxoByRef(row.ref),
         fetchTabelasMedidas(),
+        fetchLaudoPPPedido(laudoPedidoId),
       ]);
-      const fid = ficha?.id ?? null;
-      setFichaId(fid);
-      setStatusPP(fluxo?.status_pre_producao || "");
+      setFluxo(fluxoData);
       const tabInfo = tabs.find((t: any) => t.nome === row.tab_medidas);
       setImgModoMedir((tabInfo as any)?.imagem_modo_medir || null);
+      const cores = Array.from(new Set((ficha?.tecidos || []).flatMap((t: any) => t.cores || []).filter(Boolean)));
+      setCoresDisponiveis(cores as string[]);
 
       if (row.tab_medidas) {
         const [p, g] = await Promise.all([
@@ -87,15 +101,17 @@ export default function LaudoPPModal({ row, onClose }: Props) {
         setTabTamanhos(g.tamanhos);
         setTabBase(g.base);
       }
-      if (fid) {
-        const [medidasSalvas, info] = await Promise.all([fetchLaudoPP(fid), fetchLaudoPPInfo(fid)]);
-        setMedidas(medidasSalvas);
-        setComentarios(info.comentarios);
-        setFotos(info.fotos);
+      if (pedido) {
+        setNumeroPedido(pedido.numero_pedido);
+        setStatus(pedido.status);
+        setComentarios(pedido.comentarios);
+        setFotos(pedido.fotos);
+        setCoresTamanho(pedido.cores_tamanho);
       }
+      setMedidas(await fetchLaudoPPMedidas(laudoPedidoId));
       setLoading(false);
     })();
-  }, [row.ref, row.tab_medidas]);
+  }, [row.ref, row.tab_medidas, laudoPedidoId]);
 
   const gradTamanhos = useMemo(() => tamanhosParaExibir(tabTamanhos, row.grade), [tabTamanhos, row.grade]);
   const gradBase = tabBase || tabTamanhos[Math.floor(tabTamanhos.length / 2)] || "";
@@ -129,28 +145,48 @@ export default function LaudoPPModal({ row, onClose }: Props) {
         if (st === "acima" || st === "abaixo") algumFora = true;
       });
     });
-    return algumMedido ? (algumFora ? "REPROVADA - CORRIGIR" : "LIBERADA") : statusPP;
+    return algumMedido ? (algumFora ? "REPROVADA - CORRIGIR" : "LIBERADA") : status;
   };
 
   const handleSave = async () => {
-    if (!fichaId) { error("Esta referência ainda não tem ficha técnica cadastrada — não é possível salvar o laudo."); return; }
     setSaving(true);
     await Promise.all([
-      upsertLaudoPPMedidas(fichaId, medidas),
-      upsertLaudoPPInfo(fichaId, { comentarios }),
+      upsertLaudoPPMedidas(laudoPedidoId, medidas),
+      upsertLaudoPPPedido(laudoPedidoId, { comentarios }),
     ]);
     const sugerido = statusSugerido();
-    if (sugerido !== statusPP) {
-      setStatusPP(sugerido);
-      await upsertControleFluxo(row.ref, "status_pre_producao", sugerido || null);
-    }
+    setStatus(sugerido);
+    await Promise.all([
+      upsertLaudoPPPedido(laudoPedidoId, { status: sugerido }),
+      upsertControleFluxo(row.ref, "status_pre_producao", sugerido || null),
+    ]);
     setSaving(false);
     success("Laudo salvo.");
   };
 
   const handleStatusChange = async (v: string) => {
-    setStatusPP(v);
-    await upsertControleFluxo(row.ref, "status_pre_producao", v || null);
+    setStatus(v);
+    await Promise.all([
+      upsertLaudoPPPedido(laudoPedidoId, { status: v }),
+      upsertControleFluxo(row.ref, "status_pre_producao", v || null),
+    ]);
+  };
+
+  const handleNumeroPedidoChange = async (v: string) => {
+    if (v === numeroPedido) return;
+    setNumeroPedido(v);
+    await upsertLaudoPPPedido(laudoPedidoId, { numero_pedido: v });
+  };
+
+  const handleFluxoDateChange = async (field: "data_entrega_pre_producao" | "data_retorno_pre_producao", v: string) => {
+    setFluxo((prev: any) => ({ ...(prev || {}), [field]: v }));
+    await upsertControleFluxo(row.ref, field, v || null);
+  };
+
+  const setCorTamanho = (t: string, cor: string) => {
+    const next = { ...coresTamanho, [t]: cor };
+    setCoresTamanho(next);
+    upsertLaudoPPPedido(laudoPedidoId, { cores_tamanho: next });
   };
 
   const bullets: string[] = comentarios ? comentarios.split("\n") : [""];
@@ -167,7 +203,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   // ação de rede concluída; não faz sentido depender do botão "Salvar" pra
   // não perder o anexo se a pessoa fechar o modal antes de clicar salvar).
   const handleAddFotos = async (files: FileList | null) => {
-    if (!files || !files.length || !fichaId) return;
+    if (!files || !files.length) return;
     const imgs = Array.from(files).filter(f => f.type.startsWith("image/"));
     if (!imgs.length) return;
     setFotoUploading(true);
@@ -176,14 +212,14 @@ export default function LaudoPPModal({ row, onClose }: Props) {
     );
     const novasFotos = [...fotos, ...urls.filter((u): u is string => !!u)];
     setFotos(novasFotos);
-    await upsertLaudoPPInfo(fichaId, { fotos: novasFotos });
+    await upsertLaudoPPPedido(laudoPedidoId, { fotos: novasFotos });
     setFotoUploading(false);
     if (fotoInputRef.current) fotoInputRef.current.value = "";
   };
   const handleRemoveFoto = async (url: string) => {
     const novasFotos = fotos.filter(f => f !== url);
     setFotos(novasFotos);
-    if (fichaId) await upsertLaudoPPInfo(fichaId, { fotos: novasFotos });
+    await upsertLaudoPPPedido(laudoPedidoId, { fotos: novasFotos });
     await deleteImage(url);
   };
   const handleDropFotos = (e: React.DragEvent) => {
@@ -199,7 +235,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
     const dd = String(today.getDate()).padStart(2, "0");
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const yyyy = today.getFullYear();
-    const pdfName = `${row.ref} - Laudo Pré-Produção - ${dd}-${mm}-${yyyy}`;
+    const pdfName = `${row.ref} - Laudo Pré-Produção${numeroPedido ? ` - Pedido ${numeroPedido}` : ""} - ${dd}-${mm}-${yyyy}`;
     const prevTitle = document.title;
     const onBefore = () => { document.title = pdfName; };
     const onAfter = () => {
@@ -214,10 +250,17 @@ export default function LaudoPPModal({ row, onClose }: Props) {
     setTimeout(() => { window.print(); }, 300);
   };
 
+  const statusStyle = STATUS_PRE_PRODUCAO_COLORS[status];
+
   if (showPrint) {
     return (
       <div className="print-overlay">
-        <LaudoPPPDF row={row} pts={pts} gradTamanhos={gradTamanhos} gradBase={gradBase} esperados={esperados} medidas={medidas} statusPP={statusPP} imgModoMedir={imgModoMedir} comentarios={comentarios} fotos={fotos} />
+        <LaudoPPPDF
+          row={row} pts={pts} gradTamanhos={gradTamanhos} gradBase={gradBase} esperados={esperados} medidas={medidas}
+          statusPP={status} imgModoMedir={imgModoMedir} comentarios={comentarios} fotos={fotos}
+          numeroPedido={numeroPedido} coresTamanho={coresTamanho}
+          dataRecebimentoPre={fmtDateInput(fluxo?.data_entrega_pre_producao)} dataLiberacao={fmtDateInput(fluxo?.data_retorno_pre_producao)}
+        />
       </div>
     );
   }
@@ -225,10 +268,21 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="laudo-pp-title" className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[1200px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--separator)]">
-          <div id="laudo-pp-title">
-            <h2 className="text-[16px] font-bold">Laudo de Pré-Produção</h2>
-            <p className="text-[12px] text-[var(--label-tertiary)]">{row.ref} — {row.desc}</p>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--separator)] gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div id="laudo-pp-title">
+              <h2 className="text-[16px] font-bold">Laudo de Pré-Produção</h2>
+              <p className="text-[12px] text-[var(--label-tertiary)]">{row.ref} — {row.desc}{numeroPedido && ` — Pedido ${numeroPedido}`}</p>
+            </div>
+            {!loading && (
+              <select
+                value={status} onChange={e => handleStatusChange(e.target.value)}
+                className="text-[13px] font-bold rounded-full px-4 py-1.5 border-none outline-none cursor-pointer"
+                style={statusStyle ? { background: statusStyle.bg, color: statusStyle.color } : { background: "var(--bg-secondary)", color: "var(--label-secondary)" }}
+              >
+                {STATUS_PRE_PRODUCAO_OPTS.map(s => <option key={s} value={s}>{s || "— sem status —"}</option>)}
+              </select>
+            )}
           </div>
           <div className="flex gap-2 items-center">
             {!loading && (
@@ -255,12 +309,15 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                 <Field l="Tabela de medidas" v={row.tab_medidas} />
                 <Field l="Fornecedor" v={row.fornecedor} />
                 <Field l="Tamanho base" v={gradBase} />
-                <div className="flex items-baseline gap-2.5 px-4 py-2 border-b border-r border-[var(--separator)]">
-                  <span className="text-[11px] text-[var(--label-secondary)] whitespace-nowrap font-medium">Status pré-produção:</span>
-                  <select value={statusPP} onChange={e => handleStatusChange(e.target.value)} className="apple-select text-[12px] py-1">
-                    {STATUS_PP_OPTS.map(s => <option key={s} value={s}>{s || "— selecione —"}</option>)}
-                  </select>
-                </div>
+                <EditableField l="Número do pedido">
+                  <input type="text" defaultValue={numeroPedido} placeholder="—" className="apple-input text-[12px] py-1 flex-1 min-w-0" onBlur={e => handleNumeroPedidoChange(e.target.value.trim())} />
+                </EditableField>
+                <EditableField l="Data receb. da pré">
+                  <input type="date" value={fmtDateInput(fluxo?.data_entrega_pre_producao)} onChange={e => handleFluxoDateChange("data_entrega_pre_producao", e.target.value)} className="apple-input text-[12px] py-1" />
+                </EditableField>
+                <EditableField l="Data de liberação">
+                  <input type="date" value={fmtDateInput(fluxo?.data_retorno_pre_producao)} onChange={e => handleFluxoDateChange("data_retorno_pre_producao", e.target.value)} className="apple-input text-[12px] py-1" />
+                </EditableField>
               </div>
             </div>
 
@@ -277,6 +334,10 @@ export default function LaudoPPModal({ row, onClose }: Props) {
               </div>
             )}
 
+            {!numeroPedido.trim() && pts.length > 0 && (
+              <p className="text-[11px] text-[var(--system-blue)] bg-blue-50 rounded-lg px-3 py-2">Preencha o número do pedido acima pra poder escolher a cor medida em cada tamanho.</p>
+            )}
+
             {!row.tab_medidas || pts.length === 0 ? (
               <div className="apple-card p-16 text-center"><p className="text-[15px] font-medium text-[var(--label-secondary)]">Esta referência não tem tabela de medidas com pontos cadastrados.</p></div>
             ) : (
@@ -286,7 +347,19 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                     <tr>
                       <th rowSpan={2} className="text-left min-w-[180px]">Ponto</th>
                       {gradTamanhos.map(t => (
-                        <th key={t} colSpan={2} className={`text-center ${t === gradBase ? "bg-[rgba(255,204,0,0.14)] text-[#856500] font-bold" : "bg-[rgba(0,122,255,0.04)]"}`}>{t}{t === gradBase ? " (base)" : ""}</th>
+                        <th key={t} colSpan={2} className={`text-center ${t === gradBase ? "bg-[rgba(255,204,0,0.14)] text-[#856500] font-bold" : "bg-[rgba(0,122,255,0.04)]"}`}>
+                          <div>{t}{t === gradBase ? " (base)" : ""}</div>
+                          {numeroPedido.trim() && (
+                            <select
+                              value={coresTamanho[t] || ""} onChange={e => setCorTamanho(t, e.target.value)}
+                              className="apple-select mt-1 text-[10px] font-normal py-0.5 px-1 w-full"
+                              title={`Cor medida no tamanho ${t}`}
+                            >
+                              <option value="">cor...</option>
+                              {coresDisponiveis.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          )}
+                        </th>
                       ))}
                       <th rowSpan={2} className="text-center w-24">Tolerância</th>
                     </tr>
@@ -358,7 +431,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                 <div
                   className={`flex flex-wrap gap-2 rounded-xl transition-colors ${fotoDragOver ? "bg-[rgba(0,122,255,0.06)] outline-dashed outline-2 outline-[var(--system-blue)]" : ""}`}
                   style={{ padding: fotoDragOver ? 6 : 0, margin: fotoDragOver ? -6 : 0 }}
-                  onDragOver={e => { e.preventDefault(); if (fichaId) setFotoDragOver(true); }}
+                  onDragOver={e => { e.preventDefault(); setFotoDragOver(true); }}
                   onDragLeave={() => setFotoDragOver(false)}
                   onDrop={handleDropFotos}
                 >
@@ -372,8 +445,8 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                   ))}
                   <button
                     onClick={() => fotoInputRef.current?.click()}
-                    disabled={fotoUploading || !fichaId}
-                    title={!fichaId ? "Esta referência ainda não tem ficha técnica" : "Clique ou arraste fotos aqui"}
+                    disabled={fotoUploading}
+                    title="Clique ou arraste fotos aqui"
                     className="w-[72px] h-[72px] border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors disabled:opacity-50"
                   >
                     {fotoUploading ? <span className="text-[10px]">...</span> : (
