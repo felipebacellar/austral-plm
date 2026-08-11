@@ -466,6 +466,17 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   // ("2,5"): parseFloat pararia na vírgula e compararia contra 2.
   const gd = (t: string, m: string) => { if (!m) return ""; const a = tamNum(t), b = tamNum(m); if (isNaN(a) || isNaN(b)) return ""; const d = b - a; return d === 0 ? "0" : d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1); };
   const gc = (t: string, m: string) => { if (!m) return ""; const d = tamNum(m) - tamNum(t); if (isNaN(d)) return ""; return d === 0 ? "text-[var(--system-green)]" : "font-bold text-red-600 bg-yellow-100"; };
+  // Enter/Tab na tabela de medidas vai pro campo abaixo (mesma coluna, próxima
+  // linha) em vez do próximo campo à direita — mais rápido pra digitar medida
+  // por medida descendo a lista de pontos.
+  const focusCampoAbaixo = (e: React.KeyboardEvent, idAbaixo: string) => {
+    if (e.key !== "Enter" && e.key !== "Tab") return;
+    const next = document.getElementById(idAbaixo) as HTMLInputElement | null;
+    if (!next) return;
+    e.preventDefault();
+    next.focus();
+    next.select();
+  };
   const tm = row.tab_medidas || "";
   const hasEstamparia = (estamparia?.tecnicas || []).length > 0 || (estamparia?.artes || []).some((a: any) => a.imagem || a.largura || a.localizacao);
 
@@ -1355,7 +1366,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                 ? <input type="text" value={p.tabela} onChange={e => updPtsEsp(pi, "tabela", e.target.value)} className="w-14 text-center text-[13px] tabnum border border-[rgba(255,159,10,0.4)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-orange)] bg-[rgba(255,159,10,0.04)]" />
                 : p.tabela
               }</td>
-              {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 border-l border-[var(--separator-opaque)] ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${!cl && pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}
+              {(["p1", "p2", "p3"] as const).map(pk => { const val = v[pk]; const d = gd(p.tabela, val); const cl = gc(p.tabela, val); return [<td key={pk} className={`px-1 py-1 border-l border-[var(--separator-opaque)] ${pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}><input id={`ficha-prova-${pk}-${pi}`} type="text" value={val} onChange={e => { setPv(prev => ({ ...prev, [p.cod]: { ...v, [pk]: e.target.value } })); }} onKeyDown={e => focusCampoAbaixo(e, `ficha-prova-${pk}-${pi + 1}`)} className="w-14 text-center text-[13px] tabnum border border-[var(--separator-opaque)] rounded-md px-1 py-1 outline-none focus:border-[var(--system-blue)]" placeholder="—" /></td>, <td key={pk + "d"} className={`text-center tabnum text-[12px] ${cl} ${!cl && pk === "p1" ? "bg-[rgba(0,122,255,0.02)]" : ""}`}>{d || "—"}</td>]; })}
               <td className="text-center text-[12px] text-[var(--label-secondary)] px-2 border-l border-[var(--separator-opaque)]">{p.tol}</td>
             </tr>); })}</tbody></table></div>
 

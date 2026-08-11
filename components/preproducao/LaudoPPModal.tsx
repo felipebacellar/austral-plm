@@ -379,7 +379,7 @@ export default function LaudoPPModal({ row, fichaId, laudoPedidoId, onClose }: P
                           <div className="font-medium text-[13px]">{pt.cod}</div>
                           <div className="text-[11px] text-[var(--label-tertiary)]">{pt.desc}</div>
                         </td>
-                        {gradTamanhos.map(t => {
+                        {gradTamanhos.map((t, colIdx) => {
                           const esperado = esperados[i]?.[t] || "";
                           const medido = medidas[pt.cod]?.[t] || "";
                           const st = cellStatus(esperado, medido, pt.tol);
@@ -388,12 +388,22 @@ export default function LaudoPPModal({ row, fichaId, laudoPedidoId, onClose }: P
                               <td className="text-center tabnum text-[12px] px-1 text-[var(--label-secondary)]">{esperado || "—"}</td>
                               <td className="px-1 py-1" style={CELL_STYLE[st]}>
                                 <input
+                                  id={`laudo-medida-${colIdx}-${i}`}
                                   key={`${pt.cod}-${t}-${medido}`}
                                   type="text" inputMode="decimal" title={st === "acima" ? "Acima da tolerância" : st === "abaixo" ? "Abaixo da tolerância" : undefined}
                                   defaultValue={medido} placeholder="—"
                                   className="w-full text-[12px] text-center tabnum border border-transparent rounded-lg px-1 py-1 outline-none bg-transparent hover:border-[var(--separator-opaque)] focus:border-[var(--system-blue)] focus:bg-[var(--bg-primary)] transition-all"
                                   style={{ color: "inherit", fontWeight: "inherit" }}
                                   onBlur={e => setMedido(pt.cod, t, e.target.value.trim())}
+                                  onKeyDown={e => {
+                                    if (e.key !== "Enter" && e.key !== "Tab") return;
+                                    const next = document.getElementById(`laudo-medida-${colIdx}-${i + 1}`) as HTMLInputElement | null;
+                                    if (!next) return;
+                                    e.preventDefault();
+                                    (e.target as HTMLInputElement).blur();
+                                    next.focus();
+                                    next.select();
+                                  }}
                                 />
                               </td>
                             </Fragment>
