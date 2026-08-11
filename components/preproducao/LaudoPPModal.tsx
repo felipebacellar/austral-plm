@@ -57,6 +57,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   const [comentarios, setComentarios] = useState("");
   const [fotos, setFotos] = useState<string[]>([]);
   const [fotoUploading, setFotoUploading] = useState(false);
+  const [fotoDragOver, setFotoDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const fotoInputRef = useRef<HTMLInputElement>(null);
@@ -167,9 +168,11 @@ export default function LaudoPPModal({ row, onClose }: Props) {
   // não perder o anexo se a pessoa fechar o modal antes de clicar salvar).
   const handleAddFotos = async (files: FileList | null) => {
     if (!files || !files.length || !fichaId) return;
+    const imgs = Array.from(files).filter(f => f.type.startsWith("image/"));
+    if (!imgs.length) return;
     setFotoUploading(true);
     const urls = await Promise.all(
-      Array.from(files).map((f, i) => uploadImage(f, `${row.ref}/laudo_pp_${Date.now()}_${i}`)),
+      imgs.map((f, i) => uploadImage(f, `${row.ref}/laudo_pp_${Date.now()}_${i}`)),
     );
     const novasFotos = [...fotos, ...urls.filter((u): u is string => !!u)];
     setFotos(novasFotos);
@@ -182,6 +185,11 @@ export default function LaudoPPModal({ row, onClose }: Props) {
     setFotos(novasFotos);
     if (fichaId) await upsertLaudoPPInfo(fichaId, { fotos: novasFotos });
     await deleteImage(url);
+  };
+  const handleDropFotos = (e: React.DragEvent) => {
+    e.preventDefault();
+    setFotoDragOver(false);
+    handleAddFotos(e.dataTransfer.files);
   };
 
   const doExport = () => {
@@ -347,7 +355,13 @@ export default function LaudoPPModal({ row, onClose }: Props) {
               {/* Fotos */}
               <div className="apple-card p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-2">Fotos</div>
-                <div className="flex flex-wrap gap-2">
+                <div
+                  className={`flex flex-wrap gap-2 rounded-xl transition-colors ${fotoDragOver ? "bg-[rgba(0,122,255,0.06)] outline-dashed outline-2 outline-[var(--system-blue)]" : ""}`}
+                  style={{ padding: fotoDragOver ? 6 : 0, margin: fotoDragOver ? -6 : 0 }}
+                  onDragOver={e => { e.preventDefault(); if (fichaId) setFotoDragOver(true); }}
+                  onDragLeave={() => setFotoDragOver(false)}
+                  onDrop={handleDropFotos}
+                >
                   {fotos.map(url => (
                     <div key={url} className="relative w-[72px] h-[72px] group">
                       <img src={url} alt="Foto do laudo" className="w-full h-full object-cover rounded-lg border border-[var(--separator)]" />
@@ -359,7 +373,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                   <button
                     onClick={() => fotoInputRef.current?.click()}
                     disabled={fotoUploading || !fichaId}
-                    title={!fichaId ? "Esta referência ainda não tem ficha técnica" : "Adicionar foto"}
+                    title={!fichaId ? "Esta referência ainda não tem ficha técnica" : "Clique ou arraste fotos aqui"}
                     className="w-[72px] h-[72px] border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors disabled:opacity-50"
                   >
                     {fotoUploading ? <span className="text-[10px]">...</span> : (
@@ -370,6 +384,7 @@ export default function LaudoPPModal({ row, onClose }: Props) {
                     )}
                   </button>
                 </div>
+                <p className="text-[10px] text-[var(--label-quaternary)] mt-1.5">Clique ou arraste — pode soltar várias fotos de uma vez.</p>
                 <input ref={fotoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleAddFotos(e.target.files)} />
               </div>
             </div>
