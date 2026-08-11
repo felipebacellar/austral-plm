@@ -2,6 +2,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMapaEntregas } from "@/lib/db";
 import { exportMapaEntregasPDF } from "@/lib/export-pdf-entregas";
+import { STATUS_PRE_PRODUCAO_COLORS } from "@/lib/constants";
+
+// "Ped. X" do mapa (produto_variante_compras.pedido1/2) e o número do pedido
+// digitado no laudo de pré-produção são dois textos livres sem vínculo
+// estrutural — casam só quando o texto é idêntico (ignorando espaços/caixa).
+const normPedido = (s: string) => s.trim().toUpperCase();
+function statusPPDoPedido(item: any, pedido: string): string {
+  if (!pedido) return "";
+  const alvo = normPedido(pedido);
+  return (item.laudosPP || []).find((l: any) => normPedido(l.numero_pedido) === alvo)?.status || "";
+}
 
 /* ── Status ── */
 const STATUS_COLORS: Record<string, string> = {
@@ -164,12 +175,17 @@ function fotosDe(item: any, imageMode: "desenho" | "foto"): string[] {
 
 function EntregaCard({ item, imageMode, onClick }: { item: any; imageMode: "desenho" | "foto"; onClick: () => void }) {
   const fotos = fotosDe(item, imageMode);
-  const sColor = statusColor(item.status);
-  const sLabel = statusLabel(item.status);
   const totalQtd = item.variantes.reduce((s: number, v: any) => s + (v.qtd || 0), 0);
 
   // Group variants by pedido to show pedido info
   const pedidos = Array.from(new Set(item.variantes.map((v: any) => v.pedido).filter(Boolean))) as string[];
+
+  // Selo do topo: se algum pedido deste card tiver laudo de pré-produção com
+  // status, mostra esse status no lugar do status geral do produto.
+  const statusPPCard = pedidos.map(p => statusPPDoPedido(item, p)).find(Boolean) || "";
+  const ppColor = statusPPCard ? STATUS_PRE_PRODUCAO_COLORS[statusPPCard]?.color : undefined;
+  const sColor = ppColor || statusColor(item.status);
+  const sLabel = statusPPCard || statusLabel(item.status);
 
   return (
     <div onClick={onClick} style={{
@@ -225,7 +241,15 @@ function EntregaCard({ item, imageMode, onClick }: { item: any; imageMode: "dese
         {/* Pedido(s) */}
         {pedidos.length > 0 && (
           <div style={{ fontSize: 10, color: "var(--label-tertiary)", marginTop: 1 }}>
-            Ped. {pedidos.join(", ")} · {totalQtd} un.
+            Ped. {pedidos.map((p, i) => {
+              const st = statusPPDoPedido(item, p);
+              return (
+                <span key={p}>
+                  {i > 0 && ", "}{p}
+                  {st && <span style={{ color: STATUS_PRE_PRODUCAO_COLORS[st]?.color, fontWeight: 700 }}> ({st})</span>}
+                </span>
+              );
+            })} · {totalQtd} un.
           </div>
         )}
         {pedidos.length === 0 && totalQtd > 0 && (
@@ -244,6 +268,9 @@ function EntregaCard({ item, imageMode, onClick }: { item: any; imageMode: "dese
                 }}>{v.cor}</span>
                 <span style={{ fontSize: 10, color: "var(--label-secondary)", whiteSpace: "nowrap" }}>
                   {v.qtd} un.{v.pedido ? ` · Ped. ${v.pedido}` : ""}
+                  {v.pedido && statusPPDoPedido(item, v.pedido) && (
+                    <span style={{ color: STATUS_PRE_PRODUCAO_COLORS[statusPPDoPedido(item, v.pedido)]?.color, fontWeight: 700 }}> ({statusPPDoPedido(item, v.pedido)})</span>
+                  )}
                 </span>
               </div>
             ))}
@@ -399,6 +426,9 @@ export default function MapaEntregasView() {
                         <span style={{ fontWeight: 700 }}>{v.cor}</span>
                         <span style={{ color: "var(--label-secondary)" }}> — {v.qtd} un.</span>
                         {v.pedido && <span style={{ color: "var(--label-tertiary)" }}> · Ped. {v.pedido}</span>}
+                        {v.pedido && statusPPDoPedido(zoom, v.pedido) && (
+                          <span style={{ color: STATUS_PRE_PRODUCAO_COLORS[statusPPDoPedido(zoom, v.pedido)]?.color, fontWeight: 700 }}> ({statusPPDoPedido(zoom, v.pedido)})</span>
+                        )}
                       </div>
                     ))}
                   </div>

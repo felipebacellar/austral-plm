@@ -774,22 +774,35 @@ export async function fetchMapaColecao() {
 
 // ══ MAPA DE ENTREGAS ══
 export async function fetchMapaEntregas() {
-  const [prods, fichas, tecidos, varCompras] = await Promise.all([
+  const [prods, fichas, tecidos, varCompras, laudosPedidos] = await Promise.all([
     selectAll((de, ate) => sb().from("produtos").select("*").range(de, ate), "fetchMapaEntregas/produtos"),
-    selectAll((de, ate) => sb().from("fichas_tecnicas").select("produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas").range(de, ate), "fetchMapaEntregas/fichas"),
+    selectAll((de, ate) => sb().from("fichas_tecnicas").select("id, produto_ref, imagem_url, imagem_modelo, imagem_frente, imagem_costas").range(de, ate), "fetchMapaEntregas/fichas"),
     selectAll((de, ate) => sb().from("tecidos").select("nome, composicao").range(de, ate), "fetchMapaEntregas/tecidos"),
     selectAll((de, ate) => sb().from("produto_variante_compras").select("*").range(de, ate), "fetchMapaEntregas/varCompras"),
+    selectAll((de, ate) => sb().from("ficha_laudo_pp_pedidos").select("ficha_id, numero_pedido, status").range(de, ate), "fetchMapaEntregas/laudosPedidos"),
   ]);
 
   const imgMap: Record<string, string> = {};
   const fotoMap: Record<string, string> = {};
   const frenteMap: Record<string, string> = {};
   const costasMap: Record<string, string> = {};
+  const fichaRefMap: Record<number, string> = {};
   fichas.forEach((f: any) => {
     if (f.imagem_url) imgMap[f.produto_ref] = f.imagem_url;
     if (f.imagem_modelo) fotoMap[f.produto_ref] = f.imagem_modelo;
     if (f.imagem_frente) frenteMap[f.produto_ref] = f.imagem_frente;
     if (f.imagem_costas) costasMap[f.produto_ref] = f.imagem_costas;
+    fichaRefMap[f.id] = f.produto_ref;
+  });
+
+  // Laudos de pré-produção por referência — casados com "Ped. X" do mapa por
+  // número idêntico (os dois são texto livre, sem vínculo estrutural entre si).
+  const laudosPorRef: Record<string, { numero_pedido: string; status: string }[]> = {};
+  laudosPedidos.forEach((l: any) => {
+    if (!l.numero_pedido) return;
+    const ref = fichaRefMap[l.ficha_id];
+    if (!ref) return;
+    (laudosPorRef[ref] ||= []).push({ numero_pedido: l.numero_pedido, status: l.status || "" });
   });
 
   const tecidoCompMap: Record<string, string> = {};
@@ -812,6 +825,7 @@ export async function fetchMapaEntregas() {
       subcategoria: prod.subcategoria || "", tipo: prod.tipo || "",
       linha: prod.linha || "", drop: prod.drop_num || "", estilista: prod.estilista || "",
       imagem_url: imgMap[prod.ref] || "", imagem_modelo: fotoMap[prod.ref] || "", imagem_frente: frenteMap[prod.ref] || "", imagem_costas: costasMap[prod.ref] || "",
+      laudosPP: laudosPorRef[prod.ref] || [],
     };
     if (vc.data_entrega1 && (vc.qtd_compra1 || 0) > 0) {
       const key = `${prod.ref}|${vc.data_entrega1}|1`;
