@@ -266,7 +266,7 @@ export default function LaudoPPModal({ row, fichaId, laudoPedidoId, onClose }: P
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print">
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="laudo-pp-title" className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[1200px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--separator)] gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">

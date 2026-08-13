@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DevTable from "@/components/dev/DevTable";
 import VariantesTable from "@/components/dev/VariantesTable";
 import CadView from "@/components/cadastros/CadView";
@@ -59,7 +59,6 @@ export default function Home() {
   const [fichaRow, setFichaRow] = useState<any>(null);
   const [laudoRow, setLaudoRow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const restoredLaudo = useRef(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
@@ -75,34 +74,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => { if (user) loadData(); }, [loadData, user]);
-
-  /* ── No celular, tirar foto pela câmera pode fazer o navegador recarregar a
-     aba (memória baixa) e perder o estado. Guarda qual laudo estava aberto
-     em sessionStorage pra reabrir automaticamente ao voltar. ── */
-  useEffect(() => {
-    if (restoredLaudo.current || !rows.length) return;
-    restoredLaudo.current = true;
-    try {
-      const savedRef = sessionStorage.getItem("plm_laudo_ref");
-      if (savedRef) {
-        const row = rows.find(r => r.ref === savedRef);
-        if (row) { setLaudoRow(row); setTab("preprod"); }
-        else sessionStorage.removeItem("plm_laudo_ref");
-      }
-    } catch {}
-  }, [rows]);
-
-  const openLaudo = (row: any) => {
-    try { sessionStorage.setItem("plm_laudo_ref", row.ref); } catch {}
-    setLaudoRow(row);
-  };
-  const closeLaudo = () => {
-    try {
-      if (laudoRow) sessionStorage.removeItem(`plm_laudo_pedido_${laudoRow.ref}`);
-      sessionStorage.removeItem("plm_laudo_ref");
-    } catch {}
-    setLaudoRow(null);
-  };
 
   /* ── Alertas pendentes: avisos de alteração em fichas liberadas que este
      usuário ainda não deu "ciente" (inclusive de quando estava offline) ── */
@@ -356,7 +327,7 @@ export default function Home() {
           {!loading && tab === "dev" && <DevTable rows={rows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} />}
           {!loading && tab === "dev_fluxo" && <ControleFluxoView rows={rows} />}
           {!loading && tab === "variantes" && <VariantesTable rows={rows} variantes={variantes} variantesPorColecao={variantesPorColecao} onOpenFicha={setFichaRow} />}
-          {!loading && tab === "preprod" && canSection("can_preproducao") && <PreProducaoView rows={rows} onOpenLaudo={openLaudo} />}
+          {!loading && tab === "preprod" && canSection("can_preproducao") && <PreProducaoView rows={rows} onOpenLaudo={setLaudoRow} />}
           {!loading && tab === "cad" && canSection("can_cadastros") && <CadView />}
           {!loading && tab === "medidas" && canSection("can_medidas") && <MedidasView />}
           {!loading && tab === "compras_dev" && <DevTable rows={comprasRows} setRows={setRows} onOpenFicha={setFichaRow} userEmail={user.email!} permPrefix="compras_" hiddenColumns={["piloto_most","tab_medidas"]} />}
@@ -369,7 +340,7 @@ export default function Home() {
       </main>
 
       {fichaRow && <FichaModal row={fichaRow} onClose={() => setFichaRow(null)} onSave={handleFichaSave} />}
-      {laudoRow && <LaudoPPPedidosModal row={laudoRow} onClose={closeLaudo} />}
+      {laudoRow && <LaudoPPPedidosModal row={laudoRow} onClose={() => setLaudoRow(null)} />}
       {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
       {alertaAtual && <AlertaFichaModal alerta={alertaAtual} total={alertaFila.length} onCiente={handleAlertaCiente} />}
     </div>

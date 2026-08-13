@@ -570,7 +570,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print">
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={handleClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="ficha-modal-title" className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         {!isDataLoaded && <SkeletonLoader count={8} />}
         {isDataLoaded && (
@@ -1674,9 +1674,10 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
 
         </div>
         )}
+        {/* Fica fora das tabs (sempre montado) mas dentro do diálogo: como filho
+            do overlay, o .click() programático borbulharia até ele e fecharia a ficha. */}
+        <input ref={fotoProvaRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFotoProva} />
       </div>
-      {/* Hidden file input for prova photos (outside tabs so always mounted) */}
-      <input ref={fotoProvaRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFotoProva} />
       <ConfirmDialog />
     </div>
   );
