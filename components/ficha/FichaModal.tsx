@@ -570,7 +570,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={handleClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print">
       <div role="dialog" aria-modal="true" aria-labelledby="ficha-modal-title" className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[980px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         {!isDataLoaded && <SkeletonLoader count={8} />}
         {isDataLoaded && (
@@ -781,7 +781,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
             <div className="aspect-[16/9] max-h-[380px] flex items-center justify-center">{img ? <img src={img} alt="Desenho" className="w-full h-full object-contain p-3" /> : <div className="text-center"><svg className="mx-auto mb-2 text-[var(--label-quaternary)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg><p className="text-[13px] text-[var(--label-tertiary)]">Arrastar aqui ou clique</p></div>}</div>
             {img && <button onClick={e => { e.stopPropagation(); deleteImg(); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
           </div>
-          <input ref={fr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_url", setImg, img)} />
+          <input ref={fr} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => hi(e, "imagem_url", setImg, img)} />
 
           <div className="apple-card overflow-x-auto"><table className="plm-table"><thead><tr><th className="px-4">Artigo</th><th className="w-24">Fornec.</th><th className="w-36">Composição</th><th className="text-center w-16">Preço</th>{Array.from({length: numVars}, (_, i) => { const cor = tec[0]?.cores?.[i]; const pal = cor ? COR_PALETTE[cor] : null; return (<th key={i} className="text-center w-[120px]"><div>Var {String(i+1).padStart(2,"0")}</div>{cor && <div className="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold" style={pal ? { background: pal.bg, color: pal.text } : { background: "var(--bg-tertiary)", color: "var(--label-secondary)" }}>{cor}</div>}</th>); })}</tr></thead><tbody>{tec.map((t: any, ti: number) => { const cs = t.cores || []; while (cs.length < numVars) cs.push(""); return (<tr key={ti}><td className="px-4"><span className="text-[var(--label-tertiary)] text-[11px] mr-1.5">Tec.{String(ti + 1).padStart(2, "0")}</span><span className="font-semibold">{t.artigo}</span></td><td>{t.forn}</td><td className="text-[12px] text-[var(--label-secondary)] px-3">{compOf(t.artigo) || "—"}</td><td className="text-center tabnum">{t.preco > 0 ? t.preco.toFixed(2) : "—"}</td>{cs.slice(0, numVars).map((c: string, ci: number) => { const pal = c ? COR_PALETTE[c] : null; return (<td key={ci} className="px-1.5 py-1.5"><select value={c} onChange={e => utc(ti, ci, e.target.value)} className="w-full text-[12px] px-2 py-1.5 rounded-lg border outline-none cursor-pointer font-bold" style={pal ? { background: pal.bg, color: pal.text, borderColor: pal.bg } : { borderColor: "var(--separator-opaque)", color: "var(--label-quaternary)" }}><option value="">Selecionar</option>{corOpts.map(x => <option key={x} value={x}>{x}</option>)}</select></td>); })}</tr>); })}</tbody><tfoot>
                 <tr className="border-t border-[var(--separator-opaque)] bg-[var(--bg-secondary)]">
@@ -1221,7 +1221,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           </div>
 
           {/* Hidden file input for estamparia uploads */}
-          <input ref={estImgRef} type="file" accept="image/*" className="hidden" onChange={handleEstImg} />
+          <input ref={estImgRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleEstImg} />
         </div>)}
 
         {/* ═══ LIBERAÇÃO ═══ */}
@@ -1232,8 +1232,8 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
           {/* Foto do produto — frente e costas lado a lado */}
           <div className="apple-card p-4">
             <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--label-secondary)] mb-3">Foto do produto</div>
-            <input ref={frenteRef} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_frente", setImgFrente, imgFrente)} />
-            <input ref={costasRef} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_costas", setImgCostas, imgCostas)} />
+            <input ref={frenteRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => hi(e, "imagem_frente", setImgFrente, imgFrente)} />
+            <input ref={costasRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => hi(e, "imagem_costas", setImgCostas, imgCostas)} />
             <div className="grid grid-cols-2 gap-4">
               {([["Frente", imgFrente, setImgFrente, frenteRef, "imagem_frente"], ["Costas", imgCostas, setImgCostas, costasRef, "imagem_costas"]] as [string, string|null, (v:any)=>void, any, string][]).map(([lbl, url, setter, ref, field]) => (
                 <div key={field}>
@@ -1514,7 +1514,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                       </div>
                     </div>
                   </div>
-                  <input ref={mrr} type="file" accept="image/*" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo, imgModelo)} />
+                  <input ref={mrr} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => hi(e, "imagem_modelo", setImgModelo, imgModelo)} />
                 </div>
               );
             })()}
@@ -1676,7 +1676,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
         )}
       </div>
       {/* Hidden file input for prova photos (outside tabs so always mounted) */}
-      <input ref={fotoProvaRef} type="file" accept="image/*" className="hidden" onChange={handleFotoProva} />
+      <input ref={fotoProvaRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFotoProva} />
       <ConfirmDialog />
     </div>
   );

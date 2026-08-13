@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchFichaResolvida, fetchLaudoPPPedidos, criarLaudoPPPedido, deleteLaudoPPPedido, fetchControleFluxoByRef, upsertControleFluxo, type LaudoPPPedido } from "@/lib/db";
 import { STATUS_PRE_PRODUCAO_COLORS } from "@/lib/constants";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -25,6 +25,18 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
+  const pedidoKey = `plm_laudo_pedido_${row.ref}`;
+  const restoredPedido = useRef(false);
+
+  const abrirPedido = (id: number) => {
+    try { sessionStorage.setItem(pedidoKey, String(id)); } catch {}
+    setEditingPedidoId(id);
+  };
+  const fecharPedido = () => {
+    try { sessionStorage.removeItem(pedidoKey); } catch {}
+    setEditingPedidoId(null);
+    load();
+  };
 
   const load = async () => {
     setLoading(true);
@@ -47,12 +59,27 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
 
   useEffect(() => { load(); }, [row.ref]);
 
+  // No celular, tirar foto pela câmera pode recarregar a aba e perder o estado.
+  // Reabre automaticamente o pedido que estava em edição, se ainda existir.
+  useEffect(() => {
+    if (restoredPedido.current || loading) return;
+    restoredPedido.current = true;
+    try {
+      const saved = sessionStorage.getItem(pedidoKey);
+      if (saved) {
+        const id = Number(saved);
+        if (pedidos.some(p => p.id === id)) setEditingPedidoId(id);
+        else sessionStorage.removeItem(pedidoKey);
+      }
+    } catch {}
+  }, [loading]);
+
   const handleNovo = async () => {
     if (!fichaId || creating) return;
     setCreating(true);
     const id = await criarLaudoPPPedido(fichaId);
     setCreating(false);
-    if (id) setEditingPedidoId(id);
+    if (id) abrirPedido(id);
   };
 
   const handleExcluir = async (p: LaudoPPPedido) => {
@@ -75,13 +102,13 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
         row={row}
         fichaId={fichaId!}
         laudoPedidoId={editingPedidoId}
-        onClose={() => { setEditingPedidoId(null); load(); }}
+        onClose={fecharPedido}
       />
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-8 overflow-y-auto bg-black/30 backdrop-blur-[6px] no-print">
       <div role="dialog" aria-modal="true" aria-labelledby="laudo-pedidos-title" className="bg-[var(--bg-primary)] rounded-2xl w-full max-w-[640px] shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--separator)]">
           <div id="laudo-pedidos-title">
@@ -115,7 +142,7 @@ export default function LaudoPPPedidosModal({ row, onClose }: Props) {
                         <div className="mt-1"><StatusPill status={p.status} /></div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => setEditingPedidoId(p.id)} className="apple-btn-secondary text-[12px] py-1.5 px-3">Abrir</button>
+                        <button onClick={() => abrirPedido(p.id)} className="apple-btn-secondary text-[12px] py-1.5 px-3">Abrir</button>
                         <button
                           onClick={handleNovo} disabled={creating}
                           title="Cria um novo laudo em branco pra outro pedido desta referência"
