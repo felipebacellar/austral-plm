@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import { uploadImage, deleteImage } from "@/lib/storage";
-import { fetchFicha, fetchFichasColecoes, reorderFichaColecoes, deleteFichaColecao, upsertFicha, saveFichaImagem, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
+import { fetchFicha, fetchFichasColecoes, reorderFichaColecoes, deleteFichaColecao, upsertFicha, saveFichaImagem, imagemUsadaEmOutraFicha, updateProdutoField, fetchPontosByTabelaNome, fetchGraduacoesByTabelaNome, fetchCadastros, fetchAviamentos, fetchTecidos, fetchVarianteCompras, fetchTabelasMedidas, criarAlerta } from "@/lib/db";
 import { classificarNCM } from "@/lib/ncm";
 import { calcularPesoPeca, type ResultadoPeso } from "@/lib/peso";
 import { fotosParaExibir } from "@/lib/aviamento-fotos";
@@ -110,6 +110,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   const [colecaoCadOpts, setColecaoCadOpts] = useState<string[]>([]);
   const [editandoTemporadas, setEditandoTemporadas] = useState(false);
   const draggedTemporadaRef = useRef<string | null>(null);
+  const seedTemporadaRef = useRef<any>(null);
 
   /* Carrega temporadas disponíveis e opções de cadastro para refs clássicas */
   useEffect(() => {
@@ -152,12 +153,48 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
     if (selectedColecao === colecao) setSelectedColecao(restantes[0] || null);
   };
 
+  /* Temporada nova de um clássico nasce com os dados da temporada que estava
+     aberta — menos o que é por variante (cores dos tecidos, pantones,
+     tingimento, cor do aviamento, simulações de estampa e qtd de mostruário),
+     que é justamente o que muda de uma temporada pra outra. O seed entra no
+     lugar da ficha no carregamento abaixo e o auto-save grava como ficha nova,
+     sem tocar na temporada de origem (o fichaId é zerado na troca). */
+  const adicionarTemporada = (nova: string) => {
+    // fichaId só existe quando há uma ficha salva na tela pra servir de origem.
+    if (fichaId && isDataLoaded) {
+      seedTemporadaRef.current = {
+        id: null,
+        tecidos: tec.map((t: any) => ({ ...t, cores: [] })),
+        aviamentos: avi.map((a: any) => ({ ...a, var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" })),
+        pilotagem: pil, provas: pv, anotacoes: an, provaInfo, statusLiberacao: statusLib,
+        observacoes: obs, ncm, custoDet, obsCusto, pesoCalculo: peso,
+        imagem_url: img, imagem_modelo: imgModelo, imagem_modo_medir: imgModoMedir,
+        imagem_frente: imgFrente, imagem_costas: imgCostas,
+        estamparia: { ...estamparia, numVariantes: numVars, simulacoes: {} },
+        pantones: {}, tingimento: null,
+        qtdMost: { var01: null, var02: null, var03: null, var04: null, var05: null, var06: null },
+        tabelaEspecialAtiva: tEsp, pontosEspeciais: ptsEsp, gradEspecial: gradEsp,
+      };
+      // O tingimento é reaplicado por merge no carregamento, então um valor nulo
+      // no seed não limparia nada — zera aqui pra não vazar da temporada anterior.
+      setVarTingimento({ var01: "", var02: "", var03: "", var04: "", var05: "", var06: "" });
+    }
+    setColecaoOpts(prev => prev.includes(nova) ? prev : [...prev, nova]);
+    setSelectedColecao(nova);
+    setNewColecaoMode(false);
+  };
+
   useEffect(() => {
     (async () => {
       // Para clássicos: carrega a ficha da temporada selecionada (ou null se nenhuma ainda)
       const fichaColecao = isClassic ? selectedColecao : null;
       setFichaId(null);
-      const [ficha, cadastros, aviCad, tecs, vcAll, tabs] = await Promise.all([fetchFicha(row.ref, fichaColecao), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras(), fetchTabelasMedidas()]);
+      const [fichaSalva, cadastros, aviCad, tecs, vcAll, tabs] = await Promise.all([fetchFicha(row.ref, fichaColecao), fetchCadastros(), fetchAviamentos(), fetchTecidos(), fetchVarianteCompras(), fetchTabelasMedidas()]);
+      // Temporada recém-adicionada ainda não tem ficha salva: usa a cópia da
+      // temporada anterior montada em adicionarTemporada.
+      const seed = seedTemporadaRef.current;
+      seedTemporadaRef.current = null;
+      const ficha = fichaSalva || seed;
       setVcCompras(vcAll);
       setCorOpts(cadastros.cor || []);
       setTingimentoOpts(cadastros.tingimento || []);
@@ -249,11 +286,16 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.ref, row.tab_medidas, selectedColecao, isClassic]);
 
-  const hi = async (e: any, fd: string, s: (u: string) => void, prevValue?: string | null) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); if (prevValue) await deleteImage(prevValue); } setUp(false); };
-  const hiDrop = async (e: React.DragEvent, fd: string, s: (u: string) => void, prevValue?: string | null) => { e.preventDefault(); setDragOver(null); const file = e.dataTransfer.files[0]; if (!file || !file.type.startsWith("image/")) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); if (prevValue) await deleteImage(prevValue); } setUp(false); };
-  const deleteImg = async () => { if (img) await deleteImage(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
-  const deleteImgModelo = async () => { if (imgModelo) await deleteImage(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
-  const deleteImgModoMedir = async () => { if (imgModoMedir) await deleteImage(imgModoMedir); setImgModoMedir(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modo_medir", ""); };
+  // Só apaga o arquivo se nenhuma outra temporada do clássico ainda usar ele.
+  const apagarImagem = async (url: string) => {
+    if (await imagemUsadaEmOutraFicha(row.ref, fichaId, url)) return;
+    await deleteImage(url);
+  };
+  const hi = async (e: any, fd: string, s: (u: string) => void, prevValue?: string | null) => { const file = e.target.files?.[0]; if (!file) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); if (prevValue) await apagarImagem(prevValue); } setUp(false); };
+  const hiDrop = async (e: React.DragEvent, fd: string, s: (u: string) => void, prevValue?: string | null) => { e.preventDefault(); setDragOver(null); const file = e.dataTransfer.files[0]; if (!file || !file.type.startsWith("image/")) return; setUp(true); const url = await uploadImage(file, `${row.ref}/${fd}`); if (url) { s(url); if (fichaId) await saveFichaImagem(fichaId, fd, url); if (prevValue) await apagarImagem(prevValue); } setUp(false); };
+  const deleteImg = async () => { if (img) await apagarImagem(img); setImg(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_url", ""); };
+  const deleteImgModelo = async () => { if (imgModelo) await apagarImagem(imgModelo); setImgModelo(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modelo", ""); };
+  const deleteImgModoMedir = async () => { if (imgModoMedir) await apagarImagem(imgModoMedir); setImgModoMedir(null); if (fichaId) await saveFichaImagem(fichaId, "imagem_modo_medir", ""); };
   const uploadFotoProva = async (file: File, prova: "p1"|"p2"|"p3", side: "frente"|"lado"|"costas") => {
     if (!file.type.startsWith("image/")) return;
     setUp(true);
@@ -708,13 +750,7 @@ export default function FichaModal({ row, onClose, onSave }: Props) {
                   <select
                     autoFocus
                     defaultValue=""
-                    onChange={e => {
-                      const v = e.target.value;
-                      if (!v) return;
-                      setColecaoOpts(prev => prev.includes(v) ? prev : [...prev, v]);
-                      setSelectedColecao(v);
-                      setNewColecaoMode(false);
-                    }}
+                    onChange={e => { if (e.target.value) adicionarTemporada(e.target.value); }}
                     style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--system-blue)", background: "var(--bg-primary)", color: "var(--label-primary)", outline: "none" }}
                   >
                     <option value="">Selecionar coleção…</option>

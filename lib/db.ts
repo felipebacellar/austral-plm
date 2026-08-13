@@ -363,6 +363,21 @@ export async function fetchFicha(ref: string, colecao?: string | null) {
   return result;
 }
 
+// Temporadas diferentes de um clássico podem apontar pro mesmo arquivo de
+// imagem, já que uma temporada nova nasce copiando a anterior. Antes de apagar
+// o arquivo do Storage é preciso saber se outra ficha da mesma referência ainda
+// o usa — senão trocar o desenho numa temporada quebra a imagem das outras.
+export async function imagemUsadaEmOutraFicha(ref: string, fichaId: number | null, url: string): Promise<boolean> {
+  if (!url) return false;
+  const { data, error } = await sb().from("fichas_tecnicas").select("*").eq("produto_ref", ref);
+  // Na dúvida (erro de consulta), prefere manter o arquivo a apagar algo em uso.
+  if (error) { console.error("imagemUsadaEmOutraFicha:", error); return true; }
+  return (data || []).some((f: any) =>
+    f.id !== fichaId &&
+    [f.imagem_url, f.imagem_modelo, f.imagem_modo_medir, f.imagem_frente, f.imagem_costas].includes(url)
+  );
+}
+
 export async function saveFichaImagem(fichaId: number, field: string, url: string) {
   const { error } = await sb().from("fichas_tecnicas").update({ [field]: url }).eq("id", fichaId);
   if (error) console.error("saveFichaImagem:", error);
