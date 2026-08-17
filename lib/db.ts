@@ -75,7 +75,7 @@ export async function fetchTecidos() {
     // Dados técnicos (podem estar vazios até alguém preencher no cadastro)
     gramatura: t.gramatura ?? "", oz: t.oz ?? "", largura: t.largura ?? "",
     enc_largura: t.encolhimento_largura ?? "", enc_altura: t.encolhimento_altura ?? "",
-    rendimento: t.rendimento ?? "",
+    rendimento: t.rendimento ?? "", imagem: t.imagem ?? "",
   }));
   toCache("tecidos", result);
   return result;
@@ -92,24 +92,24 @@ export type TecidoTecnico = {
   gramatura?: any; oz?: any; largura?: any; enc_largura?: any; enc_altura?: any; rendimento?: any;
 };
 
-export async function addTecido(t: { nome: string; forn: string; comp: string; preco: string } & TecidoTecnico) {
+export async function addTecido(t: { nome: string; forn: string; comp: string; preco: string; imagem?: string } & TecidoTecnico) {
   const { error } = await sb().from("tecidos").insert({
     nome: t.nome, fornecedor: t.forn, composicao: t.comp, preco: numOuNull(t.preco),
     gramatura: numOuNull(t.gramatura), oz: numOuNull(t.oz), largura: numOuNull(t.largura),
     encolhimento_largura: numOuNull(t.enc_largura), encolhimento_altura: numOuNull(t.enc_altura),
-    rendimento: numOuNull(t.rendimento),
+    rendimento: numOuNull(t.rendimento), imagem: t.imagem || "",
   });
   if (error) console.error("addTecido:", error);
   invalidateCache("tecidos");
 }
 
 // Atualiza campos do tecido pelo nome (chave única). Só envia o que veio.
-export async function updateTecido(nome: string, patch: { forn?: string; comp?: string; preco?: any } & TecidoTecnico) {
+export async function updateTecido(nome: string, patch: { forn?: string; comp?: string; preco?: any; imagem?: string } & TecidoTecnico) {
   const mapa: Record<string, string> = {
     forn: "fornecedor", comp: "composicao", preco: "preco",
     gramatura: "gramatura", oz: "oz", largura: "largura",
     enc_largura: "encolhimento_largura", enc_altura: "encolhimento_altura",
-    rendimento: "rendimento",
+    rendimento: "rendimento", imagem: "imagem",
   };
   const numericos = new Set(["preco", "gramatura", "oz", "largura", "enc_largura", "enc_altura", "rendimento"]);
   const upd: Record<string, any> = {};

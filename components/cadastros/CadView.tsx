@@ -35,6 +35,13 @@ export default function CadView(){
   const [newAvImg,setNewAvImg]=useState<string>("");
   const [newAvImgUp,setNewAvImgUp]=useState(false);
   const newAvImgRef=useRef<HTMLInputElement>(null);
+  // Foto do tecido (mesmo padrão do aviamento: uma na linha da tabela, uma no formulário)
+  const [tecImgUploading,setTecImgUploading]=useState<string|null>(null);
+  const tecImgRef=useRef<HTMLInputElement>(null);
+  const [tecImgTarget,setTecImgTarget]=useState<string|null>(null);
+  const [newTecImg,setNewTecImg]=useState<string>("");
+  const [newTecImgUp,setNewTecImgUp]=useState(false);
+  const newTecImgRef=useRef<HTMLInputElement>(null);
 
   useEffect(()=>{loadAll();},[]);
 
@@ -130,16 +137,39 @@ export default function CadView(){
     // Sem gramatura digitada, mas com oz: deduz a gramatura do oz (não deixa o registro sem os dois)
     const gramaturaFinal=tg.trim()?tg:(ozParaGramatura(to)?.toString()??tg);
     const t={nome:tn.trim().toUpperCase(),forn:tf.trim(),comp:tc.trim(),preco:tp,
-      oz:to,gramatura:gramaturaFinal,largura:tl,enc_largura:tel,enc_altura:tea,rendimento:tr};
+      oz:to,gramatura:gramaturaFinal,largura:tl,enc_largura:tel,enc_altura:tea,rendimento:tr,imagem:newTecImg};
     await addTecido(t);
     setTecidos(p=>[...p,t].sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt-BR")));
-    setTn("");setTf("");setTc("");setTp("");setTo("");setTg("");setTl("");setTel("");setTea("");setTr("");
+    setTn("");setTf("");setTc("");setTp("");setTo("");setTg("");setTl("");setTel("");setTea("");setTr("");setNewTecImg("");
   };
-  const remT=async(n:string)=>{await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
+  const remT=async(n:string)=>{const t=tecidos.find((x:any)=>x.nome===n);if(t?.imagem)await deleteImage(t.imagem);await removeTecido(n);setTecidos(p=>p.filter(t=>t.nome!==n));};
   // Salva um campo do tecido ao sair do input (mesmo padrão dos aviamentos)
   const saveTec=async(nome:string,patch:Record<string,any>)=>{
     setTecidos(p=>p.map(t=>t.nome===nome?{...t,...patch}:t));
     await updateTecido(nome,patch);
+  };
+  const triggerTecImg=(nome:string)=>{setTecImgTarget(nome);tecImgRef.current?.click();};
+  const handleTecImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const file=e.target.files?.[0];
+    if(!file||!tecImgTarget)return;
+    setTecImgUploading(tecImgTarget);
+    const url=await uploadImage(file,`tecidos/${tecImgTarget}`);
+    if(url)await saveTec(tecImgTarget,{imagem:url});
+    setTecImgUploading(null);setTecImgTarget(null);
+    if(tecImgRef.current)tecImgRef.current.value="";
+  };
+  const remTecImg=async(nome:string,url:string)=>{await deleteImage(url);await saveTec(nome,{imagem:""});};
+  // No formulário a foto sobe antes do tecido existir — usa o nome digitado como pasta
+  const handleNewTecImg=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const nome=tn.trim().toUpperCase();
+    if(!nome){alert("Digite o nome do tecido antes de adicionar a foto.");if(newTecImgRef.current)newTecImgRef.current.value="";return;}
+    setNewTecImgUp(true);
+    const url=await uploadImage(file,`tecidos/${nome}`);
+    if(url)setNewTecImg(url);
+    setNewTecImgUp(false);
+    if(newTecImgRef.current)newTecImgRef.current.value="";
   };
 
   const addAv=async()=>{if(!ac.trim()||!an.trim())return;const a={cod:ac.trim().toUpperCase(),nome:an.trim().toUpperCase(),preco:parseFloat(ap.replace(",","."))||0,localizacao_padrao:al.trim().toUpperCase(),fornecedor:af.trim().toUpperCase(),codigo_fornecedor:acf.trim().toUpperCase(),imagem:newAvImg};const err=await addAviamento(a);if(err){setImportMsg({tipo:"erro",texto:err});return;}setAviamentos(p=>[...p,{...a,cores_disponiveis:[]}]);setAc("");setAn("");setAp("");setAl("");setAf("");setAcf("");setNewAvImg("");};
@@ -406,7 +436,21 @@ export default function CadView(){
 
             {/* Tecidos */}
             {m==="tecido"&&(<>
-              <div className="flex gap-2 mb-2 flex-wrap">
+              <input type="file" accept="image/*" ref={tecImgRef} className="hidden" onChange={handleTecImg}/>
+              <input type="file" accept="image/*" ref={newTecImgRef} className="hidden" onChange={handleNewTecImg}/>
+              <div className="flex gap-2 mb-2 flex-wrap items-start">
+                {/* Foto do novo tecido */}
+                {newTecImgUp
+                  ? <div className="w-[42px] h-[42px] rounded border border-[var(--separator)] flex items-center justify-center text-[10px] text-[var(--label-tertiary)] shrink-0">...</div>
+                  : newTecImg
+                    ? <div className="relative inline-block shrink-0">
+                        <img src={newTecImg} alt="Foto do novo tecido" onClick={()=>newTecImgRef.current?.click()} className="w-[42px] h-[42px] object-cover rounded border border-[var(--separator)] cursor-pointer hover:opacity-80" title="Clique para trocar"/>
+                        <button onClick={()=>setNewTecImg("")} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center" title="Remover foto">×</button>
+                      </div>
+                    : <button onClick={()=>newTecImgRef.current?.click()} className="w-[42px] h-[42px] border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors shrink-0" title="Adicionar foto (digite o nome primeiro)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                        <span className="text-[8px] font-medium leading-none">foto</span>
+                      </button>}
                 <input className={`${inp} flex-[2] min-w-[150px]`} value={tn} onChange={e=>setTn(e.target.value)} placeholder="Nome do tecido"/>
                 <input className={`${inp} flex-1 min-w-[100px]`} value={tf} onChange={e=>setTf(e.target.value)} placeholder="Fornecedor"/>
                 <input className={`${inp} flex-1 min-w-[100px]`} value={tc} onChange={e=>setTc(e.target.value)} placeholder="Composição"/>
@@ -428,6 +472,7 @@ export default function CadView(){
 
               <div className="border border-[var(--separator)] rounded-xl overflow-hidden overflow-x-auto">
                 <table className="plm-table"><thead><tr>
+                  <th className="w-16 px-3 text-center">Foto</th>
                   <th className="px-4">Nome</th><th>Fornecedor</th><th>Composição</th>
                   <th className="text-right">Preço</th>
                   <th className="text-center w-20" title="Peso em onças por jarda quadrada — preenche a gramatura automaticamente">OZ</th>
@@ -452,6 +497,20 @@ export default function CadView(){
                   );
                   return (
                   <tr key={t.nome||i}>
+                    {/* ── Foto ── */}
+                    <td className="text-center px-2 py-1.5">
+                      {tecImgUploading===t.nome
+                        ? <div className="w-12 h-12 rounded border border-[var(--separator)] mx-auto flex items-center justify-center text-[10px] text-[var(--label-tertiary)]">...</div>
+                        : t.imagem
+                          ? <div className="relative inline-block group">
+                              <img src={t.imagem} alt={t.nome} onClick={()=>triggerTecImg(t.nome)} className="w-12 h-12 object-cover rounded border border-[var(--separator)] cursor-pointer hover:opacity-80 transition-opacity" title="Clique para trocar"/>
+                              <button onClick={e=>{e.stopPropagation();remTecImg(t.nome,t.imagem);}} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Remover foto">×</button>
+                            </div>
+                          : <button onClick={()=>triggerTecImg(t.nome)} className="w-12 h-12 border-2 border-dashed border-[var(--separator-opaque)] rounded-lg flex flex-col items-center justify-center gap-0.5 text-[var(--label-quaternary)] hover:border-[var(--system-blue)] hover:text-[var(--system-blue)] transition-colors mx-auto" title="Adicionar foto">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                              <span className="text-[8px] font-medium leading-none">foto</span>
+                            </button>}
+                    </td>
                     <td className="font-medium px-4">{t.nome}</td>
                     <td className="px-3">{t.forn}</td>
                     <td className="text-[12px] text-[var(--label-secondary)] px-3">{t.comp}</td>
