@@ -8,3 +8,8 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 .claude/worktrees/
+.vercel
+.env*
+
+# gerado pelo Instalar-PLM.ps1 — carrega a chave anon do Supabase
+illustrator/plm-config.json
